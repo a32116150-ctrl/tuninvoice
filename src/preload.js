@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deleteDocument: (docId) => ipcRenderer.invoke('docs:delete', docId),
     getNextDocNumber: (params) => ipcRenderer.invoke('docs:getNextNumber', params),
     
+    // Document conversion and edit
+    convertDocument: (data) => ipcRenderer.invoke('docs:convert', data),
+    updateDocument: (data) => ipcRenderer.invoke('docs:update', data),
+    
     // Clients
     getClients: (userId) => ipcRenderer.invoke('clients:getAll', userId),
     saveClient: (clientData) => ipcRenderer.invoke('clients:save', clientData),
@@ -24,11 +28,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Stats
     getStats: (userId) => ipcRenderer.invoke('stats:get', userId),
     
+    // Services
+    getServices: (userId) => ipcRenderer.invoke('services:getAll', userId),
+    saveService: (serviceData) => ipcRenderer.invoke('services:save', serviceData),
+    deleteService: (serviceId) => ipcRenderer.invoke('services:delete', serviceId),
+    
+    // Settings
+    getSettings: (userId) => ipcRenderer.invoke('settings:get', userId),
+    updateSettings: (data) => ipcRenderer.invoke('settings:update', data),
+    resetCounter: (data) => ipcRenderer.invoke('settings:resetCounter', data),
+    
     // Export
-    exportExcelDocument: (params) => ipcRenderer.invoke('export:excel:document', params),
     exportExcelDocuments: (params) => ipcRenderer.invoke('export:excel:documents', params),
     exportExcelClients: (params) => ipcRenderer.invoke('export:excel:clients', params),
-    exportCSVDocument: (params) => ipcRenderer.invoke('export:csv:document', params),
     
     // Backup
     getBackupSettings: () => ipcRenderer.invoke('backup:settings:get'),

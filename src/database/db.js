@@ -14,6 +14,7 @@ class AppDatabase {
     }
 
     initTables() {
+        // Users table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -26,6 +27,7 @@ class AppDatabase {
             )
         `);
 
+        // Documents table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS documents (
                 id TEXT PRIMARY KEY,
@@ -60,6 +62,7 @@ class AppDatabase {
             )
         `);
 
+        // Clients table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS clients (
                 id TEXT PRIMARY KEY,
@@ -73,6 +76,7 @@ class AppDatabase {
             )
         `);
 
+        // Companies table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS companies (
                 user_id TEXT PRIMARY KEY,
@@ -86,6 +90,7 @@ class AppDatabase {
             )
         `);
 
+        // Document counters table (for sequence numbers)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS doc_counters (
                 user_id TEXT NOT NULL,
@@ -93,6 +98,30 @@ class AppDatabase {
                 year INTEGER NOT NULL,
                 last_number INTEGER DEFAULT 0,
                 PRIMARY KEY (user_id, type, year)
+            )
+        `);
+
+        // Services/Products presets table (NEW)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS services (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                price REAL DEFAULT 0,
+                tva REAL DEFAULT 19,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // User settings table for custom prefixes (NEW)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS user_settings (
+                user_id TEXT PRIMARY KEY,
+                prefix_facture TEXT DEFAULT 'FAC',
+                prefix_devis TEXT DEFAULT 'DEV',
+                prefix_bon TEXT DEFAULT 'BC',
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         `);
     }
@@ -119,6 +148,12 @@ class AppDatabase {
             VALUES (?, ?, ?, ?, ?, ?)
         `).run(id, name, email, passwordHash, company || null, mf || null);
 
+        // Initialize default settings for new user (NEW)
+        this.db.prepare(`
+            INSERT INTO user_settings (user_id, prefix_facture, prefix_devis, prefix_bon)
+            VALUES (?, 'FAC', 'DEV', 'BC')
+        `).run(id);
+
         return { id, name, email, company, mf };
     }
 
@@ -138,6 +173,7 @@ class AppDatabase {
         };
     }
 
+    // MODIFIED: Now uses custom prefixes from user_settings
     getNextDocumentNumber(userId, type, year) {
         const counter = this.db.prepare(`
             SELECT last_number FROM doc_counters 
@@ -152,14 +188,23 @@ class AppDatabase {
             ON CONFLICT(user_id, type, year) DO UPDATE SET last_number = ?
         `).run(userId, type, year, nextNum, nextNum);
 
-        const prefix = type === 'facture' ? 'FAC' : type === 'devis' ? 'DEV' : 'BC';
+        // Get custom prefix from settings (NEW)
+        const settings = this.getUserSettings(userId);
+        let prefix;
+        if (type === 'facture') prefix = settings.prefix_facture || 'FAC';
+        else if (type === 'devis') prefix = settings.prefix_devis || 'DEV';
+        else prefix = settings.prefix_bon || 'BC';
+        
         return `${prefix}-${year}-${String(nextNum).padStart(3, '0')}`;
     }
 
-
-    updateDocument(doc) {
-        const stmt = this.db.prepare(`UPDATE documents SET type=?, number=?, date=?, totalTTC=?, clientName=? WHERE id=?`);
-        return stmt.run(doc.type, doc.number, doc.date, doc.totalTTC, doc.clientName, doc.id);
+    // NEW: Reset document counter for a specific type/year
+    resetDocumentCounter(userId, type, year) {
+        this.db.prepare(`
+            DELETE FROM doc_counters 
+            WHERE user_id = ? AND type = ? AND year = ?
+        `).run(userId, type, year);
+        return { success: true };
     }
 
     saveDocument(docData) {
@@ -279,6 +324,7 @@ class AppDatabase {
         };
     }
 
+    // ==================== CLIENTS ====================
     saveClient(clientData) {
         const id = clientData.id || uuidv4();
         const existing = this.db.prepare('SELECT id FROM clients WHERE id = ?').get(id);
@@ -308,6 +354,7 @@ class AppDatabase {
         this.db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
     }
 
+    // ==================== COMPANY ====================
     saveCompanySettings(settings) {
         this.db.prepare(`
             INSERT INTO companies (user_id, name, mf, address, phone, email, rc)
@@ -326,6 +373,7 @@ class AppDatabase {
         return this.db.prepare('SELECT * FROM companies WHERE user_id = ?').get(userId);
     }
 
+    // ==================== STATS ====================
     getDashboardStats(userId) {
         const totalDocs = this.db.prepare('SELECT COUNT(*) as count FROM documents WHERE user_id = ?').get(userId).count;
         const totalRevenue = this.db.prepare(`
@@ -338,6 +386,60 @@ class AppDatabase {
         `).get(userId).count;
 
         return { totalDocs, totalRevenue, totalClients, thisMonth };
+    }
+
+    // ==================== SERVICES (NEW) ====================
+    saveService(serviceData) {
+        const id = serviceData.id || uuidv4();
+        const existing = this.db.prepare('SELECT id FROM services WHERE id = ?').get(id);
+
+        if (existing) {
+            this.db.prepare(`
+                UPDATE services SET name = ?, description = ?, price = ?, tva = ?
+                WHERE id = ?
+            `).run(serviceData.name, serviceData.description || null, serviceData.price, serviceData.tva, id);
+        } else {
+            this.db.prepare(`
+                INSERT INTO services (id, user_id, name, description, price, tva)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(id, serviceData.userId, serviceData.name, serviceData.description || null, serviceData.price, serviceData.tva);
+        }
+
+        return { id, ...serviceData };
+    }
+
+    getServices(userId) {
+        return this.db.prepare('SELECT * FROM services WHERE user_id = ? ORDER BY name').all(userId);
+    }
+
+    deleteService(serviceId) {
+        this.db.prepare('DELETE FROM services WHERE id = ?').run(serviceId);
+    }
+
+    // ==================== USER SETTINGS (NEW) ====================
+    getUserSettings(userId) {
+        let settings = this.db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(userId);
+        if (!settings) {
+            // Create default settings if not exists
+            this.db.prepare(`
+                INSERT INTO user_settings (user_id, prefix_facture, prefix_devis, prefix_bon)
+                VALUES (?, 'FAC', 'DEV', 'BC')
+            `).run(userId);
+            settings = this.db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(userId);
+        }
+        return settings;
+    }
+
+    updateUserSettings(userId, settings) {
+        this.db.prepare(`
+            UPDATE user_settings SET
+                prefix_facture = COALESCE(?, prefix_facture),
+                prefix_devis = COALESCE(?, prefix_devis),
+                prefix_bon = COALESCE(?, prefix_bon)
+            WHERE user_id = ?
+        `).run(settings.prefix_facture, settings.prefix_devis, settings.prefix_bon, userId);
+        
+        return this.getUserSettings(userId);
     }
 }
 

@@ -8,65 +8,15 @@ let signatureImage = null;
 let timbreAmount = 0;
 let allDocuments = [];
 let allClients = [];
+let allServices = [];
+let editingServiceId = null;
+let editingDocId = null;
 let confirmCallback = null;
-let currentTemplate = 'modern'; // 'modern', 'retro98', 'cinematic'
-let editingDocId = null; // Track if we're editing an existing document
-
-// ==================== TEMPLATE CONFIGURATIONS ====================
-const templates = {
-    modern: {
-        name: 'Modern Minimal',
-        colors: {
-            facture: '#1e3a8a',
-            devis: '#92400e',
-            bon: '#065f46'
-        },
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        headerStyle: 'gradient',
-        tableStyle: 'clean',
-        showBorders: true,
-        borderRadius: '8px',
-        shadow: '0 4px 6px rgba(0,0,0,0.1)'
-    },
-    retro98: {
-        name: 'Retro 98',
-        colors: {
-            facture: '#000080',
-            devis: '#800080',
-            bon: '#008000'
-        },
-        fontFamily: "'Courier New', 'Courier', monospace",
-        headerStyle: 'pixel',
-        tableStyle: 'retro',
-        showBorders: true,
-        borderRadius: '0px',
-        shadow: '4px 4px 0px #000000',
-        pixelArt: true
-    },
-    cinematic: {
-        name: 'Cinematic Studio',
-        colors: {
-            facture: '#0f172a',
-            devis: '#1e1b4b',
-            bon: '#064e3b'
-        },
-        fontFamily: "'Playfair Display', 'Georgia', serif",
-        headerStyle: 'dramatic',
-        tableStyle: 'elegant',
-        showBorders: false,
-        borderRadius: '0px',
-        shadow: '0 20px 40px rgba(0,0,0,0.3)',
-        cinematicEffects: true
-    }
-};
+let currentSettings = {};
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
     const savedUser = sessionStorage.getItem('currentUser');
-    const savedTemplate = localStorage.getItem('preferredTemplate');
-    if (savedTemplate && templates[savedTemplate]) {
-        currentTemplate = savedTemplate;
-    }
     if (savedUser) {
         try {
             currentUser = JSON.parse(savedUser);
@@ -77,231 +27,773 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// ==================== TEMPLATE FUNCTIONS ====================
-function setTemplate(templateName) {
-    if (templates[templateName]) {
-        currentTemplate = templateName;
-        localStorage.setItem('preferredTemplate', templateName);
-        showToast(`Thème "${templates[templateName].name}" appliqué`, 'success');
-        if (document.getElementById('previewModal').classList.contains('active')) {
-            generatePreviewHTML();
-        }
-    }
+// ==================== TOAST ====================
+function showToast(message, type = 'info', duration = 3500) {
+    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('toast-out');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }
 
-function getCurrentTemplate() {
-    return templates[currentTemplate];
+// ==================== LOADING ====================
+function showLoading(text = 'Traitement en cours...') {
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
 }
 
-// ==================== CONVERSION: DEVIS TO FACTURE ====================
-async function convertDevisToFacture(devisId) {
+// ==================== CONFIRM MODAL ====================
+function showConfirm(title, message, onConfirm, btnLabel = 'Confirmer', btnClass = 'btn-danger') {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    const btn = document.getElementById('confirmBtn');
+    btn.textContent = btnLabel;
+    btn.className = `btn ${btnClass}`;
+    confirmCallback = onConfirm;
+    document.getElementById('confirmModal').classList.add('active');
+}
+function executeConfirm() { closeConfirm(); if (confirmCallback) confirmCallback(); }
+function closeConfirm() { document.getElementById('confirmModal').classList.remove('active'); confirmCallback = null; }
+
+// ==================== AUTH ====================
+function switchAuthTab(tab, btn) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(tab === 'login' ? 'loginForm' : 'registerForm').classList.add('active');
+    hideError();
+}
+function hideError() { document.getElementById('authError').classList.add('hidden'); }
+function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('authError').classList.remove('hidden');
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    hideError();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = '⏳ Connexion...';
     try {
-        const devis = await window.electronAPI.getDocument(devisId);
-        if (!devis) {
-            showToast('Devis non trouvé', 'error');
-            return;
-        }
-        if (devis.type !== 'devis') {
-            showToast('Ce document n\'est pas un devis', 'warning');
-            return;
-        }
-
-        showConfirm(
-            '🔄 Conversion Devis → Facture',
-            `Convertir le devis "${devis.number}" en facture ?\nLes données seront copiées et un nouveau numéro de facture sera généré.`,
-            async () => {
-                showLoading('Conversion en cours...');
-                try {
-                    // Generate new facture number
-                    const newNumber = await window.electronAPI.getNextDocNumber({
-                        userId: currentUser.id,
-                        type: 'facture',
-                        year: new Date().getFullYear()
-                    });
-
-                    // Prepare facture data from devis
-                    const factureData = {
-                        userId: currentUser.id,
-                        type: 'facture',
-                        number: newNumber,
-                        date: new Date().toISOString().split('T')[0],
-                        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        currency: devis.currency,
-                        paymentMode: devis.paymentMode,
-                        companyName: devis.companyName,
-                        companyMF: devis.companyMF,
-                        companyAddress: devis.companyAddress,
-                        companyPhone: devis.companyPhone,
-                        companyEmail: devis.companyEmail,
-                        companyRC: devis.companyRC,
-                        clientName: devis.clientName,
-                        clientMF: devis.clientMF,
-                        clientAddress: devis.clientAddress,
-                        clientPhone: devis.clientPhone,
-                        clientEmail: devis.clientEmail,
-                        items: devis.items,
-                        applyTimbre: devis.applyTimbre,
-                        timbreAmount: devis.timbreAmount,
-                        totalHT: devis.totalHT,
-                        totalTTC: devis.totalTTC,
-                        logoImage: devis.logoImage,
-                        stampImage: devis.stampImage,
-                        signatureImage: devis.signatureImage,
-                        notes: `Converti depuis le devis ${devis.number}\n\n${devis.notes || ''}`,
-                        originalDevisId: devis.id,
-                        originalDevisNumber: devis.number
-                    };
-
-                    // Save the new facture
-                    const result = await window.electronAPI.saveDocument(factureData);
-                    
-                    if (result.success) {
-                        showToast(`✅ Facture ${newNumber} créée avec succès !`, 'success', 5000);
-                        loadDocuments();
-                        loadDashboard();
-                        
-                        // Option to view the new facture immediately
-                        setTimeout(() => {
-                            viewDocument(result.document.id);
-                        }, 500);
-                    } else {
-                        showToast('Erreur lors de la conversion', 'error');
-                    }
-                } catch (error) {
-                    showToast('Erreur de conversion', 'error');
-                    console.error(error);
-                } finally {
-                    hideLoading();
-                }
-            },
-            'Convertir',
-            'btn-success'
-        );
-    } catch (error) {
-        showToast('Erreur lors du chargement du devis', 'error');
-    }
-}
-
-// ==================== EDIT DOCUMENT ====================
-async function editDocument(docId) {
-    try {
-        const doc = await window.electronAPI.getDocument(docId);
-        if (!doc) {
-            showToast('Document non trouvé', 'error');
-            return;
-        }
-
-        editingDocId = docId;
-        currentDocType = doc.type;
-
-        // Fill in the form
-        document.getElementById('docNumber').value = doc.number;
-        document.getElementById('docDate').value = doc.date;
-        document.getElementById('docDueDate').value = doc.dueDate || '';
-        document.getElementById('docCurrency').value = doc.currency || 'TND';
-        document.getElementById('docPayment').value = doc.paymentMode || 'Virement bancaire';
-        document.getElementById('docNotes').value = doc.notes || '';
-
-        // Company info
-        document.getElementById('docCompanyName').value = doc.companyName || '';
-        document.getElementById('docCompanyMF').value = doc.companyMF || '';
-        document.getElementById('docCompanyAddress').value = doc.companyAddress || '';
-        document.getElementById('docCompanyPhone').value = doc.companyPhone || '';
-        document.getElementById('docCompanyEmail').value = doc.companyEmail || '';
-        document.getElementById('docCompanyRC').value = doc.companyRC || '';
-
-        // Client info
-        document.getElementById('docClientName').value = doc.clientName || '';
-        document.getElementById('docClientMF').value = doc.clientMF || '';
-        document.getElementById('docClientAddress').value = doc.clientAddress || '';
-        document.getElementById('docClientPhone').value = doc.clientPhone || '';
-        document.getElementById('docClientEmail').value = doc.clientEmail || '';
-
-        // Items
-        document.getElementById('itemsBody').innerHTML = '';
-        itemCount = 0;
-        doc.items.forEach((item, index) => {
-            itemCount++;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="text-align:center;color:var(--gray-500);font-size:0.82rem">${itemCount}</td>
-                <td><input type="text" class="item-input" id="desc${itemCount}" placeholder="Description..." value="${escapeHtml(item.description)}"></td>
-                <td><input type="number" class="item-input" id="qty${itemCount}" value="${item.quantity}" min="0.001" step="0.001" onchange="calculateTotals()"></td>
-                <td><input type="number" class="item-input" id="price${itemCount}" value="${item.price}" min="0" step="0.001" onchange="calculateTotals()"></td>
-                <td><select class="tva-select" id="tva${itemCount}" onchange="calculateTotals()">
-                    <option value="19" ${item.tva == 19 ? 'selected' : ''}>19%</option>
-                    <option value="13" ${item.tva == 13 ? 'selected' : ''}>13%</option>
-                    <option value="7" ${item.tva == 7 ? 'selected' : ''}>7%</option>
-                    <option value="0" ${item.tva == 0 ? 'selected' : ''}>0%</option>
-                </select></td>
-                <td style="text-align:right;font-weight:500" id="total${itemCount}">${item.total.toFixed(3)}</td>
-                <td><button type="button" class="btn-icon btn-delete" onclick="removeItem(this)">🗑️</button></td>`;
-            document.getElementById('itemsBody').appendChild(tr);
+        const result = await window.electronAPI.login({
+            email: document.getElementById('loginEmail').value,
+            password: document.getElementById('loginPassword').value
         });
+        if (result.success) {
+            const safeUser = { id: result.user.id, name: result.user.name, email: result.user.email, company: result.user.company, mf: result.user.mf };
+            currentUser = safeUser;
+            sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
+            showApp();
+        } else { showError(result.error || 'Identifiants incorrects'); }
+    } catch { showError('Erreur de connexion. Veuillez réessayer.'); }
+    finally { btn.disabled = false; btn.textContent = '🔐 Se connecter'; }
+}
 
-        // Images
-        if (doc.logoImage) {
-            logoImage = doc.logoImage;
-            document.getElementById('logoPreview').src = doc.logoImage;
-            document.getElementById('logoPreview').classList.remove('hidden');
-            document.getElementById('logoPlaceholder').classList.add('hidden');
-            document.getElementById('logoBox').classList.add('has-image');
-        }
-        if (doc.stampImage) {
-            stampImage = doc.stampImage;
-            document.getElementById('stampPreview').src = doc.stampImage;
-            document.getElementById('stampPreview').classList.remove('hidden');
-            document.getElementById('stampPlaceholder').classList.add('hidden');
-            document.getElementById('stampBox').classList.add('has-image');
-        }
-        if (doc.signatureImage) {
-            signatureImage = doc.signatureImage;
-            document.getElementById('signaturePreview').src = doc.signatureImage;
-            document.getElementById('signaturePreview').classList.remove('hidden');
-            document.getElementById('signaturePlaceholder').classList.add('hidden');
-            document.getElementById('signatureBox').classList.add('has-image');
-        }
+async function handleRegister(e) {
+    e.preventDefault();
+    hideError();
+    const password = document.getElementById('regPassword').value;
+    const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+    if (password !== passwordConfirm) return showError('Les mots de passe ne correspondent pas');
+    if (password.length < 6) return showError('Minimum 6 caractères');
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = '⏳ Création...';
+    try {
+        const result = await window.electronAPI.register({
+            name: document.getElementById('regName').value.trim(),
+            email: document.getElementById('regEmail').value.trim(),
+            company: document.getElementById('regCompany').value.trim(),
+            mf: document.getElementById('regMF').value.trim(),
+            password
+        });
+        if (result.success) {
+            showToast('Compte créé ! Veuillez vous connecter.', 'success', 5000);
+            switchAuthTab('login', document.querySelector('.auth-tab'));
+            document.getElementById('loginEmail').value = document.getElementById('regEmail').value;
+        } else { showError(result.error || 'Erreur lors de la création'); }
+    } catch { showError('Erreur serveur.'); }
+    finally { btn.disabled = false; btn.textContent = '📝 Créer mon compte'; }
+}
 
-        // Timbre
-        document.getElementById('applyTimbre').checked = doc.applyTimbre;
-        timbreAmount = doc.timbreAmount || 0;
+function confirmLogout() {
+    showConfirm('🚪 Déconnexion', 'Tout document non sauvegardé sera perdu. Continuer ?', logout, 'Déconnexion');
+}
 
-        // Update UI
-        updateDocType();
-        calculateTotals();
-        navigateTo('new-document');
-        
-        // Change save button to indicate editing
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.innerHTML = '💾 Mettre à jour le Document';
-        saveBtn.onclick = () => updateExistingDocument(docId);
-        
-        showToast(`Modification du ${doc.type} ${doc.number}`, 'info');
-    } catch (error) {
-        showToast('Erreur lors du chargement du document', 'error');
-        console.error(error);
+function logout() {
+    currentUser = null;
+    sessionStorage.removeItem('currentUser');
+    document.getElementById('appContainer').classList.add('hidden');
+    document.getElementById('authContainer').classList.remove('hidden');
+    document.getElementById('loginForm').reset();
+    document.getElementById('registerForm').reset();
+}
+
+function showApp() {
+    document.getElementById('authContainer').classList.add('hidden');
+    document.getElementById('appContainer').classList.remove('hidden');
+    document.getElementById('userName').textContent = currentUser.name;
+    document.getElementById('userEmail').textContent = currentUser.email;
+    document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+    const hour = new Date().getHours();
+    const greet = hour < 18 ? 'Bonjour' : 'Bonsoir';
+    document.getElementById('dashboardGreeting').textContent = `${greet}, ${currentUser.name.split(' ')[0]} 👋`;
+    loadDashboard();
+    initNewDocument();
+}
+
+// ==================== NAVIGATION ====================
+function navigateTo(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const pageEl = document.getElementById(`page-${page}`);
+    if (!pageEl) return;
+    pageEl.classList.add('active');
+    const pages = ['dashboard','new-document','documents','clients','services','company','settings'];
+    const idx = pages.indexOf(page);
+    const navItems = document.querySelectorAll('.nav-item');
+    if (idx !== -1 && navItems[idx]) navItems[idx].classList.add('active');
+    if (page === 'dashboard')  loadDashboard();
+    if (page === 'documents')  loadDocuments();
+    if (page === 'clients')    loadClients();
+    if (page === 'services')   loadServices();
+    if (page === 'company')    loadCompanyPage();
+    if (page === 'settings')   { loadSettings(); loadSerialSettings(); }
+}
+
+function createDocOfType(type) {
+    currentDocType = type;
+    document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === type);
+    updateDocType();
+    navigateTo('new-document');
+}
+
+// ==================== DASHBOARD ====================
+async function loadDashboard() {
+    try {
+        const stats = await window.electronAPI.getStats(currentUser.id);
+        document.getElementById('statTotalDocs').textContent    = stats.totalDocs;
+        document.getElementById('statTotalRevenue').textContent = stats.totalRevenue.toFixed(3) + ' TND';
+        document.getElementById('statTotalClients').textContent = stats.totalClients;
+        document.getElementById('statThisMonth').textContent    = stats.thisMonth;
+        const docs = await window.electronAPI.getDocuments(currentUser.id);
+        renderRecentDocs(docs.slice(0, 6));
+    } catch { showToast('Erreur tableau de bord', 'error'); }
+}
+
+function renderRecentDocs(docs) {
+    const container = document.getElementById('recentDocsTable');
+    if (!docs.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Aucun document</h3><p>Créez votre premier document</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr><th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Total TTC</th><th>Actions</th></tr></thead><tbody>
+        ${docs.map(doc => `<tr>
+            <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
+            <td style="font-family:monospace;font-size:0.82rem">${doc.number}</td>
+            <td>${escapeHtml(doc.clientName)}</td>
+            <td>${formatDate(doc.date)}</td>
+            <td style="font-weight:600">${doc.totalTTC.toFixed(3)} ${doc.currency}</td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-view"   onclick="viewDocument('${doc.id}')"     title="Aperçu">👁️</button>
+                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir en Facture">🔄</button>` : ''}
+                <button class="btn-icon btn-edit" onclick="editExistingDoc('${doc.id}')" title="Modifier">✏️</button>
+                <button class="btn-icon btn-pdf"    onclick="downloadDocPDF('${doc.id}')"   title="PDF">📄</button>
+                <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer">🗑️</button>
+            </td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ==================== NEW DOCUMENT ====================
+async function initNewDocument() {
+    document.getElementById('docDate').valueAsDate = new Date();
+    const due = new Date(); due.setDate(due.getDate() + 30);
+    document.getElementById('docDueDate').valueAsDate = due;
+    try {
+        const number = await window.electronAPI.getNextDocNumber({ userId: currentUser.id, type: currentDocType, year: new Date().getFullYear() });
+        document.getElementById('docNumber').value = number;
+    } catch {}
+    await loadCompanyIntoForm();
+    await loadClientsDropdown();
+    await loadServicesDropdown();
+    if (!document.getElementById('itemsBody').children.length) addItem();
+    
+    // Reset save button
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.innerHTML = '💾 Enregistrer & Exporter PDF';
+    saveBtn.onclick = saveAndDownloadPDF;
+    editingDocId = null;
+}
+
+async function loadCompanyIntoForm() {
+    try {
+        const c = await window.electronAPI.getCompany(currentUser.id) || {};
+        document.getElementById('docCompanyName').value    = c.name    || currentUser.company || '';
+        document.getElementById('docCompanyMF').value      = c.mf      || currentUser.mf      || '';
+        document.getElementById('docCompanyAddress').value = c.address  || '';
+        document.getElementById('docCompanyPhone').value   = c.phone    || '';
+        document.getElementById('docCompanyEmail').value   = c.email    || '';
+        document.getElementById('docCompanyRC').value      = c.rc       || '';
+    } catch {}
+}
+
+function selectDocType(type) { currentDocType = type; document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === type); updateDocType(); }
+
+function updateDocType() {
+    currentDocType = document.querySelector('input[name="docType"]:checked').value;
+    document.getElementById('dueDateGroup').style.display = currentDocType === 'facture' ? 'block' : 'none';
+    // Preview will be updated when document is created, but we update the input if empty
+    const currentNum = document.getElementById('docNumber').value;
+    if (currentNum) {
+        const parts = currentNum.split('-');
+        const year = new Date().getFullYear();
+        if (parts.length === 3) {
+            const seq = parts[2];
+            const prefix = {facture:'FAC', devis:'DEV', bon:'BC'}[currentDocType];
+            document.getElementById('docNumber').value = `${prefix}-${year}-${seq}`;
+        }
     }
 }
 
-async function updateExistingDocument(docId) {
-    if (!validateDocumentForm()) return;
+function generateRandomMF() {
+    const n = () => Math.floor(Math.random() * 9000000 + 1000000);
+    const l = () => Array.from({length:4},()=>String.fromCharCode(65+Math.floor(Math.random()*26))).join('');
+    document.getElementById('docCompanyMF').value = `${n()} ${l()} ${n()}`;
+}
+
+// ==================== ITEMS ====================
+function addItem() {
+    itemCount++;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td style="text-align:center;color:var(--gray-500);font-size:0.82rem">${itemCount}</td>
+        <td><input type="text"   class="item-input" id="desc${itemCount}"  placeholder="Description..."></td>
+        <td><input type="number" class="item-input" id="qty${itemCount}"   value="1"     min="0.001" step="0.001" onchange="calculateTotals()"></td>
+        <td><input type="number" class="item-input" id="price${itemCount}" value="0.000" min="0"     step="0.001" onchange="calculateTotals()"></td>
+        <td><select class="tva-select" id="tva${itemCount}" onchange="calculateTotals()">
+            <option value="19">19%</option><option value="13">13%</option>
+            <option value="7">7%</option><option value="0">0%</option>
+        </select></td>
+        <td style="text-align:right;font-weight:500" id="total${itemCount}">0.000</td>
+        <td><button type="button" class="btn-icon btn-delete" onclick="removeItem(this)">🗑️</button></td>`;
+    document.getElementById('itemsBody').appendChild(tr);
+    document.getElementById(`desc${itemCount}`).focus();
+    calculateTotals();
+}
+
+function removeItem(btn) {
+    if (document.getElementById('itemsBody').children.length <= 1) { showToast('Au moins une ligne requise','warning'); return; }
+    btn.closest('tr').remove(); renumberItems(); calculateTotals();
+}
+
+function renumberItems() {
+    itemCount = 0;
+    document.querySelectorAll('#itemsBody tr').forEach(row => {
+        itemCount++;
+        row.cells[0].textContent = itemCount;
+        row.querySelectorAll('[id]').forEach(el => { el.id = el.id.replace(/\d+$/,'') + itemCount; });
+    });
+}
+
+function calculateTotals() {
+    let totalHT = 0, tva19 = 0, tva13 = 0, tva7 = 0;
+    for (let i = 1; i <= itemCount; i++) {
+        const qty   = parseFloat(document.getElementById(`qty${i}`)?.value)   || 0;
+        const price = parseFloat(document.getElementById(`price${i}`)?.value) || 0;
+        const tva   = parseFloat(document.getElementById(`tva${i}`)?.value)   || 0;
+        const line  = qty * price;
+        const cell  = document.getElementById(`total${i}`);
+        if (cell) cell.textContent = line.toFixed(3);
+        totalHT += line;
+        if (tva===19) tva19 += line*(tva/100);
+        else if (tva===13) tva13 += line*(tva/100);
+        else if (tva===7)  tva7  += line*(tva/100);
+    }
+    const applyTimbre = document.getElementById('applyTimbre').checked;
+    timbreAmount = (applyTimbre && totalHT > 1000) ? 1.000 : 0;
+    document.getElementById('timbreDisplay').textContent = timbreAmount.toFixed(3) + ' TND';
+    const totalTTC = totalHT + tva19 + tva13 + tva7 + timbreAmount;
+    const currency = document.getElementById('docCurrency').value;
+    document.getElementById('totalHT').textContent = totalHT.toFixed(3) + ' ' + currency;
+    setRow('tva19Row','tva19Amount',tva19,currency);
+    setRow('tva13Row','tva13Amount',tva13,currency);
+    setRow('tva7Row', 'tva7Amount', tva7, currency);
+    setRow('timbreRow','timbreTotal',timbreAmount,currency);
+    document.getElementById('totalTTC').textContent = totalTTC.toFixed(3) + ' ' + currency;
+}
+
+function setRow(rowId, amtId, value, currency) {
+    document.getElementById(rowId).classList.toggle('hidden', value <= 0);
+    document.getElementById(amtId).textContent = value.toFixed(3) + ' ' + currency;
+}
+
+// ==================== SERVICES DROPDOWN ====================
+async function loadServicesDropdown() {
+    if (!currentUser) return;
+    try {
+        allServices = await window.electronAPI.getServices(currentUser.id);
+        const select = document.getElementById('presetServiceSelect');
+        select.innerHTML = '<option value="">— Sélectionner un service enregistré —</option>';
+        allServices.forEach(s => {
+            const option = document.createElement('option');
+            option.value = JSON.stringify({
+                name: s.name,
+                description: s.description,
+                price: s.price,
+                tva: s.tva
+            });
+            option.textContent = `${s.name} - ${parseFloat(s.price).toFixed(3)} TND (${s.tva}%)`;
+            select.appendChild(option);
+        });
+    } catch {}
+}
+
+function addPresetService() {
+    const select = document.getElementById('presetServiceSelect');
+    if (!select.value) return;
     
+    const service = JSON.parse(select.value);
+    
+    // Add new row with service data
+    addItem();
+    const currentRow = itemCount;
+    
+    document.getElementById(`desc${currentRow}`).value = service.description ? 
+        `${service.name} - ${service.description}` : service.name;
+    document.getElementById(`price${currentRow}`).value = service.price;
+    document.getElementById(`tva${currentRow}`).value = service.tva;
+    
+    // Reset dropdown
+    select.value = '';
+    
+    calculateTotals();
+    showToast('Service ajouté', 'success');
+}
+
+// ==================== IMAGES ====================
+function handleImageUpload(input, type) {
+    if (!input.files?.[0]) return;
+    if (input.files[0].size > 5*1024*1024) { showToast('Image trop lourde (max 5 MB)','warning'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const data = e.target.result;
+        document.getElementById(`${type}Preview`).src = data;
+        document.getElementById(`${type}Preview`).classList.remove('hidden');
+        document.getElementById(`${type}Placeholder`).classList.add('hidden');
+        document.getElementById(`${type}Box`).classList.add('has-image');
+        if (type==='logo') logoImage=data; else if (type==='stamp') stampImage=data; else if (type==='signature') signatureImage=data;
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function removeImage(type) {
+    document.getElementById(`${type}Preview`).src='';
+    document.getElementById(`${type}Preview`).classList.add('hidden');
+    document.getElementById(`${type}Placeholder`).classList.remove('hidden');
+    document.getElementById(`${type}Box`).classList.remove('has-image');
+    document.getElementById(`${type}Input`).value='';
+    if (type==='logo') logoImage=null; else if (type==='stamp') stampImage=null; else if (type==='signature') signatureImage=null;
+}
+
+// ==================== CLIENTS DROPDOWN ====================
+async function loadClientsDropdown() {
+    try {
+        const clients = await window.electronAPI.getClients(currentUser.id);
+        const select = document.getElementById('savedClientSelect');
+        select.innerHTML = '<option value="">— Choisir un client existant —</option>';
+        clients.forEach(c => {
+            const o = document.createElement('option');
+            o.value = JSON.stringify({name:c.name,mf:c.mf,address:c.address,phone:c.phone,email:c.email});
+            o.textContent = c.name; select.appendChild(o);
+        });
+    } catch {}
+}
+
+function loadSavedClient() {
+    const val = document.getElementById('savedClientSelect').value;
+    if (!val) return;
+    const c = JSON.parse(val);
+    document.getElementById('docClientName').value    = c.name    || '';
+    document.getElementById('docClientMF').value      = c.mf      || '';
+    document.getElementById('docClientAddress').value = c.address  || '';
+    document.getElementById('docClientPhone').value   = c.phone    || '';
+    document.getElementById('docClientEmail').value   = c.email    || '';
+}
+
+// ==================== CLIENT MODAL ====================
+function openClientModal() { document.getElementById('clientModal').classList.add('active'); setTimeout(()=>document.getElementById('newClientName').focus(),100); }
+function closeClientModal() {
+    document.getElementById('clientModal').classList.remove('active');
+    ['newClientName','newClientMF','newClientAddress','newClientPhone','newClientEmail'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveNewClient() {
+    const name = document.getElementById('newClientName').value.trim();
+    if (!name) { showToast('Le nom est obligatoire','warning'); return; }
+    try {
+        await window.electronAPI.saveClient({ userId:currentUser.id, name, mf:document.getElementById('newClientMF').value.trim(), address:document.getElementById('newClientAddress').value.trim(), phone:document.getElementById('newClientPhone').value.trim(), email:document.getElementById('newClientEmail').value.trim() });
+        showToast(`Client "${name}" ajouté`,'success');
+        closeClientModal(); await loadClientsDropdown(); await loadClients();
+    } catch { showToast("Erreur lors de l'ajout",'error'); }
+}
+
+// ==================== SERVICES PAGE ====================
+async function loadServices() {
+    if (!currentUser) return;
+    try {
+        allServices = await window.electronAPI.getServices(currentUser.id);
+        renderServicesTable(allServices);
+    } catch (err) {
+        showToast('Erreur chargement services', 'error');
+    }
+}
+
+function renderServicesTable(services) {
+    const container = document.getElementById('servicesTable');
+    if (!services.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛍️</div><h3>Aucun service</h3><p>Ajoutez vos produits et services pour un remplissage rapide des documents</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr><th>Nom</th><th>Description</th><th>Prix HT</th><th>TVA</th><th>Actions</th></tr></thead><tbody>
+        ${services.map(s => `<tr>
+            <td style="font-weight:600">${escapeHtml(s.name)}</td>
+            <td>${escapeHtml(s.description) || '—'}</td>
+            <td>${parseFloat(s.price).toFixed(3)} TND</td>
+            <td>${s.tva}%</td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-edit" onclick="editService('${s.id}')" title="Modifier">✏️</button>
+                <button class="btn-icon btn-delete" onclick="confirmDeleteService('${s.id}')" title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function filterServices() {
+    const q = document.getElementById('searchServices').value.toLowerCase();
+    renderServicesTable(allServices.filter(s => 
+        s.name.toLowerCase().includes(q) || 
+        (s.description && s.description.toLowerCase().includes(q))
+    ));
+}
+
+// Service Modal Functions
+function openServiceModal() {
+    editingServiceId = null;
+    document.getElementById('serviceModalTitle').textContent = '➕ Nouveau Service';
+    document.getElementById('serviceName').value = '';
+    document.getElementById('serviceDescription').value = '';
+    document.getElementById('servicePrice').value = '0.000';
+    document.getElementById('serviceTva').value = '19';
+    document.getElementById('serviceModal').classList.add('active');
+}
+
+function closeServiceModal() {
+    document.getElementById('serviceModal').classList.remove('active');
+    editingServiceId = null;
+}
+
+async function saveService() {
+    const name = document.getElementById('serviceName').value.trim();
+    if (!name) {
+        showToast('Le nom du service est requis', 'warning');
+        return;
+    }
+    
+    const serviceData = {
+        id: editingServiceId,
+        userId: currentUser.id,
+        name: name,
+        description: document.getElementById('serviceDescription').value.trim(),
+        price: parseFloat(document.getElementById('servicePrice').value) || 0,
+        tva: parseFloat(document.getElementById('serviceTva').value) || 19
+    };
+    
+    try {
+        await window.electronAPI.saveService(serviceData);
+        showToast(editingServiceId ? 'Service mis à jour' : 'Service créé', 'success');
+        closeServiceModal();
+        await loadServices();
+        await loadServicesDropdown();
+    } catch (err) {
+        showToast('Erreur lors de l\'enregistrement', 'error');
+    }
+}
+
+async function editService(serviceId) {
+    const service = allServices.find(s => s.id === serviceId);
+    if (!service) return;
+    
+    editingServiceId = serviceId;
+    document.getElementById('serviceModalTitle').textContent = '✏️ Modifier Service';
+    document.getElementById('serviceName').value = service.name;
+    document.getElementById('serviceDescription').value = service.description || '';
+    document.getElementById('servicePrice').value = service.price;
+    document.getElementById('serviceTva').value = service.tva;
+    document.getElementById('serviceModal').classList.add('active');
+}
+
+function confirmDeleteService(serviceId) {
+    const service = allServices.find(s => s.id === serviceId);
+    showConfirm('🗑️ Supprimer', `Supprimer "${service?.name}" ?`, async () => {
+        try {
+            await window.electronAPI.deleteService(serviceId);
+            showToast('Service supprimé', 'info');
+            await loadServices();
+            await loadServicesDropdown();
+        } catch (err) {
+            showToast('Erreur suppression', 'error');
+        }
+    });
+}
+
+// ==================== SERIAL NUMBER SETTINGS ====================
+async function loadSerialSettings() {
+    if (!currentUser) return;
+    try {
+        currentSettings = await window.electronAPI.getSettings(currentUser.id);
+        document.getElementById('prefixFacture').value = currentSettings.prefix_facture || 'FAC';
+        document.getElementById('prefixDevis').value = currentSettings.prefix_devis || 'DEV';
+        document.getElementById('prefixBon').value = currentSettings.prefix_bon || 'BC';
+        updateSerialPreview();
+    } catch (err) {
+        console.error('Error loading settings:', err);
+    }
+}
+
+function updateSerialPreview() {
+    const prefix = document.getElementById('prefixFacture').value || 'FAC';
+    const year = new Date().getFullYear();
+    document.getElementById('serialPreview').textContent = `${prefix}-${year}-001`;
+}
+
+async function saveSerialSettings() {
+    const settings = {
+        prefix_facture: document.getElementById('prefixFacture').value.toUpperCase(),
+        prefix_devis: document.getElementById('prefixDevis').value.toUpperCase(),
+        prefix_bon: document.getElementById('prefixBon').value.toUpperCase()
+    };
+    
+    try {
+        await window.electronAPI.updateSettings({
+            userId: currentUser.id,
+            settings: settings
+        });
+        showToast('Paramètres de numérotation enregistrés', 'success');
+        await loadSerialSettings();
+    } catch (err) {
+        showToast('Erreur d\'enregistrement', 'error');
+    }
+}
+
+function openResetCounterModal() {
+    showConfirm(
+        '🔄 Réinitialiser le compteur',
+        'Cela réinitialisera la séquence de numérotation à 001 pour l\'année en cours. Le prochain document sera numéroté XXX-2026-001. Continuer ?',
+        async () => {
+            try {
+                await window.electronAPI.resetCounter({
+                    userId: currentUser.id,
+                    type: 'all',
+                    year: new Date().getFullYear()
+                });
+                showToast('Compteur réinitialisé', 'success');
+                await loadSerialSettings();
+                // Refresh current doc number if on new document page
+                if (document.getElementById('page-new-document').classList.contains('active')) {
+                    const number = await window.electronAPI.getNextDocNumber({ 
+                        userId: currentUser.id, 
+                        type: currentDocType, 
+                        year: new Date().getFullYear() 
+                    });
+                    document.getElementById('docNumber').value = number;
+                }
+            } catch (err) {
+                showToast('Erreur', 'error');
+            }
+        },
+        'Réinitialiser',
+        'btn-warning'
+    );
+}
+
+// ==================== PREVIEW & SAVE ====================
+function previewDocument() { if (!validateDocumentForm()) return; generatePreviewHTML(); document.getElementById('previewModal').classList.add('active'); }
+function closePreview() { document.getElementById('previewModal').classList.remove('active'); }
+
+function validateDocumentForm() {
+    if (!document.getElementById('docCompanyName').value.trim()) { showToast('La raison sociale est requise','warning'); return false; }
+    if (!document.getElementById('docClientName').value.trim())  { showToast('Le nom du client est requis','warning'); return false; }
+    let hasItem = false;
+    for (let i=1;i<=itemCount;i++) if (document.getElementById(`desc${i}`)?.value.trim()) { hasItem=true; break; }
+    if (!hasItem) { showToast('Ajoutez au moins un article','warning'); return false; }
+    return true;
+}
+
+function generatePreviewHTML() {
+    const get = id => document.getElementById(id)?.value || '';
+    const companyName=get('docCompanyName'), companyMF=get('docCompanyMF'), companyAddress=get('docCompanyAddress');
+    const companyPhone=get('docCompanyPhone'), companyEmail=get('docCompanyEmail'), companyRC=get('docCompanyRC');
+    const clientName=get('docClientName'), clientMF=get('docClientMF'), clientAddress=get('docClientAddress');
+    const clientPhone=get('docClientPhone'), clientEmail=get('docClientEmail');
+    const docNumber=get('docNumber'), docDate=get('docDate'), docDueDate=get('docDueDate');
+    const currency=get('docCurrency'), paymentMode=get('docPayment'), notes=get('docNotes');
+    const typeLabels={facture:'FACTURE',devis:'DEVIS',bon:'BON DE COMMANDE'};
+    const typeColors={facture:'#1e3a8a',devis:'#92400e',bon:'#065f46'};
+    const color=typeColors[currentDocType]||'#1e3a8a';
+    let totalHT=0, tva19=0, tva13=0, tva7=0, itemsHTML='';
+    for (let i=1;i<=itemCount;i++) {
+        const desc=document.getElementById(`desc${i}`)?.value.trim();
+        const qty=parseFloat(document.getElementById(`qty${i}`)?.value)||0;
+        const price=parseFloat(document.getElementById(`price${i}`)?.value)||0;
+        const tva=parseFloat(document.getElementById(`tva${i}`)?.value)||0;
+        if (!desc) continue;
+        const line=qty*price; totalHT+=line;
+        if (tva===19) tva19+=line*(tva/100); else if (tva===13) tva13+=line*(tva/100); else if (tva===7) tva7+=line*(tva/100);
+        itemsHTML+=`<tr><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;color:#6b7280;font-size:0.82rem">${i}</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0">${escapeHtml(desc)}</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:center">${qty}</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:right">${price.toFixed(3)}</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:center">${tva}%</td><td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">${line.toFixed(3)}</td></tr>`;
+    }
+    const totalTTC=totalHT+tva19+tva13+tva7+timbreAmount;
+    const logoHTML=logoImage?`<img src="${logoImage}" style="max-width:140px;max-height:80px;object-fit:contain;margin-bottom:12px;display:block">`:'';
+    document.getElementById('previewContent').innerHTML = buildInvoiceHTML({color,typeLabels,companyName,companyMF,companyAddress,companyPhone,companyEmail,companyRC,clientName,clientMF,clientAddress,clientPhone,clientEmail,docNumber,docDate,docDueDate,currency,paymentMode,notes,logoHTML,itemsHTML,totalHT,tva19,tva13,tva7,totalTTC,timbreAmount,stampImage,signatureImage,docType:currentDocType});
+}
+
+function buildInvoiceHTML(d) {
+    const typeLabels={facture:'FACTURE',devis:'DEVIS',bon:'BON DE COMMANDE'};
+    return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1f2937">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid ${d.color}">
+        <div style="flex:1">${d.logoHTML}<h2 style="color:${d.color};font-size:1.3rem;font-weight:700;margin-bottom:8px">${escapeHtml(d.companyName)}</h2>
+        <div style="font-size:0.82rem;color:#4b5563;line-height:1.8">
+            ${d.companyMF?`<span style="background:${d.color};color:white;padding:2px 8px;border-radius:4px;font-family:monospace;font-size:0.78rem">MF: ${escapeHtml(d.companyMF)}</span><br>`:''}
+            ${d.companyAddress?`📍 ${escapeHtml(d.companyAddress)}<br>`:''}
+            ${d.companyPhone?`📞 ${escapeHtml(d.companyPhone)}<br>`:''}
+            ${d.companyEmail?`✉️ ${escapeHtml(d.companyEmail)}<br>`:''}
+            ${d.companyRC?`🏛️ RC: ${escapeHtml(d.companyRC)}`:''}
+        </div></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:30px">
+            <div style="background:${d.color};color:white;padding:10px 20px;border-radius:8px;margin-bottom:14px;display:inline-block"><div style="font-size:1.4rem;font-weight:800;letter-spacing:1px">${typeLabels[d.docType]}</div></div>
+            <div style="font-size:0.85rem;color:#4b5563;line-height:2">
+                <div><strong style="color:#1f2937">N°:</strong> <span style="font-family:monospace">${escapeHtml(d.docNumber)}</span></div>
+                <div><strong style="color:#1f2937">Date:</strong> ${formatDate(d.docDate)}</div>
+                ${d.docType==='facture'&&d.docDueDate?`<div><strong style="color:#1f2937">Échéance:</strong> ${formatDate(d.docDueDate)}</div>`:''}
+                <div><strong style="color:#1f2937">Paiement:</strong> ${escapeHtml(d.paymentMode)}</div>
+            </div>
+        </div>
+    </div>
+    <div style="background:#f8faff;border:1px solid #dbeafe;border-left:4px solid ${d.color};padding:16px 20px;border-radius:8px;margin-bottom:28px">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${d.color};margin-bottom:8px">Facturé à</div>
+        <div style="font-weight:700;font-size:1rem;color:#1f2937;margin-bottom:4px">${escapeHtml(d.clientName)}</div>
+        <div style="font-size:0.82rem;color:#4b5563;line-height:1.8">
+            ${d.clientMF?`MF: ${escapeHtml(d.clientMF)}<br>`:''}
+            ${d.clientAddress?`${escapeHtml(d.clientAddress)}<br>`:''}
+            ${d.clientPhone?`Tél: ${escapeHtml(d.clientPhone)}<br>`:''}
+            ${d.clientEmail?`Email: ${escapeHtml(d.clientEmail)}`:''}
+        </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+        <thead><tr style="background:${d.color};color:white">
+            <th style="padding:11px 12px;text-align:left;font-size:0.78rem;width:35px">N°</th>
+            <th style="padding:11px 12px;text-align:left;font-size:0.78rem">Description</th>
+            <th style="padding:11px 12px;text-align:center;font-size:0.78rem;width:70px">Qté</th>
+            <th style="padding:11px 12px;text-align:right;font-size:0.78rem;width:110px">P.U. HT</th>
+            <th style="padding:11px 12px;text-align:center;font-size:0.78rem;width:60px">TVA</th>
+            <th style="padding:11px 12px;text-align:right;font-size:0.78rem;width:110px">Total HT</th>
+        </tr></thead>
+        <tbody>${d.itemsHTML}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:30px">
+        <div style="width:320px;background:#f9fafb;border-radius:8px;padding:20px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:0.9rem"><span>Total HT:</span><span style="font-weight:600">${d.totalHT.toFixed(3)} ${d.currency}</span></div>
+            ${d.tva19>0?`<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:0.9rem;color:#4b5563"><span>TVA 19%:</span><span>${d.tva19.toFixed(3)} ${d.currency}</span></div>`:''}
+            ${d.tva13>0?`<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:0.9rem;color:#4b5563"><span>TVA 13%:</span><span>${d.tva13.toFixed(3)} ${d.currency}</span></div>`:''}
+            ${d.tva7>0?`<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:0.9rem;color:#4b5563"><span>TVA 7%:</span><span>${d.tva7.toFixed(3)} ${d.currency}</span></div>`:''}
+            ${d.timbreAmount>0?`<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:0.9rem;color:#4b5563"><span>Timbre Fiscal:</span><span>${d.timbreAmount.toFixed(3)} ${d.currency}</span></div>`:''}
+            <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:2px solid ${d.color};font-size:1.1rem;font-weight:700;color:${d.color}"><span>Total TTC:</span><span>${d.totalTTC.toFixed(3)} ${d.currency}</span></div>
+        </div>
+    </div>
+    ${d.notes?`<div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:16px;margin-bottom:24px;font-size:0.85rem;color:#713f12"><strong>Notes:</strong><br>${escapeHtml(d.notes).replace(/\n/g,'<br>')}</div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:40px">
+        ${d.stampImage?`<div style="flex:1"><img src="${d.stampImage}" style="max-width:120px;max-height:120px;opacity:0.8"></div>`:''}
+        <div style="text-align:center;flex:1">
+            ${d.signatureImage?`<img src="${d.signatureImage}" style="max-width:150px;max-height:80px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"><div style="border-top:1px solid #9ca3af;width:200px;margin:0 auto;padding-top:4px;font-size:0.8rem;color:#6b7280">Signature</div>`:''}
+        </div>
+    </div>
+</div>`;
+}
+
+async function saveAndDownloadPDF() {
+    if (!validateDocumentForm()) return;
+    showLoading('Enregistrement...');
+    try {
+        const docData = collectDocumentData();
+        const result = await window.electronAPI.saveDocument(docData);
+        if (result.success) {
+            showToast('Document enregistré', 'success');
+            await downloadPDF(result.document.number);
+            resetDocumentForm();
+            navigateTo('documents');
+        }
+    } catch (err) {
+        showToast('Erreur lors de l\'enregistrement', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function downloadPDF(filename) {
+    generatePreviewHTML();
+    const html = document.getElementById('previewContent').innerHTML;
+    const result = await window.electronAPI.exportPDF({ html, filename: `${filename}.pdf` });
+    if (result.success) {
+        showToast(`PDF téléchargé: ${result.path}`, 'success');
+    }
+}
+
+async function downloadDocPDF(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    
+    // Populate form temporarily for PDF generation
+    const originalEditingId = editingDocId;
+    editingDocId = docId;
+    populateFormWithDoc(doc);
+    generatePreviewHTML();
+    
+    const html = document.getElementById('previewContent').innerHTML;
+    const result = await window.electronAPI.exportPDF({ html, filename: `${doc.number}.pdf` });
+    
+    if (result.success) {
+        showToast(`PDF téléchargé: ${result.path}`, 'success');
+    }
+    
+    // Restore state
+    editingDocId = originalEditingId;
+}
+
+function printDocument() {
+    window.print();
+}
+
+function collectDocumentData() {
     const items = [];
     for (let i = 1; i <= itemCount; i++) {
         const desc = document.getElementById(`desc${i}`)?.value.trim();
-        if (desc) {
-            items.push({
-                description: desc,
-                quantity: parseFloat(document.getElementById(`qty${i}`).value) || 0,
-                price: parseFloat(document.getElementById(`price${i}`).value) || 0,
-                tva: parseFloat(document.getElementById(`tva${i}`).value) || 0,
-                total: parseFloat(document.getElementById(`total${i}`).textContent) || 0
-            });
-        }
+        if (!desc) continue;
+        items.push({
+            description: desc,
+            quantity: parseFloat(document.getElementById(`qty${i}`).value) || 0,
+            price: parseFloat(document.getElementById(`price${i}`).value) || 0,
+            tva: parseFloat(document.getElementById(`tva${i}`).value) || 0
+        });
     }
-
-    const docData = {
-        id: docId,
+    
+    return {
+        id: editingDocId,
         userId: currentUser.id,
         type: currentDocType,
         number: document.getElementById('docNumber').value,
@@ -323,379 +815,54 @@ async function updateExistingDocument(docId) {
         items: items,
         applyTimbre: document.getElementById('applyTimbre').checked,
         timbreAmount: timbreAmount,
-        notes: document.getElementById('docNotes').value,
         totalHT: parseFloat(document.getElementById('totalHT').textContent) || 0,
         totalTTC: parseFloat(document.getElementById('totalTTC').textContent) || 0,
         logoImage: logoImage,
         stampImage: stampImage,
-        signatureImage: signatureImage
+        signatureImage: signatureImage,
+        notes: document.getElementById('docNotes').value
     };
+}
 
-    const btn = document.getElementById('saveBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Mise à jour...';
-    showLoading('Mise à jour du document...');
+function resetDocumentForm() {
+    document.getElementById('itemsBody').innerHTML = '';
+    itemCount = 0;
+    logoImage = null;
+    stampImage = null;
+    signatureImage = null;
+    timbreAmount = 0;
+    editingDocId = null;
+    
+    // Reset images UI
+    ['logo', 'stamp', 'signature'].forEach(type => {
+        document.getElementById(`${type}Preview`).src = '';
+        document.getElementById(`${type}Preview`).classList.add('hidden');
+        document.getElementById(`${type}Placeholder`).classList.remove('hidden');
+        document.getElementById(`${type}Box`).classList.remove('has-image');
+        document.getElementById(`${type}Input`).value = '';
+    });
+    
+    document.getElementById('applyTimbre').checked = false;
+    document.getElementById('docNotes').value = '';
+    
+    initNewDocument();
+    showToast('Formulaire réinitialisé', 'info');
+}
 
+// ==================== DOCUMENT MANAGEMENT ====================
+async function loadDocuments() {
     try {
-        const result = await window.electronAPI.saveDocument(docData);
-        if (result.success) {
-            generatePreviewHTML();
-            const html = buildPDFDocument(document.getElementById('previewContent').innerHTML);
-            await window.electronAPI.exportPDF({
-                html,
-                filename: `${currentDocType.toUpperCase()}-${result.document.number}.pdf`
-            });
-            showToast('Document mis à jour et PDF généré !', 'success', 5000);
-            resetDocumentForm();
-            loadDashboard();
-            navigateTo('documents');
-        } else {
-            showToast('Erreur: ' + (result.error || 'Impossible de mettre à jour'), 'error');
-        }
-    } catch (error) {
-        showToast('Erreur lors de la mise à jour', 'error');
-    } finally {
-        hideLoading();
-        btn.disabled = false;
-        btn.innerHTML = '💾 Enregistrer & Exporter PDF';
-        btn.onclick = saveAndDownloadPDF;
-        editingDocId = null;
+        allDocuments = await window.electronAPI.getDocuments(currentUser.id);
+        renderDocumentsTable(allDocuments);
+    } catch (err) {
+        showToast('Erreur chargement documents', 'error');
     }
 }
 
-// ==================== TEMPLATE-BASED HTML BUILDERS ====================
-function buildInvoiceHTML(d) {
-    const template = getCurrentTemplate();
-    const typeColors = template.colors;
-    const color = typeColors[d.docType] || typeColors.facture;
-    
-    switch (currentTemplate) {
-        case 'retro98':
-            return buildRetro98Template(d, color, template);
-        case 'cinematic':
-            return buildCinematicTemplate(d, color, template);
-        default:
-            return buildModernTemplate(d, color, template);
-    }
-}
-
-function buildModernTemplate(d, color, template) {
-    const typeLabels = { facture: 'FACTURE', devis: 'DEVIS', bon: 'BON DE COMMANDE' };
-    
-    return `<div style="font-family:${template.fontFamily};color:#1f2937">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid ${color}">
-        <div style="flex:1">${d.logoHTML}<h2 style="color:${color};font-size:1.3rem;font-weight:700;margin-bottom:8px">${escapeHtml(d.companyName)}</h2>
-        <div style="font-size:0.82rem;color:#4b5563;line-height:1.8">
-            ${d.companyMF ? `<span style="background:${color};color:white;padding:2px 8px;border-radius:4px;font-family:monospace;font-size:0.78rem">MF: ${escapeHtml(d.companyMF)}</span><br>` : ''}
-            ${d.companyAddress ? `📍 ${escapeHtml(d.companyAddress)}<br>` : ''}
-            ${d.companyPhone ? `📞 ${escapeHtml(d.companyPhone)}<br>` : ''}
-            ${d.companyEmail ? `✉️ ${escapeHtml(d.companyEmail)}<br>` : ''}
-            ${d.companyRC ? `🏛️ RC: ${escapeHtml(d.companyRC)}` : ''}
-        </div></div>
-        <div style="text-align:right;flex-shrink:0;margin-left:30px">
-            <div style="background:${color};color:white;padding:10px 20px;border-radius:8px;margin-bottom:14px;display:inline-block"><div style="font-size:1.4rem;font-weight:800;letter-spacing:1px">${typeLabels[d.docType]}</div></div>
-            <div style="font-size:0.85rem;color:#4b5563;line-height:2">
-                <div><strong style="color:#1f2937">N°:</strong> <span style="font-family:monospace">${escapeHtml(d.docNumber)}</span></div>
-                <div><strong style="color:#1f2937">Date:</strong> ${formatDate(d.docDate)}</div>
-                ${d.docType === 'facture' && d.docDueDate ? `<div><strong style="color:#1f2937">Échéance:</strong> ${formatDate(d.docDueDate)}</div>` : ''}
-                <div><strong style="color:#1f2937">Paiement:</strong> ${escapeHtml(d.paymentMode)}</div>
-            </div>
-        </div>
-    </div>
-    <div style="background:#f8faff;border:1px solid #dbeafe;border-left:4px solid ${color};padding:16px 20px;border-radius:8px;margin-bottom:28px">
-        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color};margin-bottom:8px">Facturé à</div>
-        <div style="font-weight:700;font-size:1rem;color:#1f2937;margin-bottom:4px">${escapeHtml(d.clientName)}</div>
-        <div style="font-size:0.82rem;color:#4b5563;line-height:1.8">
-            ${d.clientMF ? `MF: ${escapeHtml(d.clientMF)}<br>` : ''}
-            ${d.clientAddress ? `${escapeHtml(d.clientAddress)}<br>` : ''}
-            ${d.clientPhone ? `Tél: ${escapeHtml(d.clientPhone)}<br>` : ''}
-            ${d.clientEmail ? `Email: ${escapeHtml(d.clientEmail)}` : ''}
-        </div>
-    </div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
-        <thead><tr style="background:${color};color:white">
-            <th style="padding:11px 12px;text-align:left;font-size:0.78rem;width:35px">N°</th>
-            <th style="padding:11px 12px;text-align:left;font-size:0.78rem">DESCRIPTION</th>
-            <th style="padding:11px 12px;text-align:center;font-size:0.78rem;width:60px">QTÉ</th>
-            <th style="padding:11px 12px;text-align:right;font-size:0.78rem;width:110px">P.U. HT</th>
-            <th style="padding:11px 12px;text-align:center;font-size:0.78rem;width:70px">TVA</th>
-            <th style="padding:11px 12px;text-align:right;font-size:0.78rem;width:110px">TOTAL HT</th>
-        </tr></thead>
-        <tbody>${d.itemsHTML}</tbody>
-    </table>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
-        <div style="width:300px;border:1.5px solid #e5e7eb;border-radius:8px;overflow:hidden">
-            ${buildTotalRow('Total HT', d.totalHT, d.currency)}
-            ${d.tva19 > 0 ? buildTotalRow('TVA 19%', d.tva19, d.currency) : ''}
-            ${d.tva13 > 0 ? buildTotalRow('TVA 13%', d.tva13, d.currency) : ''}
-            ${d.tva7 > 0 ? buildTotalRow('TVA 7%', d.tva7, d.currency) : ''}
-            ${d.timbreAmount > 0 ? buildTotalRow('Timbre Fiscal', d.timbreAmount, d.currency) : ''}
-            <div style="display:flex;justify-content:space-between;padding:13px 16px;background:${color};color:white;font-weight:700;font-size:1rem"><span>TOTAL TTC</span><span>${d.totalTTC.toFixed(3)} ${d.currency}</span></div>
-        </div>
-    </div>
-    <div style="background:#fffbeb;border:1px solid #fcd34d;padding:12px 16px;border-radius:8px;font-size:0.82rem;color:#78350f;margin-bottom:28px">
-        <strong>Arrêté à la somme de :</strong> ${numberToWords(d.totalTTC)} ${d.currency}
-    </div>
-    ${d.notes ? `<div style="background:#f9fafb;border:1px solid #e5e7eb;padding:14px 18px;border-radius:8px;font-size:0.82rem;color:#4b5563;margin-bottom:28px"><strong style="color:#1f2937;display:block;margin-bottom:6px">Notes & Conditions :</strong>${escapeHtml(d.notes).replace(/\n/g, '<br>')}</div>` : ''}
-    <div style="display:flex;gap:30px;margin-top:40px">
-        <div style="flex:1;text-align:center">
-            ${d.stampImage ? `<img src="${d.stampImage}" style="max-width:120px;max-height:90px;display:inline-block;margin-bottom:8px">` : '<div style="height:80px"></div>'}
-            ${d.signatureImage ? `<img src="${d.signatureImage}" style="max-width:120px;max-height:70px;display:inline-block;margin-bottom:8px">` : ''}
-            <div style="border-top:2px solid #1f2937;padding-top:8px;font-weight:600;font-size:0.82rem">Cachet et Signature</div>
-        </div>
-        <div style="flex:1;text-align:center">
-            <div style="height:80px"></div>
-            <div style="border-top:2px solid #1f2937;padding-top:8px;font-weight:600;font-size:0.82rem">Signature Client</div>
-        </div>
-    </div>
-    <div style="margin-top:36px;padding:12px 16px;background:#f3f4f6;border-radius:6px;text-align:center;font-size:0.75rem;color:#6b7280">
-        Document établi conformément à la législation fiscale tunisienne — TVA: 19% / 13% / 7% / 0% — DGI Tunisie
-    </div></div>`;
-}
-
-function buildRetro98Template(d, color, template) {
-    const typeLabels = { facture: 'FACTURE', devis: 'DEVIS', bon: 'BON DE COMMANDE' };
-    
-    return `<div style="font-family:${template.fontFamily};color:#000;background:#c0c0c0;padding:20px;">
-    <div style="background:#fff;border:2px solid #000;${template.shadow};padding:20px;max-width:700px;margin:0 auto;">
-        <div style="border:2px solid ${color};padding:15px;margin-bottom:20px;background:#fff;">
-            <table style="width:100%;border-collapse:collapse;">
-                <tr>
-                    <td style="vertical-align:top;">
-                        ${d.logoHTML}
-                        <div style="font-size:1.2rem;font-weight:bold;color:${color};margin-bottom:10px;">${escapeHtml(d.companyName)}</div>
-                        <div style="font-size:0.8rem;line-height:1.6;">
-                            ${d.companyMF ? `<span style="background:#000;color:#0f0;padding:2px 6px;">MF:${escapeHtml(d.companyMF)}</span><br>` : ''}
-                            ${d.companyAddress ? `📍 ${escapeHtml(d.companyAddress)}<br>` : ''}
-                            ${d.companyPhone ? `☎ ${escapeHtml(d.companyPhone)}<br>` : ''}
-                            ${d.companyEmail ? `@ ${escapeHtml(d.companyEmail)}` : ''}
-                        </div>
-                    </td>
-                    <td style="text-align:right;vertical-align:top;">
-                        <div style="background:${color};color:#fff;padding:8px 16px;font-size:1.3rem;font-weight:bold;border:2px solid #000;${template.shadow};display:inline-block;margin-bottom:10px;">
-                            ${typeLabels[d.docType]}
-                        </div>
-                        <div style="font-size:0.9rem;line-height:1.8;border:1px solid #000;padding:10px;background:#f0f0f0;">
-                            <div><b>N°:</b> ${escapeHtml(d.docNumber)}</div>
-                            <div><b>Date:</b> ${formatDate(d.docDate)}</div>
-                            ${d.docType === 'facture' && d.docDueDate ? `<div><b>Échéance:</b> ${formatDate(d.docDueDate)}</div>` : ''}
-                            <div><b>Paiement:</b> ${escapeHtml(d.paymentMode)}</div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        
-        <div style="border:2px solid #000;padding:15px;margin-bottom:20px;background:#e8e8e8;">
-            <div style="background:${color};color:#fff;padding:4px 8px;font-size:0.7rem;font-weight:bold;display:inline-block;margin-bottom:8px;">CLIENT</div>
-            <div style="font-weight:bold;font-size:1rem;">${escapeHtml(d.clientName)}</div>
-            <div style="font-size:0.85rem;line-height:1.6;">
-                ${d.clientMF ? `<b>MF:</b> ${escapeHtml(d.clientMF)}<br>` : ''}
-                ${d.clientAddress ? `${escapeHtml(d.clientAddress)}<br>` : ''}
-                ${d.clientPhone ? `<b>Tél:</b> ${escapeHtml(d.clientPhone)}<br>` : ''}
-                ${d.clientEmail ? `<b>Email:</b> ${escapeHtml(d.clientEmail)}` : ''}
-            </div>
-        </div>
-
-        <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:20px;">
-            <thead>
-                <tr style="background:${color};color:#fff;">
-                    <th style="padding:8px;border:2px solid #000;">N°</th>
-                    <th style="padding:8px;border:2px solid #000;text-align:left;">DESCRIPTION</th>
-                    <th style="padding:8px;border:2px solid #000;">QTÉ</th>
-                    <th style="padding:8px;border:2px solid #000;text-align:right;">P.U.HT</th>
-                    <th style="padding:8px;border:2px solid #000;">TVA</th>
-                    <th style="padding:8px;border:2px solid #000;text-align:right;">TOTAL</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${d.itemsHTML.replace(/style="[^"]*"/g, '').replace(/<td>/g, '<td style="padding:8px;border:1px solid #000;">').replace(/<tr>/g, '<tr style="background:#fff;">')}
-            </tbody>
-        </table>
-
-        <div style="border:2px solid #000;padding:15px;background:#f0f0f0;margin-bottom:20px;">
-            <table style="width:100%;border-collapse:collapse;">
-                ${d.totalHT > 0 ? `<tr><td style="padding:5px;"><b>Total HT:</b></td><td style="text-align:right;padding:5px;">${d.totalHT.toFixed(3)} ${d.currency}</td></tr>` : ''}
-                ${d.tva19 > 0 ? `<tr style="background:#e0e0e0;"><td style="padding:5px;"><b>TVA 19%:</b></td><td style="text-align:right;padding:5px;">${d.tva19.toFixed(3)} ${d.currency}</td></tr>` : ''}
-                ${d.tva13 > 0 ? `<tr style="background:#e0e0e0;"><td style="padding:5px;"><b>TVA 13%:</b></td><td style="text-align:right;padding:5px;">${d.tva13.toFixed(3)} ${d.currency}</td></tr>` : ''}
-                ${d.tva7 > 0 ? `<tr style="background:#e0e0e0;"><td style="padding:5px;"><b>TVA 7%:</b></td><td style="text-align:right;padding:5px;">${d.tva7.toFixed(3)} ${d.currency}</td></tr>` : ''}
-                ${d.timbreAmount > 0 ? `<tr style="background:#ffffcc;"><td style="padding:5px;"><b>Timbre:</b></td><td style="text-align:right;padding:5px;">${d.timbreAmount.toFixed(3)} ${d.currency}</td></tr>` : ''}
-                <tr style="background:${color};color:#fff;font-size:1.1rem;font-weight:bold;">
-                    <td style="padding:10px 5px;"><b>TOTAL TTC:</b></td>
-                    <td style="text-align:right;padding:10px 5px;">${d.totalTTC.toFixed(3)} ${d.currency}</td>
-                </tr>
-            </table>
-        </div>
-
-        <div style="border:2px solid #ff0;background:#ffffcc;padding:10px;margin-bottom:20px;font-size:0.85rem;">
-            <b>Arrêté à la somme de:</b> ${numberToWords(d.totalTTC)} ${d.currency}
-        </div>
-
-        ${d.notes ? `<div style="border:1px solid #000;padding:10px;margin-bottom:20px;font-size:0.8rem;background:#fff;">${escapeHtml(d.notes).replace(/\n/g, '<br>')}</div>` : ''}
-
-        <table style="width:100%;margin-top:30px;">
-            <tr>
-                <td style="width:50%;text-align:center;padding:20px;">
-                    ${d.stampImage ? `<img src="${d.stampImage}" style="max-width:100px;max-height:80px;"><br>` : '<div style="height:60px;"></div>'}
-                    ${d.signatureImage ? `<img src="${d.signatureImage}" style="max-width:100px;max-height:60px;"><br>` : ''}
-                    <div style="border-top:2px solid #000;padding-top:5px;font-weight:bold;">Cachet & Signature</div>
-                </td>
-                <td style="width:50%;text-align:center;padding:20px;">
-                    <div style="height:60px;"></div>
-                    <div style="border-top:2px solid #000;padding-top:5px;font-weight:bold;">Signature Client</div>
-                </td>
-            </tr>
-        </table>
-
-        <div style="text-align:center;font-size:0.7rem;color:#666;margin-top:20px;padding-top:10px;border-top:1px solid #999;">
-            [TuniInvoice Pro 98 Edition] - Document conforme DGI Tunisie
-        </div>
-    </div>
-</div>`;
-}
-
-function buildCinematicTemplate(d, color, template) {
-    const typeLabels = { facture: 'FACTURE', devis: 'DEVIS', bon: 'BON DE COMMANDE' };
-    
-    return `<div style="font-family:${template.fontFamily};color:#1a1a1a;background:linear-gradient(135deg, #f5f5f0 0%, #e8e6e1 100%);padding:40px;min-height:100%;">
-    <div style="max-width:800px;margin:0 auto;background:#fff;${template.shadow};position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:8px;background:linear-gradient(90deg, ${color}, #000);"></div>
-        
-        <div style="padding:50px 60px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:50px;">
-                <div style="flex:1;">
-                    ${d.logoHTML ? `<div style="margin-bottom:20px;filter:grayscale(100%) contrast(120%);">${d.logoHTML}</div>` : ''}
-                    <h1 style="font-size:2rem;font-weight:300;letter-spacing:3px;color:${color};text-transform:uppercase;margin-bottom:15px;">${escapeHtml(d.companyName)}</h1>
-                    <div style="font-size:0.85rem;color:#666;line-height:2;letter-spacing:0.5px;">
-                        ${d.companyMF ? `<span style="border-bottom:1px solid ${color};padding-bottom:2px;">MF ${escapeHtml(d.companyMF)}</span><br>` : ''}
-                        ${d.companyAddress ? `${escapeHtml(d.companyAddress)}<br>` : ''}
-                        ${d.companyPhone ? `${escapeHtml(d.companyPhone)}<br>` : ''}
-                        ${d.companyEmail ? `${escapeHtml(d.companyEmail)}` : ''}
-                    </div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:0.7rem;letter-spacing:4px;color:#999;text-transform:uppercase;margin-bottom:10px;">${typeLabels[d.docType]}</div>
-                    <div style="font-size:2.5rem;font-weight:100;color:${color};letter-spacing:2px;margin-bottom:20px;">${escapeHtml(d.docNumber.split('-').pop())}</div>
-                    <div style="font-size:0.8rem;color:#666;line-height:2;">
-                        <div>${formatDate(d.docDate)}</div>
-                        ${d.docType === 'facture' && d.docDueDate ? `<div style="color:#999;">Échéance: ${formatDate(d.docDueDate)}</div>` : ''}
-                        <div style="margin-top:10px;font-style:italic;">${escapeHtml(d.paymentMode)}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-bottom:50px;padding:30px;background:#fafaf8;border-left:3px solid ${color;">
-                <div style="font-size:0.65rem;letter-spacing:3px;color:#999;text-transform:uppercase;margin-bottom:15px;">Facturé à</div>
-                <div style="font-size:1.4rem;font-weight:300;color:${color};margin-bottom:10px;letter-spacing:1px;">${escapeHtml(d.clientName)}</div>
-                <div style="font-size:0.85rem;color:#666;line-height:1.8;">
-                    ${d.clientMF ? `<span style="color:#999;">Matricule</span> ${escapeHtml(d.clientMF)}<br>` : ''}
-                    ${d.clientAddress ? `${escapeHtml(d.clientAddress)}<br>` : ''}
-                    ${d.clientPhone || d.clientEmail ? `<div style="margin-top:10px;">` : ''}
-                    ${d.clientPhone ? `<span style="color:#999;">Tél.</span> ${escapeHtml(d.clientPhone)} ` : ''}
-                    ${d.clientEmail ? `<span style="color:#999;">@</span> ${escapeHtml(d.clientEmail)}` : ''}
-                    ${d.clientPhone || d.clientEmail ? `</div>` : ''}
-                </div>
-            </div>
-
-            <table style="width:100%;border-collapse:collapse;margin-bottom:50px;">
-                <thead>
-                    <tr style="border-bottom:2px solid ${color};">
-                        <th style="padding:15px 10px;text-align:left;font-weight:400;letter-spacing:2px;font-size:0.7rem;color:#999;text-transform:uppercase;">N°</th>
-                        <th style="padding:15px 10px;text-align:left;font-weight:400;letter-spacing:2px;font-size:0.7rem;color:#999;text-transform:uppercase;">Description</th>
-                        <th style="padding:15px 10px;text-align:center;font-weight:400;letter-spacing:2px;font-size:0.7rem;color:#999;text-transform:uppercase;">Qté</th>
-                        <th style="padding:15px 10px;text-align:right;font-weight:400;letter-spacing:2px;font-size:0.7rem;color:#999;text-transform:uppercase;">P.U.</th>
-                        <th style="padding:15px 10px;text-align:center;font-weight:400;letter-spacing:2px;font-size:0.7rem;color:#999;text-transform:uppercase;">TVA</th>
-                        <th style="padding:15px 10px;text-align:right;font-weight:400;letter-spacing:2px;font-size:0.7rem;color:#999;text-transform:uppercase;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${d.itemsHTML.replace(/style="[^"]*"/g, '').replace(/<td>/g, '<td style="padding:20px 10px;border-bottom:1px solid #eee;font-size:0.9rem;">').replace(/<tr>/g, '<tr style="transition:background 0.3s;">')}
-                </tbody>
-            </table>
-
-            <div style="display:flex;justify-content:flex-end;margin-bottom:40px;">
-                <div style="width:350px;">
-                    ${buildCinematicTotalRow('Sous-total', d.totalHT, d.currency, color)}
-                    ${d.tva19 > 0 ? buildCinematicTotalRow('TVA (19%)', d.tva19, d.currency, color) : ''}
-                    ${d.tva13 > 0 ? buildCinematicTotalRow('TVA (13%)', d.tva13, d.currency, color) : ''}
-                    ${d.tva7 > 0 ? buildCinematicTotalRow('TVA (7%)', d.tva7, d.currency, color) : ''}
-                    ${d.timbreAmount > 0 ? buildCinematicTotalRow('Timbre fiscal', d.timbreAmount, d.currency, color) : ''}
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:25px 0;margin-top:20px;border-top:3px solid ${color};">
-                        <span style="font-size:1.1rem;letter-spacing:3px;text-transform:uppercase;color:${color};">Total</span>
-                        <span style="font-size:1.8rem;font-weight:300;color:${color};letter-spacing:1px;">${d.totalTTC.toFixed(3)} <span style="font-size:0.9rem;color:#999;">${d.currency}</span></span>
-                    </div>
-                </div>
-            </div>
-
-            <div style="background:#fafaf8;padding:25px 30px;margin-bottom:40px;font-style:italic;color:#666;font-size:0.9rem;line-height:1.6;border-left:3px solid #d4af37;">
-                "${numberToWords(d.totalTTC)} ${d.currency}"
-            </div>
-
-            ${d.notes ? `<div style="margin-bottom:40px;padding:25px 0;border-top:1px solid #eee;border-bottom:1px solid #eee;font-size:0.85rem;color:#666;line-height:1.8;">
-                <div style="font-size:0.65rem;letter-spacing:3px;color:#999;text-transform:uppercase;margin-bottom:15px;">Notes</div>
-                ${escapeHtml(d.notes).replace(/\n/g, '<br>')}
-            </div>` : ''}
-
-            <div style="display:flex;gap:60px;margin-top:60px;">
-                <div style="flex:1;text-align:center;">
-                    ${d.stampImage ? `<div style="margin-bottom:15px;opacity:0.8;">${d.stampImage}</div>` : '<div style="height:80px;"></div>'}
-                    ${d.signatureImage ? `<div style="margin-bottom:15px;font-family:cursive;font-size:1.5rem;color:${color};transform:rotate(-5deg);display:inline-block;">Signature</div>` : ''}
-                    <div style="font-size:0.7rem;letter-spacing:3px;color:#999;text-transform:uppercase;padding-top:15px;border-top:1px solid #ddd;">Émetteur</div>
-                </div>
-                <div style="flex:1;text-align:center;">
-                    <div style="height:80px;"></div>
-                    <div style="font-size:0.7rem;letter-spacing:3px;color:#999;text-transform:uppercase;padding-top:15px;border-top:1px solid #ddd;">Client</div>
-                </div>
-            </div>
-
-            <div style="text-align:center;margin-top:60px;padding-top:30px;border-top:1px solid #eee;">
-                <div style="font-size:0.6rem;letter-spacing:2px;color:#bbb;text-transform:uppercase;">
-                    Document établi conformément à la législation fiscale tunisienne • DGI
-                </div>
-            </div>
-        </div>
-        
-        <div style="position:absolute;bottom:0;left:0;right:0;height:8px;background:linear-gradient(90deg, #000, ${color});"></div>
-    </div>
-</div>`;
-}
-
-function buildCinematicTotalRow(label, value, currency, color) {
-    return `<div style="display:flex;justify-content:space-between;padding:12px 0;font-size:0.9rem;color:#666;border-bottom:1px solid #f0f0f0;">
-        <span>${label}</span>
-        <span style="color:${color};font-weight:500;">${value.toFixed(3)} ${currency}</span>
-    </div>`;
-}
-
-// ==================== UPDATED RENDER FUNCTIONS ====================
 function renderDocumentsTable(docs) {
     const container = document.getElementById('allDocsTable');
     if (!docs.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Aucun document</h3><p>Commencez par créer votre premier document</p></div>`;
-        return;
-    }
-    container.innerHTML = `<table><thead><tr><th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Échéance</th><th>Total TTC</th><th>Actions</th></tr></thead><tbody>
-        ${docs.map(doc => `<tr>
-            <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
-            <td style="font-family:monospace;font-size:0.82rem">${doc.number}</td>
-            <td>${escapeHtml(doc.clientName)}</td>
-            <td>${formatDate(doc.date)}</td>
-            <td>${doc.dueDate ? formatDate(doc.dueDate) : '—'}</td>
-            <td style="font-weight:600">${doc.totalTTC.toFixed(3)} ${doc.currency}</td>
-            <td class="actions-cell">
-                <button class="btn-icon btn-view" onclick="viewDocument('${doc.id}')" title="Aperçu">👁️</button>
-                <button class="btn-icon btn-edit" onclick="editDocument('${doc.id}')" title="Modifier">✏️</button>
-                ${doc.type === 'devis' ? `<button class="btn-icon btn-pdf" onclick="convertDevisToFacture('${doc.id}')" title="Convertir en Facture" style="background:#d1fae5;color:#065f46;">🔄</button>` : ''}
-                <button class="btn-icon btn-pdf" onclick="downloadDocPDF('${doc.id}')" title="PDF">📄</button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer">🗑️</button>
-            </td></tr>`).join('')}
-    </tbody></table>`;
-}
-
-function renderRecentDocs(docs) {
-    const container = document.getElementById('recentDocsTable');
-    if (!docs.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Aucun document</h3><p>Créez votre premier document</p></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Aucun document</h3><p>Créez votre premier document pour commencer</p></div>`;
         return;
     }
     container.innerHTML = `<table><thead><tr><th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Total TTC</th><th>Actions</th></tr></thead><tbody>
@@ -707,39 +874,421 @@ function renderRecentDocs(docs) {
             <td style="font-weight:600">${doc.totalTTC.toFixed(3)} ${doc.currency}</td>
             <td class="actions-cell">
                 <button class="btn-icon btn-view" onclick="viewDocument('${doc.id}')" title="Aperçu">👁️</button>
-                <button class="btn-icon btn-edit" onclick="editDocument('${doc.id}')" title="Modifier">✏️</button>
-                ${doc.type === 'devis' ? `<button class="btn-icon btn-pdf" onclick="convertDevisToFacture('${doc.id}')" title="Convertir en Facture" style="background:#d1fae5;color:#065f46;">🔄</button>` : ''}
+                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir en Facture">🔄</button>` : ''}
+                <button class="btn-icon btn-edit" onclick="editExistingDoc('${doc.id}')" title="Modifier">✏️</button>
                 <button class="btn-icon btn-pdf" onclick="downloadDocPDF('${doc.id}')" title="PDF">📄</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer">🗑️</button>
-            </td></tr>`).join('')}
+            </td>
+        </tr>`).join('')}
     </tbody></table>`;
 }
 
-// ==================== RESET FORM FIX ====================
-function resetDocumentForm() {
-    ['docClientName', 'docClientMF', 'docClientAddress', 'docClientPhone', 'docClientEmail', 'docNotes'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
+function filterDocuments() {
+    const search = document.getElementById('searchDocs').value.toLowerCase();
+    const type = document.getElementById('filterType').value;
+    
+    const filtered = allDocuments.filter(doc => {
+        const matchesSearch = !search || 
+            doc.number.toLowerCase().includes(search) || 
+            doc.clientName.toLowerCase().includes(search);
+        const matchesType = !type || doc.type === type;
+        return matchesSearch && matchesType;
     });
-    document.getElementById('applyTimbre').checked = false;
-    document.getElementById('itemsBody').innerHTML = '';
-    itemCount = 0;
-    addItem();
-    removeImage('logo');
-    removeImage('stamp');
-    removeImage('signature');
-    calculateTotals();
     
-    // Reset save button
-    const saveBtn = document.getElementById('saveBtn');
-    saveBtn.innerHTML = '💾 Enregistrer & Exporter PDF';
-    saveBtn.onclick = saveAndDownloadPDF;
-    editingDocId = null;
-    
-    window.electronAPI.getNextDocNumber({ userId: currentUser.id, type: currentDocType, year: new Date().getFullYear() })
-        .then(n => { document.getElementById('docNumber').value = n; })
-        .catch(() => {});
+    renderDocumentsTable(filtered);
 }
 
-// Keep all other existing functions (showToast, handleLogin, etc.) as they were...
-// [Previous code remains unchanged below this point]
+async function viewDocument(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    
+    populateFormWithDoc(doc);
+    generatePreviewHTML();
+    document.getElementById('previewModal').classList.add('active');
+}
+
+async function editExistingDoc(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    
+    editingDocId = docId;
+    populateFormWithDoc(doc);
+    
+    // Change button to indicate update mode
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.innerHTML = '💾 Mettre à jour le Document';
+    saveBtn.onclick = async () => {
+        if (!validateDocumentForm()) return;
+        showLoading('Mise à jour...');
+        try {
+            const docData = collectDocumentData();
+            const result = await window.electronAPI.updateDocument({ docId, updates: docData });
+            if (result.success) {
+                showToast('Document mis à jour', 'success');
+                resetDocumentForm();
+                navigateTo('documents');
+            }
+        } catch (err) {
+            showToast('Erreur lors de la mise à jour', 'error');
+        } finally {
+            hideLoading();
+        }
+    };
+    
+    navigateTo('new-document');
+    showToast('Mode édition activé', 'info');
+}
+
+function populateFormWithDoc(doc) {
+    // Set document type
+    currentDocType = doc.type;
+    document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === doc.type);
+    updateDocType();
+    
+    // Company info
+    document.getElementById('docCompanyName').value = doc.companyName || '';
+    document.getElementById('docCompanyMF').value = doc.companyMF || '';
+    document.getElementById('docCompanyAddress').value = doc.companyAddress || '';
+    document.getElementById('docCompanyPhone').value = doc.companyPhone || '';
+    document.getElementById('docCompanyEmail').value = doc.companyEmail || '';
+    document.getElementById('docCompanyRC').value = doc.companyRC || '';
+    
+    // Client info
+    document.getElementById('docClientName').value = doc.clientName || '';
+    document.getElementById('docClientMF').value = doc.clientMF || '';
+    document.getElementById('docClientAddress').value = doc.clientAddress || '';
+    document.getElementById('docClientPhone').value = doc.clientPhone || '';
+    document.getElementById('docClientEmail').value = doc.clientEmail || '';
+    
+    // Document details
+    document.getElementById('docNumber').value = doc.number || '';
+    document.getElementById('docDate').value = doc.date || '';
+    document.getElementById('docDueDate').value = doc.dueDate || '';
+    document.getElementById('docCurrency').value = doc.currency || 'TND';
+    document.getElementById('docPayment').value = doc.paymentMode || 'Virement bancaire';
+    document.getElementById('docNotes').value = doc.notes || '';
+    document.getElementById('applyTimbre').checked = doc.applyTimbre || false;
+    
+    // Images
+    logoImage = doc.logoImage || null;
+    stampImage = doc.stampImage || null;
+    signatureImage = doc.signatureImage || null;
+    
+    ['logo', 'stamp', 'signature'].forEach(type => {
+        const img = type === 'logo' ? logoImage : type === 'stamp' ? stampImage : signatureImage;
+        if (img) {
+            document.getElementById(`${type}Preview`).src = img;
+            document.getElementById(`${type}Preview`).classList.remove('hidden');
+            document.getElementById(`${type}Placeholder`).classList.add('hidden');
+            document.getElementById(`${type}Box`).classList.add('has-image');
+        } else {
+            document.getElementById(`${type}Preview`).src = '';
+            document.getElementById(`${type}Preview`).classList.add('hidden');
+            document.getElementById(`${type}Placeholder`).classList.remove('hidden');
+            document.getElementById(`${type}Box`).classList.remove('has-image');
+        }
+    });
+    
+    // Items
+    document.getElementById('itemsBody').innerHTML = '';
+    itemCount = 0;
+    
+    if (doc.items && doc.items.length) {
+        doc.items.forEach((item, idx) => {
+            itemCount++;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-align:center;color:var(--gray-500);font-size:0.82rem">${itemCount}</td>
+                <td><input type="text" class="item-input" id="desc${itemCount}" value="${escapeHtml(item.description)}" placeholder="Description..."></td>
+                <td><input type="number" class="item-input" id="qty${itemCount}" value="${item.quantity}" min="0.001" step="0.001" onchange="calculateTotals()"></td>
+                <td><input type="number" class="item-input" id="price${itemCount}" value="${item.price}" min="0" step="0.001" onchange="calculateTotals()"></td>
+                <td>
+                    <select class="tva-select" id="tva${itemCount}" onchange="calculateTotals()">
+                        <option value="19" ${item.tva === 19 ? 'selected' : ''}>19%</option>
+                        <option value="13" ${item.tva === 13 ? 'selected' : ''}>13%</option>
+                        <option value="7" ${item.tva === 7 ? 'selected' : ''}>7%</option>
+                        <option value="0" ${item.tva === 0 ? 'selected' : ''}>0%</option>
+                    </select>
+                </td>
+                <td style="text-align:right;font-weight:500" id="total${itemCount}">${(item.quantity * item.price).toFixed(3)}</td>
+                <td><button type="button" class="btn-icon btn-delete" onclick="removeItem(this)">🗑️</button></td>
+            `;
+            document.getElementById('itemsBody').appendChild(tr);
+        });
+    }
+    
+    calculateTotals();
+}
+
+async function convertToInvoice(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    
+    showConfirm(
+        '🔄 Convertir en Facture',
+        `Convertir le devis ${doc.number} en facture ? Un nouveau numéro de série sera généré.`,
+        async () => {
+            showLoading('Conversion...');
+            try {
+                const result = await window.electronAPI.convertDocument({
+                    sourceId: docId,
+                    targetType: 'facture',
+                    userId: currentUser.id,
+                    year: new Date().getFullYear()
+                });
+                
+                if (result.success) {
+                    showToast('Devis converti en facture', 'success');
+                    await loadDocuments();
+                    navigateTo('documents');
+                }
+            } catch (err) {
+                showToast('Erreur de conversion', 'error');
+            } finally {
+                hideLoading();
+            }
+        },
+        'Convertir',
+        'btn-primary'
+    );
+}
+
+function confirmDeleteDoc(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    showConfirm('🗑️ Supprimer', `Supprimer définitivement ${doc?.number} ?`, async () => {
+        try {
+            await window.electronAPI.deleteDocument(docId);
+            showToast('Document supprimé', 'info');
+            await loadDocuments();
+            await loadDashboard();
+        } catch (err) {
+            showToast('Erreur suppression', 'error');
+        }
+    });
+}
+
+async function exportAllToExcel() {
+    try {
+        const result = await window.electronAPI.exportExcelDocuments({ documents: allDocuments });
+        if (result.success) {
+            showToast(`Excel exporté: ${result.path}`, 'success');
+        }
+    } catch (err) {
+        showToast('Erreur export Excel', 'error');
+    }
+}
+
+// ==================== CLIENTS MANAGEMENT ====================
+async function loadClients() {
+    try {
+        allClients = await window.electronAPI.getClients(currentUser.id);
+        renderClientsTable(allClients);
+    } catch (err) {
+        showToast('Erreur chargement clients', 'error');
+    }
+}
+
+function renderClientsTable(clients) {
+    const container = document.getElementById('clientsTable');
+    if (!clients.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Aucun client</h3><p>Ajoutez votre premier client</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr><th>Nom</th><th>MF</th><th>Téléphone</th><th>Email</th><th>Actions</th></tr></thead><tbody>
+        ${clients.map(c => `<tr>
+            <td style="font-weight:600">${escapeHtml(c.name)}</td>
+            <td>${escapeHtml(c.mf) || '—'}</td>
+            <td>${escapeHtml(c.phone) || '—'}</td>
+            <td>${escapeHtml(c.email) || '—'}</td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-delete" onclick="confirmDeleteClient('${c.id}')" title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function filterClients() {
+    const q = document.getElementById('searchClients').value.toLowerCase();
+    renderClientsTable(allClients.filter(c => 
+        c.name.toLowerCase().includes(q) || 
+        (c.mf && c.mf.toLowerCase().includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q))
+    ));
+}
+
+function confirmDeleteClient(clientId) {
+    const client = allClients.find(c => c.id === clientId);
+    showConfirm('🗑️ Supprimer', `Supprimer "${client?.name}" ?`, async () => {
+        try {
+            await window.electronAPI.deleteClient(clientId);
+            showToast('Client supprimé', 'info');
+            await loadClients();
+            await loadClientsDropdown();
+        } catch (err) {
+            showToast('Erreur suppression', 'error');
+        }
+    });
+}
+
+async function exportClientsToExcel() {
+    try {
+        const result = await window.electronAPI.exportExcelClients({ clients: allClients });
+        if (result.success) {
+            showToast(`Excel exporté: ${result.path}`, 'success');
+        }
+    } catch (err) {
+        showToast('Erreur export Excel', 'error');
+    }
+}
+
+// ==================== COMPANY SETTINGS ====================
+async function loadCompanyPage() {
+    try {
+        const c = await window.electronAPI.getCompany(currentUser.id) || {};
+        document.getElementById('companyName').value = c.name || currentUser.company || '';
+        document.getElementById('companyMF').value = c.mf || currentUser.mf || '';
+        document.getElementById('companyAddress').value = c.address || '';
+        document.getElementById('companyPhone').value = c.phone || '';
+        document.getElementById('companyEmail').value = c.email || '';
+        document.getElementById('companyRC').value = c.rc || '';
+        document.getElementById('companyWebsite').value = c.website || '';
+        document.getElementById('companyBank').value = c.bank || '';
+        
+        // Update profile card
+        document.getElementById('companyProfileName').textContent = c.name || currentUser.company || 'Votre Entreprise';
+        document.getElementById('companyProfileMF').textContent = c.mf || currentUser.mf ? `Matricule Fiscal: ${c.mf || currentUser.mf}` : 'Matricule Fiscal: —';
+    } catch (err) {
+        console.error('Error loading company:', err);
+    }
+}
+
+async function saveCompanySettings() {
+    const settings = {
+        userId: currentUser.id,
+        name: document.getElementById('companyName').value.trim(),
+        mf: document.getElementById('companyMF').value.trim(),
+        address: document.getElementById('companyAddress').value.trim(),
+        phone: document.getElementById('companyPhone').value.trim(),
+        email: document.getElementById('companyEmail').value.trim(),
+        rc: document.getElementById('companyRC').value.trim(),
+        website: document.getElementById('companyWebsite').value.trim(),
+        bank: document.getElementById('companyBank').value.trim()
+    };
+    
+    try {
+        await window.electronAPI.saveCompany(settings);
+        showToast('Informations entreprise enregistrées', 'success');
+        await loadCompanyPage();
+    } catch (err) {
+        showToast('Erreur d\'enregistrement', 'error');
+    }
+}
+
+// ==================== BACKUP & SETTINGS ====================
+async function loadSettings() {
+    try {
+        const settings = await window.electronAPI.getBackupSettings();
+        document.getElementById('backupEnabled').checked = settings.enabled || false;
+        document.getElementById('backupFrequency').value = settings.frequency || 'daily';
+        document.getElementById('backupTime').value = settings.time || '02:00';
+        document.getElementById('backupKeep').value = settings.keep || 10;
+        await loadBackupList();
+    } catch (err) {
+        console.error('Error loading settings:', err);
+    }
+}
+
+async function loadBackupList() {
+    try {
+        const backups = await window.electronAPI.getBackupList();
+        const container = document.getElementById('backupList');
+        if (!backups || !backups.length) {
+            container.innerHTML = '<p style="color:#6b7280;font-size:0.9rem">Aucune sauvegarde disponible</p>';
+            return;
+        }
+        container.innerHTML = backups.map(b => `
+            <div class="backup-item">
+                <div class="backup-item-info">
+                    <div class="backup-date">${new Date(b.date).toLocaleString('fr-FR')}</div>
+                    <div class="backup-size">${(b.size / 1024 / 1024).toFixed(2)} MB</div>
+                </div>
+                <button class="btn btn-small btn-secondary" onclick="restoreBackup('${b.path}')">Restaurer</button>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading backups:', err);
+    }
+}
+
+async function saveBackupSettings() {
+    const settings = {
+        enabled: document.getElementById('backupEnabled').checked,
+        frequency: document.getElementById('backupFrequency').value,
+        time: document.getElementById('backupTime').value,
+        keep: parseInt(document.getElementById('backupKeep').value) || 10
+    };
+    
+    try {
+        await window.electronAPI.saveBackupSettings(settings);
+        showToast('Paramètres de sauvegarde enregistrés', 'success');
+    } catch (err) {
+        showToast('Erreur d\'enregistrement', 'error');
+    }
+}
+
+async function createManualBackup() {
+    showLoading('Création de la sauvegarde...');
+    try {
+        const result = await window.electronAPI.createManualBackup();
+        if (result.success) {
+            showToast('Sauvegarde créée', 'success');
+            await loadBackupList();
+        }
+    } catch (err) {
+        showToast('Erreur de sauvegarde', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function restoreFromBackup() {
+    // This would typically open a file dialog to select a backup file
+    showToast('Sélectionnez une sauvegarde dans la liste ci-dessous', 'info');
+}
+
+async function restoreBackup(backupPath) {
+    showConfirm(
+        '📤 Restaurer',
+        'Cela remplacera toutes les données actuelles. Continuer ?',
+        async () => {
+            showLoading('Restauration...');
+            try {
+                const result = await window.electronAPI.restoreBackup(backupPath);
+                if (result.success) {
+                    showToast('Restauration terminée. Redémarrage...', 'success');
+                    setTimeout(() => location.reload(), 2000);
+                }
+            } catch (err) {
+                showToast('Erreur de restauration', 'error');
+            } finally {
+                hideLoading();
+            }
+        },
+        'Restaurer',
+        'btn-warning'
+    );
+}
+
+// ==================== UTILS ====================
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('fr-FR');
+}

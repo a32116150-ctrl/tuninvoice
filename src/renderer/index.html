@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TuniInvoice Pro</title>
     <link rel="stylesheet" href="styles.css">
-<base target="_blank">
 </head>
 <body>
 
@@ -129,13 +128,16 @@
             <div class="nav-item" onclick="navigateTo('clients')">
                 <span class="nav-icon">👥</span> Clients
             </div>
+            <div class="nav-item" onclick="navigateTo('services')">
+                <span class="nav-icon">🛍️</span> Services & Produits
+            </div>
             <div class="nav-item" onclick="navigateTo('company')">
                 <span class="nav-icon">🏢</span> Mon Entreprise
             </div>
 
             <div class="nav-section-label">Système</div>
             <div class="nav-item" onclick="navigateTo('settings')">
-                <span class="nav-icon">⚙️</span> Sauvegardes
+                <span class="nav-icon">⚙️</span> Paramètres
             </div>
         </nav>
 
@@ -360,6 +362,22 @@
                 <!-- Items -->
                 <div class="form-section">
                     <div class="section-title">🛍️ Articles / Services</div>
+                    
+                    <!-- Service Selector -->
+                    <div class="service-selector">
+                        <div style="display: flex; gap: 10px; align-items: flex-end;">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label style="font-size: 0.8rem; color: #64748b; margin-bottom: 4px;">Ajouter depuis le catalogue</label>
+                                <select id="presetServiceSelect" onchange="addPresetService()" style="width: 100%;">
+                                    <option value="">— Sélectionner un service enregistré —</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-small btn-secondary" onclick="navigateTo('services')" style="margin-bottom: 0;">
+                                Gérer
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="table-container items-table">
                         <table id="itemsTable">
                             <thead>
@@ -505,6 +523,29 @@
             </div>
         </div>
 
+        <!-- ===== SERVICES ===== -->
+        <div id="page-services" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Mes Services & Produits</h1>
+                    <p>Gérez vos prestations et produits pour un remplissage rapide</p>
+                </div>
+                <button class="btn btn-primary" onclick="openServiceModal()">➕ Nouveau Service</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>🛍️ Catalogue de services</h2>
+                    <div class="search-box" style="max-width:280px">
+                        <input type="text" id="searchServices" placeholder="Rechercher un service..." onkeyup="filterServices()">
+                    </div>
+                </div>
+                <div style="padding:0">
+                    <div id="servicesTable" class="table-container"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== COMPANY ===== -->
         <div id="page-company" class="page">
             <div class="page-header">
@@ -563,15 +604,51 @@
             </div>
         </div>
 
-        <!-- ===== SETTINGS / BACKUP ===== -->
+        <!-- ===== SETTINGS ===== -->
         <div id="page-settings" class="page">
             <div class="page-header">
                 <div class="page-header-left">
-                    <h1>Sauvegardes</h1>
-                    <p>Protégez vos données avec des sauvegardes automatiques</p>
+                    <h1>Paramètres</h1>
+                    <p>Configuration des numéros de documents et sauvegardes</p>
                 </div>
             </div>
 
+            <!-- Serial Numbers Settings -->
+            <div class="card">
+                <div class="form-section">
+                    <div class="section-title">🔢 Numérotation des Documents</div>
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Préfixe Factures</label>
+                            <input type="text" id="prefixFacture" value="FAC" maxlength="10" oninput="updateSerialPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Préfixe Devis</label>
+                            <input type="text" id="prefixDevis" value="DEV" maxlength="10" oninput="updateSerialPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Préfixe Bons de Commande</label>
+                            <input type="text" id="prefixBon" value="BC" maxlength="10" oninput="updateSerialPreview()">
+                        </div>
+                    </div>
+                    
+                    <div class="serial-preview-box">
+                        <h4>Aperçu du prochain numéro:</h4>
+                        <div id="serialPreview">FAC-2026-001</div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="saveSerialSettings()">
+                            💾 Enregistrer les préfixes
+                        </button>
+                        <button class="btn btn-warning" onclick="openResetCounterModal()">
+                            🔄 Réinitialiser le compteur
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backup Settings -->
             <div class="card">
                 <div class="form-section">
                     <div class="section-title">⚙️ Sauvegarde automatique</div>
@@ -666,6 +743,45 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeClientModal()">Annuler</button>
             <button class="btn btn-primary" onclick="saveNewClient()">💾 Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SERVICE MODAL ===== -->
+<div id="serviceModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="serviceModalTitle">➕ Nouveau Service</h2>
+            <button class="modal-close" onclick="closeServiceModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Nom du service/produit *</label>
+                <input type="text" id="serviceName" required placeholder="Ex: Consultation, Produit XYZ...">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="serviceDescription" placeholder="Description détaillée...">
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Prix unitaire HT (TND)</label>
+                    <input type="number" id="servicePrice" value="0.000" min="0" step="0.001">
+                </div>
+                <div class="form-group">
+                    <label>TVA %</label>
+                    <select id="serviceTva">
+                        <option value="19" selected>19%</option>
+                        <option value="13">13%</option>
+                        <option value="7">7%</option>
+                        <option value="0">0%</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeServiceModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="saveService()">💾 Enregistrer</button>
         </div>
     </div>
 </div>
