@@ -58,9 +58,11 @@ contextBridge.exposeInMainWorld(
     getBackupList: () => invoke('backup:list'),
     restoreBackup: (path) => invoke('backup:restore', path),
 
-    // PDF — app.js calls generatePDF(), main.js handles 'pdf:export'
-    generatePDF: (params) => invoke('pdf:export', params),
-    exportPDF: (params) => invoke('pdf:export', params),
+    // PDF
+    // savePDF: opens a Save dialog and writes the invoice HTML as a real PDF file
+    savePDF: (params) => invoke('pdf:save', params),
+    // printPDF: opens the system Print dialog with the invoice HTML
+    printPDF: (params) => invoke('pdf:print', params),
 
     // THEME
     getThemeSettings: (userId) => invoke('theme:get', userId),

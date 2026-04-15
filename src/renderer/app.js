@@ -729,7 +729,7 @@ function buildInvoicePreviewHTML(d) {
             ${d.signatureImage ? `<div><div style="font-size:11px;color:#aaa;margin-bottom:6px">Signature</div><img src="${d.signatureImage}" style="max-height:80px"></div>` : '<div></div>'}
             ${d.stampImage ? `<div><img src="${d.stampImage}" style="max-height:100px;opacity:0.8"></div>` : '<div></div>'}
         </div>
-        <div style="margin-top:40px;font-size:11px;color:#AAA;text-align:center">comment cava</div>
+        <div style="margin-top:40px;font-size:11px;color:#AAA;text-align:center">TuniInvoice Pro — Généré le ${new Date().toLocaleDateString('fr-FR')}</div>
     </div>`;
 }
 
@@ -741,39 +741,137 @@ async function saveAndDownloadPDF() {
         const result = await window.electronAPI.saveDocument(docData);
         if (result.success) {
             showToast('Document enregistré', 'success');
-            await downloadPDF(result.document.number);
+
+            // Build and save the PDF for the just-saved document
+            generatePreviewHTML();
+            const html = buildFullHTML();
+            const filename = `${result.document.number}.pdf`;
+            hideLoading();
+
+            const pdfResult = await window.electronAPI.savePDF({ html, filename });
+            if (pdfResult.success) {
+                showToast('PDF enregistré avec succès', 'success');
+            }
+
             resetDocumentForm();
             navigateTo('documents');
         }
     } catch (err) {
-        showToast('Erreur lors de l\'enregistrement', 'error');
+        showToast("Erreur lors de l'enregistrement", 'error');
     } finally {
         hideLoading();
     }
 }
 
-async function downloadPDF(filename) {
+// ==================== PDF HELPERS ====================
+
+/**
+ * Build a full, self-contained HTML document from the current preview content.
+ * This wraps the raw innerHTML in a proper <html> shell so Electron can
+ * render it in a hidden window and produce a pixel-perfect PDF.
+ */
+function buildFullHTML() {
+    const inner = document.getElementById('previewContent').innerHTML;
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4; margin: 0; }
+</style>
+</head>
+<body>${inner}</body>
+</html>`;
+}
+
+/**
+ * "Télécharger PDF" — called from the preview modal toolbar.
+ * Gets the current invoice number to suggest a filename, builds the HTML,
+ * then asks the main process to render it and save via a Save dialog.
+ */
+async function downloadPDF() {
+    // Try to derive a meaningful filename from the visible invoice number
+    const numberEl = document.getElementById('previewContent')
+        ?.querySelector('strong')?.closest('div')?.querySelector('div');
+    const docNumber = document.getElementById('docNumber')?.value || 'facture';
+    const filename = `${docNumber}.pdf`;
+
     generatePreviewHTML();
-    const html = document.getElementById('previewContent').innerHTML;
-    const result = await window.electronAPI.generatePDF({ html, filename: `${filename}.pdf` });
-    if (result.success) {
-        showToast(`PDF téléchargé: ${result.path}`, 'success');
+    const html = buildFullHTML();
+
+    showLoading('Génération du PDF...');
+    try {
+        const result = await window.electronAPI.savePDF({ html, filename });
+        if (result.success) {
+            showToast('✅ PDF enregistré avec succès', 'success');
+            closePreview();
+        } else if (!result.canceled) {
+            showToast('Erreur lors de la génération du PDF', 'error');
+        }
+    } catch (err) {
+        showToast('Erreur PDF: ' + err.message, 'error');
+    } finally {
+        hideLoading();
     }
 }
 
+/**
+ * "Imprimer" — called from the preview modal toolbar.
+ * Sends the invoice HTML to the main process which opens the system print dialog.
+ */
+async function printDocument() {
+    generatePreviewHTML();
+    const html = buildFullHTML();
+
+    showLoading('Ouverture de l\'impression...');
+    try {
+        const result = await window.electronAPI.printPDF({ html });
+        if (!result.success && result.error) {
+            showToast('Erreur impression: ' + result.error, 'error');
+        }
+    } catch (err) {
+        showToast('Erreur impression: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Download PDF for a document from the documents list (📄 button).
+ * Temporarily populates the form with the stored doc data, renders preview,
+ * then generates the PDF — all without disturbing the current edit state.
+ */
 async function downloadDocPDF(docId) {
     const doc = allDocuments.find(d => d.id === docId);
     if (!doc) return;
+
+    // Stash current state
     const originalEditingId = editingDocId;
     editingDocId = docId;
+
     populateFormWithDoc(doc);
     generatePreviewHTML();
-    const html = document.getElementById('previewContent').innerHTML;
-    const result = await window.electronAPI.generatePDF({ html, filename: `${doc.number}.pdf` });
-    if (result.success) {
-        showToast(`PDF téléchargé: ${result.path}`, 'success');
-    }
+    const html = buildFullHTML();
+    const filename = `${doc.number}.pdf`;
+
+    // Restore state
     editingDocId = originalEditingId;
+
+    showLoading('Génération du PDF...');
+    try {
+        const result = await window.electronAPI.savePDF({ html, filename });
+        if (result.success) {
+            showToast('✅ PDF enregistré: ' + result.path, 'success');
+        } else if (!result.canceled) {
+            showToast('Erreur lors de la génération du PDF', 'error');
+        }
+    } catch (err) {
+        showToast('Erreur PDF: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 function collectDocumentData() {

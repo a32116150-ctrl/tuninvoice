@@ -48,54 +48,104 @@ app.whenReady().then(() => {
     autoUpdater.checkForUpdatesAndNotify();
 });
 
-// --- PDF & PRINT HANDLERS ---
-
-// 1. Handle "Télécharger PDF" (Save to Downloads)
-ipcMain.handle('pdf:export', async (event) => {
-  const win = BrowserWindow.getFocusedWindow();
-  const timestamp = new Date().getTime();
-  const savePath = path.join(app.getPath('downloads'), `Facture-${timestamp}.pdf`);
-
-  try {
-    const data = await win.webContents.printToPDF({
-      printBackground: true,
-      marginsType: 0,
-      pageSize: 'A4'
-    });
-
-    fs.writeFileSync(savePath, data);
-    
-    // This will open the folder so the user sees their new file
-    require('electron').shell.showItemInFolder(savePath);
-    
-    return { success: true, path: savePath };
-  } catch (error) {
-    console.error('Export Error:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-// 2. Handle "Imprimer" (Open System Print Dialog)
-ipcMain.handle('pdf:print', async (event) => {
-  const win = BrowserWindow.getFocusedWindow();
-  
-  win.webContents.print({
-    silent: false, // This shows the actual printer selection window
-    printBackground: true,
-    color: true
-  }, (success, errorType) => {
-    if (!success) console.error('Print Error:', errorType);
-  });
-  
-  return { success: true };
-});
-
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// ==================== PDF HANDLERS ====================
+
+/**
+ * pdf:save — Generate PDF from HTML string and save to a user-chosen location.
+ * Called by "Télécharger PDF" button in the preview modal.
+ */
+ipcMain.handle('pdf:save', async (_, { html, filename }) => {
+    try {
+        const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+            defaultPath: filename || 'facture.pdf',
+            filters: [{ name: 'Fichiers PDF', extensions: ['pdf'] }]
+        });
+
+        if (canceled || !filePath) return { success: false, canceled: true };
+
+        const pdfWin = new BrowserWindow({
+            show: false,
+            webPreferences: { offscreen: true }
+        });
+
+        // Load the HTML invoice content into the hidden window
+        await pdfWin.loadURL(
+            'data:text/html;charset=utf-8,' + encodeURIComponent(html)
+        );
+
+        // Small settle delay to ensure fonts/images render
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        const pdfData = await pdfWin.webContents.printToPDF({
+            pageSize: 'A4',
+            printBackground: true,
+            marginsType: 0,  // default margins
+            landscape: false
+        });
+
+        pdfWin.close();
+        fs.writeFileSync(filePath, pdfData);
+
+        // Open the containing folder so the user can see it immediately
+        shell.showItemInFolder(filePath);
+
+        return { success: true, path: filePath };
+    } catch (error) {
+        console.error('[pdf:save] Error:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+/**
+ * pdf:print — Generate a temporary PDF from HTML and open the system print dialog.
+ * Called by "Imprimer" button in the preview modal.
+ */
+ipcMain.handle('pdf:print', async (_, { html }) => {
+    try {
+        const pdfWin = new BrowserWindow({
+            show: false,
+            webPreferences: { offscreen: false }  // must be visible for print dialog
+        });
+
+        await pdfWin.loadURL(
+            'data:text/html;charset=utf-8,' + encodeURIComponent(html)
+        );
+
+        // Small settle delay to ensure fonts/images render
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        await new Promise((resolve, reject) => {
+            pdfWin.webContents.print(
+                {
+                    silent: false,
+                    printBackground: true,
+                    color: true
+                },
+                (success, errorType) => {
+                    if (success) resolve();
+                    else {
+                        // 'cancelled' is not a real error — user closed the dialog
+                        if (errorType === 'cancelled') resolve();
+                        else reject(new Error(errorType));
+                    }
+                }
+            );
+        });
+
+        pdfWin.close();
+        return { success: true };
+    } catch (error) {
+        console.error('[pdf:print] Error:', error);
+        return { success: false, error: error.message };
+    }
 });
 
 // ==================== AUTH ====================
@@ -278,43 +328,11 @@ ipcMain.handle('theme:save', async (_, { userId, theme }) => {
 // ==================== STATS ====================
 ipcMain.handle('stats:get', async (_, userId) => db.getDashboardStats(userId));
 
-// ==================== PDF (STRIPE-LEVEL CLEAN) ====================
-ipcMain.handle('pdf:generateAndSave', async (_, { html, filename }) => {
-    try {
-        const { filePath } = await dialog.showSaveDialog({
-            defaultPath: filename || 'invoice.pdf',
-            filters: [{ name: 'PDF', extensions: ['pdf'] }]
-        });
-
-        if (!filePath) return { success: false };
-
-        const win = new BrowserWindow({
-            show: false,
-            webPreferences: { offscreen: true }
-        });
-
-        await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-
-        const pdf = await win.webContents.printToPDF({
-            pageSize: 'A4',
-            printBackground: true,
-            marginsType: 1
-        });
-
-        fs.writeFileSync(filePath, pdf);
-        win.close();
-
-        return { success: true, path: filePath };
-    } catch (e) {
-        return { success: false, error: e.message };
-    }
-});
-
 // ==================== EXCEL ====================
 ipcMain.handle('export:excel:documents', async (_, { documents, filePath }) => {
     try {
         if (!filePath) {
-            const res = await dialog.showSaveDialog({
+            const res = await dialog.showSaveDialog(mainWindow, {
                 defaultPath: `documents-${Date.now()}.xlsx`,
                 filters: [{ name: 'Excel', extensions: ['xlsx'] }]
             });
@@ -333,7 +351,7 @@ ipcMain.handle('export:excel:documents', async (_, { documents, filePath }) => {
 ipcMain.handle('export:excel:clients', async (_, { clients, filePath }) => {
     try {
         if (!filePath) {
-            const res = await dialog.showSaveDialog({
+            const res = await dialog.showSaveDialog(mainWindow, {
                 defaultPath: `clients-${Date.now()}.xlsx`,
                 filters: [{ name: 'Excel', extensions: ['xlsx'] }]
             });
@@ -379,11 +397,11 @@ autoUpdater.on('update-available', () => {
 });
 
 autoUpdater.on('update-downloaded', () => {
-    dialog.showMessageBox({
+    dialog.showMessageBox(mainWindow, {
         type: 'info',
-        title: 'Update Ready',
-        message: 'Install update now?',
-        buttons: ['Restart', 'Later']
+        title: 'Mise à jour disponible',
+        message: 'Une nouvelle version est prête. Redémarrer maintenant ?',
+        buttons: ['Redémarrer', 'Plus tard']
     }).then(res => {
         if (res.response === 0) autoUpdater.quitAndInstall();
     });
