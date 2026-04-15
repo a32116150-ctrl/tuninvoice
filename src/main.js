@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -46,6 +46,48 @@ function createWindow() {
 app.whenReady().then(() => {
     createWindow();
     autoUpdater.checkForUpdatesAndNotify();
+});
+
+// --- PDF & PRINT HANDLERS ---
+
+// 1. Handle "Télécharger PDF" (Save to Downloads)
+ipcMain.handle('pdf:export', async (event) => {
+  const win = BrowserWindow.getFocusedWindow();
+  const timestamp = new Date().getTime();
+  const savePath = path.join(app.getPath('downloads'), `Facture-${timestamp}.pdf`);
+
+  try {
+    const data = await win.webContents.printToPDF({
+      printBackground: true,
+      marginsType: 0,
+      pageSize: 'A4'
+    });
+
+    fs.writeFileSync(savePath, data);
+    
+    // This will open the folder so the user sees their new file
+    require('electron').shell.showItemInFolder(savePath);
+    
+    return { success: true, path: savePath };
+  } catch (error) {
+    console.error('Export Error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 2. Handle "Imprimer" (Open System Print Dialog)
+ipcMain.handle('pdf:print', async (event) => {
+  const win = BrowserWindow.getFocusedWindow();
+  
+  win.webContents.print({
+    silent: false, // This shows the actual printer selection window
+    printBackground: true,
+    color: true
+  }, (success, errorType) => {
+    if (!success) console.error('Print Error:', errorType);
+  });
+  
+  return { success: true };
 });
 
 app.on('window-all-closed', () => {
