@@ -13,7 +13,57 @@ class AppDatabase {
         this.initTables();
     }
 
+    // ==================== THEME SETTINGS ====================
+    getThemeSettings(userId) {
+        const row = this.db.prepare('SELECT * FROM document_themes WHERE user_id = ?').get(userId);
+        if (!row) return null;
+        return {
+            fontFamily: row.font_family,
+            fontSize: row.font_size,
+            titles: {
+                facture: { text: row.title_facture_text, color: row.title_facture_color },
+                devis: { text: row.title_devis_text, color: row.title_devis_color },
+                bon: { text: row.title_bon_text, color: row.title_bon_color }
+            }
+        };
+    }
+
+    saveThemeSettings(userId, theme) {
+        this.db.prepare(`
+            INSERT INTO document_themes (user_id, font_family, font_size, 
+                title_facture_text, title_facture_color,
+                title_devis_text, title_devis_color,
+                title_bon_text, title_bon_color)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                font_family=excluded.font_family, font_size=excluded.font_size,
+                title_facture_text=excluded.title_facture_text, title_facture_color=excluded.title_facture_color,
+                title_devis_text=excluded.title_devis_text, title_devis_color=excluded.title_devis_color,
+                title_bon_text=excluded.title_bon_text, title_bon_color=excluded.title_bon_color
+        `).run(userId, theme.fontFamily, theme.fontSize,
+            theme.titles.facture.text, theme.titles.facture.color,
+            theme.titles.devis.text, theme.titles.devis.color,
+            theme.titles.bon.text, theme.titles.bon.color);
+        
+        return { success: true };
+    }
+
     initTables() {
+        // Document themes table (NEW)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS document_themes (
+                user_id TEXT PRIMARY KEY,
+                font_family TEXT DEFAULT "'Segoe UI', sans-serif",
+                font_size TEXT DEFAULT '14px',
+                title_facture_text TEXT DEFAULT 'FACTURE',
+                title_facture_color TEXT DEFAULT '#1e3a8a',
+                title_devis_text TEXT DEFAULT 'DEVIS',
+                title_devis_color TEXT DEFAULT '#92400e',
+                title_bon_text TEXT DEFAULT 'BON DE COMMANDE',
+                title_bon_color TEXT DEFAULT '#065f46'
+            )
+        `);
+
         // Users table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS users (

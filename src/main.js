@@ -3,46 +3,46 @@ const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
-// Database and modules
+// Modules
 const Database = require('./database/db');
 const BackupScheduler = require('./backup-scheduler');
 const ExcelExporter = require('./exporters/excel-exporter');
 
-// Initialize
+// Init
 const db = new Database();
 const excelExporter = new ExcelExporter();
-let backupScheduler;
-let mainWindow;
 
+let mainWindow;
+let backupScheduler;
+
+// ==================== WINDOW ====================
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1400,
         height: 900,
         minWidth: 1200,
         minHeight: 700,
+        show: false,
         webPreferences: {
-            nodeIntegration: false,
             contextIsolation: true,
+            nodeIntegration: false,
             preload: path.join(__dirname, 'preload.js')
-        },
-        show: false
+        }
     });
 
     mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 
-    mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
-    });
+    mainWindow.once('ready-to-show', () => mainWindow.show());
 
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
 
-    // Initialize backup scheduler
     backupScheduler = new BackupScheduler(db);
     backupScheduler.start();
 }
 
+// ==================== APP ====================
 app.whenReady().then(() => {
     createWindow();
     autoUpdater.checkForUpdatesAndNotify();
@@ -56,318 +56,293 @@ app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// ==================== IPC HANDLERS ====================
-
-// AUTH
-ipcMain.handle('auth:register', async (event, userData) => {
+// ==================== AUTH ====================
+ipcMain.handle('auth:register', async (_, userData) => {
     try {
-        const result = db.registerUser(userData);
-        return { success: true, user: result };
-    } catch (error) {
-        return { success: false, error: error.message };
+        const user = db.registerUser(userData);
+        return { success: true, user };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-ipcMain.handle('auth:login', async (event, { email, password }) => {
+ipcMain.handle('auth:login', async (_, { email, password }) => {
     try {
-        const result = db.loginUser(email, password);
-        return { success: true, user: result };
-    } catch (error) {
-        return { success: false, error: error.message };
+        const user = db.loginUser(email, password);
+        return { success: true, user };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// DOCUMENTS
-ipcMain.handle('docs:getAll', async (event, userId) => {
-    return db.getDocuments(userId);
-});
+// ==================== DOCUMENTS ====================
+ipcMain.handle('docs:getAll', async (_, userId) => db.getDocuments(userId));
 
-ipcMain.handle('docs:getById', async (event, docId) => {
-    return db.getDocumentById(docId);
-});
+ipcMain.handle('docs:getById', async (_, id) => db.getDocumentById(id));
 
-ipcMain.handle('docs:save', async (event, docData) => {
+ipcMain.handle('docs:save', async (_, data) => {
     try {
-        const result = db.saveDocument(docData);
+        const doc = db.saveDocument(data);
+        return { success: true, document: doc };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('docs:update', async (_, { docId, updates }) => {
+    try {
+        const existing = db.getDocumentById(docId);
+        if (!existing) throw new Error('Document introuvable');
+
+        const updated = { ...existing, ...updates, id: docId };
+        const result = db.saveDocument(updated);
+
         return { success: true, document: result };
-    } catch (error) {
-        return { success: false, error: error.message };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-ipcMain.handle('docs:delete', async (event, docId) => {
+ipcMain.handle('docs:delete', async (_, id) => {
     try {
-        db.deleteDocument(docId);
+        await Promise.resolve(db.deleteDocument(id));
         return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-ipcMain.handle('docs:getNextNumber', async (event, { userId, type, year }) => {
-    return db.getNextDocumentNumber(userId, type, year);
+ipcMain.handle('docs:getNextNumber', async (_, args) => {
+    return db.getNextDocumentNumber(args.userId, args.type, args.year);
 });
 
-// NEW: Document conversion (Devis -> Facture, etc.)
-ipcMain.handle('docs:convert', async (event, { sourceId, targetType, newNumber, userId, year }) => {
+// Convert document
+ipcMain.handle('docs:convert', async (_, { sourceId, targetType, newNumber, userId, year }) => {
     try {
-        const sourceDoc = db.getDocumentById(sourceId);
-        if (!sourceDoc) throw new Error("Document source introuvable");
+        const source = db.getDocumentById(sourceId);
+        if (!source) throw new Error('Document source introuvable');
 
-        // Generate new number if not provided
-        const finalNumber = newNumber || db.getNextDocumentNumber(userId, targetType, year);
-        
-        // Create conversion note
-        const conversionNote = `Converti depuis ${sourceDoc.type.toUpperCase()} N° ${sourceDoc.number} du ${sourceDoc.date}`;
-        const newNotes = sourceDoc.notes ? `${sourceDoc.notes}\n\n${conversionNote}` : conversionNote;
+        const number = newNumber || db.getNextDocumentNumber(userId, targetType, year);
 
-        const newDocData = {
-            userId: sourceDoc.userId,
+        const note = `Converti depuis ${source.type.toUpperCase()} N° ${source.number} du ${source.date}`;
+
+        const newDoc = {
+            ...source,
+            id: undefined,
             type: targetType,
-            number: finalNumber,
+            number,
             date: new Date().toISOString().split('T')[0],
-            dueDate: targetType === 'facture' ? new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] : null,
-            currency: sourceDoc.currency,
-            paymentMode: sourceDoc.paymentMode,
-            companyName: sourceDoc.companyName,
-            companyMF: sourceDoc.companyMF,
-            companyAddress: sourceDoc.companyAddress,
-            companyPhone: sourceDoc.companyPhone,
-            companyEmail: sourceDoc.companyEmail,
-            companyRC: sourceDoc.companyRC,
-            clientName: sourceDoc.clientName,
-            clientMF: sourceDoc.clientMF,
-            clientAddress: sourceDoc.clientAddress,
-            clientPhone: sourceDoc.clientPhone,
-            clientEmail: sourceDoc.clientEmail,
-            items: sourceDoc.items,
-            applyTimbre: sourceDoc.applyTimbre,
-            timbreAmount: sourceDoc.timbreAmount,
-            totalHT: sourceDoc.totalHT,
-            totalTTC: sourceDoc.totalTTC,
-            logoImage: sourceDoc.logoImage,
-            stampImage: sourceDoc.stampImage,
-            signatureImage: sourceDoc.signatureImage,
-            notes: newNotes
+            dueDate: targetType === 'facture'
+                ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
+                : null,
+            notes: source.notes ? `${source.notes}\n\n${note}` : note
         };
 
-        const result = db.saveDocument(newDocData);
+        const result = db.saveDocument(newDoc);
+
         return { success: true, document: result };
-    } catch (error) {
-        return { success: false, error: error.message };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// NEW: Document edit/update
-ipcMain.handle('docs:update', async (event, { docId, updates }) => {
+// ==================== CLIENTS ====================
+ipcMain.handle('clients:getAll', async (_, userId) => db.getClients(userId));
+
+ipcMain.handle('clients:save', async (_, data) => {
     try {
-        const existingDoc = db.getDocumentById(docId);
-        if (!existingDoc) throw new Error("Document introuvable");
-
-        // Merge updates with existing data, keep same ID
-        const updatedData = {
-            ...existingDoc,
-            ...updates,
-            id: docId
-        };
-
-        const result = db.saveDocument(updatedData);
-        return { success: true, document: result };
-    } catch (error) {
-        return { success: false, error: error.message };
+        const client = db.saveClient(data);
+        return { success: true, client };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// CLIENTS
-ipcMain.handle('clients:getAll', async (event, userId) => {
-    return db.getClients(userId);
-});
-
-ipcMain.handle('clients:save', async (event, clientData) => {
+ipcMain.handle('clients:delete', async (_, id) => {
     try {
-        const result = db.saveClient(clientData);
-        return { success: true, client: result };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
-
-ipcMain.handle('clients:delete', async (event, clientId) => {
-    try {
-        db.deleteClient(clientId);
+        await Promise.resolve(db.deleteClient(id));
         return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// COMPANY
-ipcMain.handle('company:get', async (event, userId) => {
-    return db.getCompanySettings(userId);
-});
+// ==================== SERVICES ====================
+ipcMain.handle('services:getAll', async (_, userId) => db.getServices(userId));
 
-ipcMain.handle('company:save', async (event, settings) => {
+ipcMain.handle('services:save', async (_, data) => {
     try {
-        const result = db.saveCompanySettings(settings);
-        return { success: true, company: result };
-    } catch (error) {
-        return { success: false, error: error.message };
+        const service = db.saveService(data);
+        return { success: true, service };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// STATS
-ipcMain.handle('stats:get', async (event, userId) => {
-    return db.getDashboardStats(userId);
-});
-
-// NEW: SERVICES
-ipcMain.handle('services:getAll', async (event, userId) => {
-    return db.getServices(userId);
-});
-
-ipcMain.handle('services:save', async (event, serviceData) => {
+ipcMain.handle('services:delete', async (_, id) => {
     try {
-        const result = db.saveService(serviceData);
-        return { success: true, service: result };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
-
-ipcMain.handle('services:delete', async (event, serviceId) => {
-    try {
-        db.deleteService(serviceId);
+        await Promise.resolve(db.deleteService(id));
         return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// NEW: USER SETTINGS (Serial Numbers)
-ipcMain.handle('settings:get', async (event, userId) => {
-    return db.getUserSettings(userId);
-});
+// ==================== COMPANY ====================
+ipcMain.handle('company:get', async (_, userId) => db.getCompanySettings(userId));
 
-ipcMain.handle('settings:update', async (event, { userId, settings }) => {
+ipcMain.handle('company:save', async (_, settings) => {
     try {
-        const result = db.updateUserSettings(userId, settings);
-        return { success: true, settings: result };
-    } catch (error) {
-        return { success: false, error: error.message };
+        const company = db.saveCompanySettings(settings);
+        return { success: true, company };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-ipcMain.handle('settings:resetCounter', async (event, { userId, type, year }) => {
+// ==================== SETTINGS ====================
+ipcMain.handle('settings:get', async (_, userId) => db.getUserSettings(userId));
+
+ipcMain.handle('settings:update', async (_, { userId, settings }) => {
+    try {
+        const updated = db.updateUserSettings(userId, settings);
+        return { success: true, settings: updated };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('settings:resetCounter', async (_, { userId, type, year }) => {
     try {
         db.resetDocumentCounter(userId, type, year || new Date().getFullYear());
         return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// EXPORT EXCEL
-ipcMain.handle('export:excel:documents', async (event, { documents, filePath }) => {
-    if (!filePath) {
-        const result = await dialog.showSaveDialog({
-            defaultPath: `documents-${new Date().toISOString().split('T')[0]}.xlsx`,
-            filters: [{ name: 'Excel', extensions: ['xlsx'] }]
-        });
-        if (result.canceled) return { success: false };
-        filePath = result.filePath;
-    }
-    
+// ==================== THEME ====================
+ipcMain.handle('theme:get', async (_, userId) => db.getThemeSettings(userId));
+
+ipcMain.handle('theme:save', async (_, { userId, theme }) => {
     try {
-        excelExporter.exportMultipleDocuments(documents, filePath);
-        return { success: true, path: filePath };
-    } catch (error) {
-        return { success: false, error: error.message };
+        db.saveThemeSettings(userId, theme);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-ipcMain.handle('export:excel:clients', async (event, { clients, filePath }) => {
-    if (!filePath) {
-        const result = await dialog.showSaveDialog({
-            defaultPath: `clients-${new Date().toISOString().split('T')[0]}.xlsx`,
-            filters: [{ name: 'Excel', extensions: ['xlsx'] }]
-        });
-        if (result.canceled) return { success: false };
-        filePath = result.filePath;
-    }
-    
+// ==================== STATS ====================
+ipcMain.handle('stats:get', async (_, userId) => db.getDashboardStats(userId));
+
+// ==================== PDF (STRIPE-LEVEL CLEAN) ====================
+ipcMain.handle('pdf:generateAndSave', async (_, { html, filename }) => {
     try {
-        excelExporter.exportClients(clients, filePath);
-        return { success: true, path: filePath };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
+        const { filePath } = await dialog.showSaveDialog({
+            defaultPath: filename || 'invoice.pdf',
+            filters: [{ name: 'PDF', extensions: ['pdf'] }]
+        });
 
-// PDF EXPORT
-ipcMain.handle('pdf:export', async (event, { html, filename }) => {
-    const { filePath } = await dialog.showSaveDialog({
-        defaultPath: filename,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }]
-    });
+        if (!filePath) return { success: false };
 
-    if (filePath) {
-        const win = new BrowserWindow({ show: false });
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-        const pdf = await win.webContents.printToPDF({ 
-            format: 'A4', 
+        const win = new BrowserWindow({
+            show: false,
+            webPreferences: { offscreen: true }
+        });
+
+        await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+
+        const pdf = await win.webContents.printToPDF({
+            pageSize: 'A4',
             printBackground: true,
-            margins: { marginType: 'none' }
+            marginsType: 1
         });
+
         fs.writeFileSync(filePath, pdf);
         win.close();
+
         return { success: true, path: filePath };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
-    return { success: false };
 });
 
-// BACKUP
-ipcMain.handle('backup:settings:get', () => {
-    return backupScheduler.getSettings();
+// ==================== EXCEL ====================
+ipcMain.handle('export:excel:documents', async (_, { documents, filePath }) => {
+    try {
+        if (!filePath) {
+            const res = await dialog.showSaveDialog({
+                defaultPath: `documents-${Date.now()}.xlsx`,
+                filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+            });
+            if (res.canceled) return { success: false };
+            filePath = res.filePath;
+        }
+
+        excelExporter.exportMultipleDocuments(documents, filePath);
+
+        return { success: true, path: filePath };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
-ipcMain.handle('backup:settings:save', (event, settings) => {
+ipcMain.handle('export:excel:clients', async (_, { clients, filePath }) => {
+    try {
+        if (!filePath) {
+            const res = await dialog.showSaveDialog({
+                defaultPath: `clients-${Date.now()}.xlsx`,
+                filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+            });
+            if (res.canceled) return { success: false };
+            filePath = res.filePath;
+        }
+
+        excelExporter.exportClients(clients, filePath);
+
+        return { success: true, path: filePath };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+// ==================== BACKUP ====================
+ipcMain.handle('backup:settings:get', () => backupScheduler.getSettings());
+
+ipcMain.handle('backup:settings:save', (_, settings) => {
     backupScheduler.saveSettings(settings);
     backupScheduler.start();
     return { success: true };
 });
 
 ipcMain.handle('backup:create:manual', async () => {
-    const result = await backupScheduler.createBackup(true);
-    return result;
+    return await backupScheduler.createBackup(true);
 });
 
-ipcMain.handle('backup:list', () => {
-    return backupScheduler.getBackupList();
-});
+ipcMain.handle('backup:list', () => backupScheduler.getBackupList());
 
-ipcMain.handle('backup:restore', async (event, backupPath) => {
+ipcMain.handle('backup:restore', async (_, path) => {
     try {
-        await backupScheduler.restoreBackup(backupPath);
+        await backupScheduler.restoreBackup(path);
         return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
+    } catch (e) {
+        return { success: false, error: e.message };
     }
 });
 
-// ==================== AUTO-UPDATER EVENTS ====================
-
+// ==================== AUTO UPDATER ====================
 autoUpdater.on('update-available', () => {
-    // You could send a message to the renderer or just log it
-    console.log('Mise à jour disponible...');
+    console.log('Update available...');
 });
 
 autoUpdater.on('update-downloaded', () => {
     dialog.showMessageBox({
         type: 'info',
-        title: 'Mise à jour prête',
-        message: 'Une nouvelle version a été téléchargée. Voulez-vous redémarrer pour l\'installer ?',
-        buttons: ['Redémarrer', 'Plus tard']
-    }).then((result) => {
-        if (result.response === 0) autoUpdater.quitAndInstall();
+        title: 'Update Ready',
+        message: 'Install update now?',
+        buttons: ['Restart', 'Later']
+    }).then(res => {
+        if (res.response === 0) autoUpdater.quitAndInstall();
     });
 });

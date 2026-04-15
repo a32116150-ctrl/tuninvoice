@@ -646,7 +646,113 @@
                         </button>
                     </div>
                 </div>
+            </div>   <!-- ===== DOCUMENT THEME SETTINGS ===== -->   
+            <div class="card">
+    <div class="form-section">
+        <div class="section-title">🎨 Thème des Documents</div>
+        
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Police principale</label>
+                <select id="docFontFamily" onchange="updateThemePreview()">
+                    <option value="'Segoe UI', sans-serif">Segoe UI (Moderne)</option>
+                    <option value="'Times New Roman', serif">Times New Roman (Classique)</option>
+                    <option value="Arial, sans-serif">Arial (Standard)</option>
+                    <option value="'Courier New', monospace">Courier New (Monospace)</option>
+                    <option value="Georgia, serif">Georgia (Élégant)</option>
+                    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                </select>
             </div>
+            <div class="form-group">
+                <label>Taille de base</label>
+                <select id="docFontSize" onchange="updateThemePreview()">
+                    <option value="12px">Petite (12px)</option>
+                    <option value="14px" selected>Normale (14px)</option>
+                    <option value="16px">Grande (16px)</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top: 24px;">
+            <h4 style="margin-bottom: 16px; color: var(--gray-700);">Titres personnalisés</h4>
+            <div class="theme-type-grid">
+                <!-- FACTURE -->
+                <div class="theme-type-card">
+                    <div class="theme-type-header" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6);">
+                        <span class="theme-type-icon">📄</span>
+                        <span>FACTURE</span>
+                    </div>
+                    <div class="theme-type-body">
+                        <div class="form-group">
+                            <label>Texte</label>
+                            <input type="text" id="titleFacture" value="FACTURE" oninput="updateThemePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Couleur</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="colorFacture" value="#1e3a8a" onchange="updateThemePreview()">
+                                <span id="colorFactureHex">#1e3a8a</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEVIS -->
+                <div class="theme-type-card">
+                    <div class="theme-type-header" style="background: linear-gradient(135deg, #92400e, #f59e0b);">
+                        <span class="theme-type-icon">📋</span>
+                        <span>DEVIS</span>
+                    </div>
+                    <div class="theme-type-body">
+                        <div class="form-group">
+                            <label>Texte</label>
+                            <input type="text" id="titleDevis" value="DEVIS" oninput="updateThemePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Couleur</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="colorDevis" value="#92400e" onchange="updateThemePreview()">
+                                <span id="colorDevisHex">#92400e</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BON DE COMMANDE -->
+                <div class="theme-type-card">
+                    <div class="theme-type-header" style="background: linear-gradient(135deg, #065f46, #10b981);">
+                        <span class="theme-type-icon">🛒</span>
+                        <span>BON DE COMMANDE</span>
+                    </div>
+                    <div class="theme-type-body">
+                        <div class="form-group">
+                            <label>Texte</label>
+                            <input type="text" id="titleBon" value="BON DE COMMANDE" oninput="updateThemePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Couleur</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="colorBon" value="#065f46" onchange="updateThemePreview()">
+                                <span id="colorBonHex">#065f46</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="theme-preview-box" style="margin-top: 24px;">
+            <h4 style="margin-bottom: 12px; color: var(--gray-700);">Aperçu en temps réel</h4>
+            <div id="themePreview" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; background: white;">
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; gap: 12px;">
+            <button class="btn btn-primary" onclick="saveThemeSettings()">💾 Enregistrer</button>
+            <button class="btn btn-secondary" onclick="resetThemeDefaults()">🔄 Réinitialiser</button>
+        </div>
+    </div>
+</div> 
 
             <!-- Backup Settings -->
             <div class="card">
