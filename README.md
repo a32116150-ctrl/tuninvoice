@@ -1,4 +1,4 @@
-align="center" width="40" height="40" /> TuniInvoice Pro
+ TuniInvoice Pro
 
 The Ultimate Invoicing Solution for the Tunisian Market.
 
