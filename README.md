@@ -1,4 +1,4 @@
-<img src="src/assets/logo.png" align="center" width="40" height="40" /> TuniInvoice Pro
+align="center" width="40" height="40" /> TuniInvoice Pro
 
 The Ultimate Invoicing Solution for the Tunisian Market.
 
@@ -80,7 +80,7 @@ TuniInvoice Pro is built on the principle of local-first data. We do not collect
 Contributions are welcome! If you'd like to improve the Tunisian fiscal logic or the UI, feel free to fork the repo and submit a pull request.
 
 <p align="center">
-Built with ❤️ by <strong>Anoir Cherif</strong> in Nabeul, Tunisia. 
+Built by <strong>Anoir Cherif</strong> in Tunisia. 
 
 
 
