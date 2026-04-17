@@ -1,52 +1,77 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('electronAPI', {
-    // Auth
-    authLogin: (data) => ipcRenderer.invoke('auth-login', data),
-    authRegister: (data) => ipcRenderer.invoke('auth-register', data),
+const invoke = async (channel, data) => {
+  try {
+    return await ipcRenderer.invoke(channel, data);
+  } catch (error) {
+    console.error(`IPC Error on channel "${channel}":`, error);
+    return { success: false, error: error.message || 'IPC error' };
+  }
+};
 
-    // Company
-    getCompany: (userId) => ipcRenderer.invoke('get-company', userId),
-    saveCompany: (settings) => ipcRenderer.invoke('save-company', settings),
+contextBridge.exposeInMainWorld(
+  'electronAPI',
+  Object.freeze({
+    // AUTH
+    authRegister: (userData) => invoke('auth:register', userData),
+    authLogin: (credentials) => invoke('auth:login', credentials),
 
-    // Documents
-    getDocuments: (userId) => ipcRenderer.invoke('get-documents', userId),
-    saveDocument: (docData) => ipcRenderer.invoke('save-document', docData),
-    updateDocument: (data) => ipcRenderer.invoke('update-document', data),
-    deleteDocument: (docId) => ipcRenderer.invoke('delete-document', docId),
-    getNextDocNumber: (data) => ipcRenderer.invoke('get-next-doc-number', data),
-    convertDocument: (data) => ipcRenderer.invoke('convert-document', data),
+    // DOCUMENTS
+    getDocuments: (userId) => invoke('docs:getAll', userId),
+    getDocument: (docId) => invoke('docs:getById', docId),
+    saveDocument: (docData) => invoke('docs:save', docData),
+    updateDocument: (docData) => invoke('docs:update', docData),
+    deleteDocument: (docId) => invoke('docs:delete', docId),
+    getNextDocNumber: (params) => invoke('docs:getNextNumber', params),
+    convertDocument: (data) => invoke('docs:convert', data),
 
-    // Clients
-    getClients: (userId) => ipcRenderer.invoke('get-clients', userId),
-    saveClient: (clientData) => ipcRenderer.invoke('save-client', clientData),
-    deleteClient: (clientId) => ipcRenderer.invoke('delete-client', clientId),
+    // CLIENTS
+    getClients: (userId) => invoke('clients:getAll', userId),
+    saveClient: (clientData) => invoke('clients:save', clientData),
+    deleteClient: (clientId) => invoke('clients:delete', clientId),
 
-    // Services
-    getServices: (userId) => ipcRenderer.invoke('get-services', userId),
-    saveService: (serviceData) => ipcRenderer.invoke('save-service', serviceData),
-    deleteService: (serviceId) => ipcRenderer.invoke('delete-service', serviceId),
+    // COMPANY
+    getCompany: (userId) => invoke('company:get', userId),
+    saveCompany: (data) => invoke('company:save', data),
+    saveCompanyImages: (data) => invoke('company:saveImages', data),
+    removeCompanyImage: (data) => invoke('company:removeImage', data),
 
-    // Stats
-    getStats: (userId) => ipcRenderer.invoke('get-stats', userId),
+    // STATS
+    getStats: (userId) => invoke('stats:get', userId),
 
-    // Settings (prefixes)
-    getSettings: (userId) => ipcRenderer.invoke('get-settings', userId),
-    updateSettings: (data) => ipcRenderer.invoke('update-settings', data),
-    resetCounter: (data) => ipcRenderer.invoke('reset-counter', data),
+    // SERVICES
+    getServices: (userId) => invoke('services:getAll', userId),
+    saveService: (serviceData) => invoke('services:save', serviceData),
+    deleteService: (serviceId) => invoke('services:delete', serviceId),
 
-    // Backup
-    getBackupSettings: () => ipcRenderer.invoke('get-backup-settings'),
-    saveBackupSettings: (settings) => ipcRenderer.invoke('save-backup-settings', settings),
-    getBackupList: () => ipcRenderer.invoke('get-backup-list'),
-    createManualBackup: () => ipcRenderer.invoke('create-manual-backup'),
-    restoreBackup: (backupPath) => ipcRenderer.invoke('restore-backup', backupPath),
+    // SETTINGS
+    getSettings: (userId) => invoke('settings:get', userId),
+    updateSettings: (data) => invoke('settings:update', data),
+    resetCounter: (data) => invoke('settings:resetCounter', data),
 
-    // Theme
-    getThemeSettings: (userId) => ipcRenderer.invoke('get-theme-settings', userId),
-    saveThemeSettings: (data) => ipcRenderer.invoke('save-theme-settings', data),
+    // EXPORT EXCEL
+    exportExcelDocuments: (params) => invoke('export:excel:documents', params),
+    exportExcelClients: (params) => invoke('export:excel:clients', params),
 
-    // PDF / Print
-    savePDF: (data) => ipcRenderer.invoke('save-pdf', data),
-    printPDF: (data) => ipcRenderer.invoke('print-pdf', data)
-});
+    // BACKUP
+    getBackupSettings: () => invoke('backup:settings:get'),
+    saveBackupSettings: (settings) => invoke('backup:settings:save', settings),
+    createManualBackup: () => invoke('backup:create:manual'),
+    getBackupList: () => invoke('backup:list'),
+    restoreBackup: (path) => invoke('backup:restore', path),
+
+    // PDF
+    savePDF: (params) => invoke('pdf:save', params),
+    printPDF: (params) => invoke('pdf:print', params),
+
+    // THEME
+    getThemeSettings: (userId) => invoke('theme:get', userId),
+    saveThemeSettings: (data) => invoke('theme:save', data),
+
+    // CONTRACTS
+    getContracts: (userId) => invoke('contracts:getAll', userId),
+    getContract: (id) => invoke('contracts:getById', id),
+    saveContract: (data) => invoke('contracts:save', data),
+    deleteContract: (id) => invoke('contracts:delete', id),
+  })
+);

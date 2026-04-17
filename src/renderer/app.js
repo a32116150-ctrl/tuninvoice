@@ -2,34 +2,33 @@
 let currentUser = null;
 let currentDocType = 'facture';
 let itemCount = 0;
+let logoImage = null;
+let stampImage = null;
+let signatureImage = null;
 let timbreAmount = 0;
 let allDocuments = [];
 let allClients = [];
 let allServices = [];
+let allContracts = [];
 let editingServiceId = null;
 let editingDocId = null;
+let editingContractId = null;
 let confirmCallback = null;
 let currentSettings = {};
-let companyImages = { logo: null, stamp: null, signature: null }; // from company settings
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check localStorage first for persistent login
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
+    // Try remembered user first (localStorage), then sessionStorage
+    const rememberedUser = localStorage.getItem('rememberedUser');
+    const sessionUser   = sessionStorage.getItem('currentUser');
+
+    const raw = rememberedUser || sessionUser;
+    if (raw) {
         try {
-            currentUser = JSON.parse(storedUser);
-            showApp();
-            return;
-        } catch {}
-    }
-    // Fallback to sessionStorage
-    const savedUser = sessionStorage.getItem('currentUser');
-    if (savedUser) {
-        try {
-            currentUser = JSON.parse(savedUser);
+            currentUser = JSON.parse(raw);
             showApp();
         } catch {
+            localStorage.removeItem('rememberedUser');
             sessionStorage.removeItem('currentUser');
         }
     }
@@ -103,22 +102,21 @@ async function handleLogin(e) {
             password: document.getElementById('loginPassword').value
         });
         if (result.success) {
-            const safeUser = { 
-                id: result.user.id || result.user._id, 
-                name: result.user.name || 'User', 
-                email: result.user.email, 
-                company: result.user.company || '', 
-                mf: result.user.mf || '' 
+            const safeUser = {
+                id: result.user.id || result.user._id,
+                name: result.user.name || 'User',
+                email: result.user.email,
+                company: result.user.company || '',
+                mf: result.user.mf || ''
             };
             currentUser = safeUser;
-            const remember = document.getElementById('rememberMeCheckbox').checked;
-            if (remember) {
-                localStorage.setItem('currentUser', JSON.stringify(safeUser));
-                sessionStorage.removeItem('currentUser');
+            const rememberMe = document.getElementById('rememberMe')?.checked;
+            if (rememberMe) {
+                localStorage.setItem('rememberedUser', JSON.stringify(safeUser));
             } else {
-                sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
-                localStorage.removeItem('currentUser');
+                localStorage.removeItem('rememberedUser');
             }
+            sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
             showApp();
         } else { showError(result.error || 'Identifiants incorrects'); }
     } catch { showError('Erreur de connexion. Veuillez réessayer.'); }
@@ -157,8 +155,8 @@ function confirmLogout() {
 
 function logout() {
     currentUser = null;
+    localStorage.removeItem('rememberedUser');
     sessionStorage.removeItem('currentUser');
-    localStorage.removeItem('currentUser');
     document.getElementById('appContainer').classList.add('hidden');
     document.getElementById('authContainer').classList.remove('hidden');
     document.getElementById('loginForm').reset();
@@ -185,17 +183,17 @@ function navigateTo(page) {
     const pageEl = document.getElementById(`page-${page}`);
     if (!pageEl) return;
     pageEl.classList.add('active');
-    const pages = ['dashboard','new-document','documents','clients','services','contrat','company','settings'];
+    const pages = ['dashboard','new-document','documents','clients','services','company','contracts','settings'];
     const idx = pages.indexOf(page);
     const navItems = document.querySelectorAll('.nav-item');
     if (idx !== -1 && navItems[idx]) navItems[idx].classList.add('active');
-    if (page === 'dashboard')  loadDashboard();
-    if (page === 'documents')  loadDocuments();
-    if (page === 'clients')    loadClients();
-    if (page === 'services')   loadServices();
-    if (page === 'contrat')    initContractPage();
-    if (page === 'company')    loadCompanyPage();
-    if (page === 'settings')   { loadSettings(); loadSerialSettings(); loadThemeSettings(); }
+    if (page === 'dashboard')   loadDashboard();
+    if (page === 'documents')   loadDocuments();
+    if (page === 'clients')     loadClients();
+    if (page === 'services')    loadServices();
+    if (page === 'company')     loadCompanyPage();
+    if (page === 'contracts')   loadContracts();
+    if (page === 'settings')    { loadSettings(); loadSerialSettings(); loadThemeSettings(); }
 }
 
 function createDocOfType(type) {
@@ -205,9 +203,7 @@ function createDocOfType(type) {
     navigateTo('new-document');
 }
 
-// ==================== DASHBOARD (ENHANCED) ====================
-let monthlyChart = null, docTypeChart = null;
-
+// ==================== DASHBOARD ====================
 async function loadDashboard() {
     try {
         const stats = await window.electronAPI.getStats(currentUser.id);
@@ -216,63 +212,9 @@ async function loadDashboard() {
         document.getElementById('statTotalClients').textContent = stats.totalClients;
         document.getElementById('statThisMonth').textContent    = stats.thisMonth;
         const docs = await window.electronAPI.getDocuments(currentUser.id);
-        allDocuments = docs;
         renderRecentDocs(docs.slice(0, 6));
-
-        // Prepare charts data
-        const monthlyData = await prepareMonthlyRevenueData(docs);
-        const typeCounts = { facture:0, devis:0, bon:0 };
-        docs.forEach(d => typeCounts[d.type]++);
-        
-        // Render charts
-        if (monthlyChart) monthlyChart.destroy();
-        if (docTypeChart) docTypeChart.destroy();
-        const ctx1 = document.getElementById('monthlyRevenueChart').getContext('2d');
-        monthlyChart = new Chart(ctx1, {
-            type: 'bar',
-            data: {
-                labels: monthlyData.labels,
-                datasets: [{ label: 'Revenus (TND)', data: monthlyData.values, backgroundColor: '#3b82f6' }]
-            },
-            options: { responsive: true, maintainAspectRatio: true }
-        });
-        const ctx2 = document.getElementById('docTypeChart').getContext('2d');
-        docTypeChart = new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: ['Factures', 'Devis', 'Bons de commande'],
-                datasets: [{ data: [typeCounts.facture, typeCounts.devis, typeCounts.bon], backgroundColor: ['#3b82f6', '#f59e0b', '#10b981'] }]
-            }
-        });
-
-        // Top clients by total amount
-        const clientTotals = {};
-        docs.forEach(doc => {
-            if (doc.type === 'facture') {
-                clientTotals[doc.clientName] = (clientTotals[doc.clientName] || 0) + doc.totalTTC;
-            }
-        });
-        const topClients = Object.entries(clientTotals).sort((a,b) => b[1]-a[1]).slice(0,3);
-        const topClientsDiv = document.getElementById('topClientsList');
-        topClientsDiv.innerHTML = topClients.length ? topClients.map(([name,amount]) => `<div><strong>${escapeHtml(name)}</strong> : ${amount.toFixed(2)} TND</div>`).join('') : '<p>Aucune facture</p>';
-        
-        // Pending invoices (simulated - you may add a 'status' field later)
-        const pendingDiv = document.getElementById('pendingInvoicesList');
-        pendingDiv.innerHTML = '<p>Fonctionnalité à venir (statut de paiement)</p>';
+        renderDashboardCharts(stats);
     } catch { showToast('Erreur tableau de bord', 'error'); }
-}
-
-async function prepareMonthlyRevenueData(docs) {
-    const months = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
-    const values = new Array(12).fill(0);
-    docs.forEach(doc => {
-        if (doc.type === 'facture') {
-            const date = new Date(doc.date);
-            const month = date.getMonth();
-            values[month] += doc.totalTTC;
-        }
-    });
-    return { labels: months, values };
 }
 
 function renderRecentDocs(docs) {
@@ -294,9 +236,131 @@ function renderRecentDocs(docs) {
                 <button class="btn-icon btn-edit" onclick="editExistingDoc('${doc.id}')" title="Modifier">✏️</button>
                 <button class="btn-icon btn-pdf"    onclick="downloadDocPDF('${doc.id}')"   title="PDF">📄</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer">🗑️</button>
-            </td>
-        </tr>`).join('')}
-    </tbody></tr>`;
+            </td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderDashboardCharts(stats) {
+    renderRevenueChart(stats.monthlyRevenue || []);
+    renderTypeDonutChart(stats.typeBreakdown || []);
+}
+
+function renderRevenueChart(monthlyData) {
+    const canvas = document.getElementById('revenueChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Build last 6 months labels even if data is missing
+    const months = [];
+    const values = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const label = d.toLocaleDateString('fr-FR', { month:'short', year:'2-digit' });
+        const found = monthlyData.find(m => m.month === key);
+        months.push(label);
+        values.push(found ? parseFloat(found.revenue) : 0);
+    }
+
+    const max = Math.max(...values, 1);
+    const W = canvas.width, H = canvas.height;
+    const pad = { top: 20, right: 20, bottom: 40, left: 60 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid lines
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.top + (chartH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y); ctx.stroke();
+        const val = max - (max / 4) * i;
+        ctx.fillStyle = '#9ca3af'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText(val >= 1000 ? (val/1000).toFixed(1)+'k' : val.toFixed(0), pad.left - 6, y + 4);
+    }
+
+    // Bars
+    const barW = chartW / months.length * 0.55;
+    const gap  = chartW / months.length;
+    values.forEach((v, i) => {
+        const x = pad.left + gap * i + (gap - barW) / 2;
+        const barH = (v / max) * chartH;
+        const y = pad.top + chartH - barH;
+        const grad = ctx.createLinearGradient(0, y, 0, y + barH);
+        grad.addColorStop(0, '#3b82f6');
+        grad.addColorStop(1, '#1e40af');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(x, y, barW, barH, 4) : ctx.rect(x, y, barW, barH);
+        ctx.fill();
+        // Label
+        ctx.fillStyle = '#374151'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(months[i], x + barW / 2, pad.top + chartH + 16);
+        if (v > 0) {
+            ctx.fillStyle = '#1e40af'; ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(v >= 1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(0), x + barW / 2, y - 4);
+        }
+    });
+}
+
+function renderTypeDonutChart(breakdown) {
+    const canvas = document.getElementById('typeDonutChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const colors = { facture: '#3b82f6', devis: '#f59e0b', bon: '#10b981' };
+    const labels = { facture: 'Factures', devis: 'Devis', bon: 'Bons' };
+    const total = breakdown.reduce((s, b) => s + b.count, 0);
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2 - 10, r = Math.min(W, H) * 0.35;
+
+    ctx.clearRect(0, 0, W, H);
+
+    if (total === 0) {
+        ctx.fillStyle = '#d1d5db';
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#9ca3af'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('Aucun document', cx, cy + 4);
+        return;
+    }
+
+    let startAngle = -Math.PI / 2;
+    breakdown.forEach(b => {
+        const slice = (b.count / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+        ctx.closePath();
+        ctx.fillStyle = colors[b.type] || '#6b7280';
+        ctx.fill();
+        startAngle += slice;
+    });
+
+    // Hole
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+
+    // Center text
+    ctx.fillStyle = '#111'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(total, cx, cy + 4);
+    ctx.fillStyle = '#6b7280'; ctx.font = '11px sans-serif';
+    ctx.fillText('documents', cx, cy + 18);
+
+    // Legend
+    let ly = cy + r + 20;
+    breakdown.forEach(b => {
+        const lx = cx - 60;
+        ctx.fillStyle = colors[b.type] || '#6b7280';
+        ctx.fillRect(lx, ly - 8, 12, 12);
+        ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText(`${labels[b.type] || b.type}: ${b.count}`, lx + 16, ly + 2);
+        ly += 18;
+    });
 }
 
 // ==================== NEW DOCUMENT ====================
@@ -328,10 +392,10 @@ async function loadCompanyIntoForm() {
         document.getElementById('docCompanyPhone').value   = c.phone    || '';
         document.getElementById('docCompanyEmail').value   = c.email    || '';
         document.getElementById('docCompanyRC').value      = c.rc       || '';
-        // Load company images (will be used in preview)
-        companyImages.logo      = c.logo_image || null;
-        companyImages.stamp     = c.stamp_image || null;
-        companyImages.signature = c.signature_image || null;
+        // Load images from company settings
+        if (c.logo_image)      { logoImage = c.logo_image; }
+        if (c.stamp_image)     { stampImage = c.stamp_image; }
+        if (c.signature_image) { signatureImage = c.signature_image; }
     } catch {}
 }
 
@@ -455,6 +519,83 @@ function addPresetService() {
     showToast('Service ajouté', 'success');
 }
 
+// ==================== IMAGES (doc form - read-only, loaded from company) ====================
+// Images in the document form are loaded from company settings.
+// Users no longer upload images per-document; they're managed in Mon Entreprise.
+// This function is kept for backward compat when editing existing documents with embedded images.
+function handleImageUpload(input, type) {
+    if (!input.files?.[0]) return;
+    if (input.files[0].size > 5*1024*1024) { showToast('Image trop lourde (max 5 MB)','warning'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const data = e.target.result;
+        if (type==='logo') logoImage=data; else if (type==='stamp') stampImage=data; else if (type==='signature') signatureImage=data;
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function removeImage(type) {
+    if (type==='logo') logoImage=null; else if (type==='stamp') stampImage=null; else if (type==='signature') signatureImage=null;
+}
+
+// ==================== COMPANY IMAGE UPLOADS (Mon Entreprise page) ====================
+function handleCompanyImageUpload(input, type) {
+    if (!input.files?.[0]) return;
+    if (input.files[0].size > 5*1024*1024) { showToast('Image trop lourde (max 5 MB)','warning'); return; }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const data = e.target.result;
+        const previewId = `company${type.charAt(0).toUpperCase()+type.slice(1)}Preview`;
+        const placeholderId = `company${type.charAt(0).toUpperCase()+type.slice(1)}Placeholder`;
+        const boxId = `company${type.charAt(0).toUpperCase()+type.slice(1)}Box`;
+
+        const previewEl = document.getElementById(previewId);
+        const placeholderEl = document.getElementById(placeholderId);
+        const boxEl = document.getElementById(boxId);
+
+        if (previewEl) { previewEl.src = data; previewEl.classList.remove('hidden'); }
+        if (placeholderEl) placeholderEl.classList.add('hidden');
+        if (boxEl) boxEl.classList.add('has-image');
+
+        // Save image to company in DB immediately
+        try {
+            const payload = { userId: currentUser.id };
+            if (type === 'logo')      { payload.logoImage = data; logoImage = data; }
+            if (type === 'stamp')     { payload.stampImage = data; stampImage = data; }
+            if (type === 'signature') { payload.signatureImage = data; signatureImage = data; }
+            await window.electronAPI.saveCompanyImages(payload);
+            showToast(`${type.charAt(0).toUpperCase()+type.slice(1)} enregistré`, 'success');
+        } catch { showToast('Erreur de sauvegarde image', 'error'); }
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+async function removeCompanyImage(type) {
+    const previewId = `company${type.charAt(0).toUpperCase()+type.slice(1)}Preview`;
+    const placeholderId = `company${type.charAt(0).toUpperCase()+type.slice(1)}Placeholder`;
+    const boxId = `company${type.charAt(0).toUpperCase()+type.slice(1)}Box`;
+    const inputId = `company${type.charAt(0).toUpperCase()+type.slice(1)}Input`;
+
+    const previewEl = document.getElementById(previewId);
+    const placeholderEl = document.getElementById(placeholderId);
+    const boxEl = document.getElementById(boxId);
+    const inputEl = document.getElementById(inputId);
+
+    if (previewEl) { previewEl.src = ''; previewEl.classList.add('hidden'); }
+    if (placeholderEl) placeholderEl.classList.remove('hidden');
+    if (boxEl) boxEl.classList.remove('has-image');
+    if (inputEl) inputEl.value = '';
+
+    if (type === 'logo') logoImage = null;
+    if (type === 'stamp') stampImage = null;
+    if (type === 'signature') signatureImage = null;
+
+    try {
+        await window.electronAPI.removeCompanyImage({ userId: currentUser.id, imageType: type });
+        showToast(`${type.charAt(0).toUpperCase()+type.slice(1)} supprimé`, 'info');
+    } catch { showToast('Erreur suppression image', 'error'); }
+}
+
 // ==================== CLIENTS DROPDOWN ====================
 async function loadClientsDropdown() {
     try {
@@ -557,7 +698,7 @@ async function saveService() {
     const serviceData = {
         id: editingServiceId,
         userId: currentUser.id,
-        name: name,
+        name,
         description: document.getElementById('serviceDescription').value.trim(),
         price: parseFloat(document.getElementById('servicePrice').value) || 0,
         tva: parseFloat(document.getElementById('serviceTva').value) || 19
@@ -605,8 +746,8 @@ async function loadSerialSettings() {
     try {
         currentSettings = await window.electronAPI.getSettings(currentUser.id);
         document.getElementById('prefixFacture').value = currentSettings.prefix_facture || 'FAC';
-        document.getElementById('prefixDevis').value = currentSettings.prefix_devis || 'DEV';
-        document.getElementById('prefixBon').value = currentSettings.prefix_bon || 'BC';
+        document.getElementById('prefixDevis').value   = currentSettings.prefix_devis   || 'DEV';
+        document.getElementById('prefixBon').value     = currentSettings.prefix_bon     || 'BC';
         updateSerialPreview();
     } catch (err) {
         console.error('Error loading settings:', err);
@@ -622,11 +763,11 @@ function updateSerialPreview() {
 async function saveSerialSettings() {
     const settings = {
         prefix_facture: document.getElementById('prefixFacture').value.toUpperCase(),
-        prefix_devis: document.getElementById('prefixDevis').value.toUpperCase(),
-        prefix_bon: document.getElementById('prefixBon').value.toUpperCase()
+        prefix_devis:   document.getElementById('prefixDevis').value.toUpperCase(),
+        prefix_bon:     document.getElementById('prefixBon').value.toUpperCase()
     };
     try {
-        await window.electronAPI.updateSettings({ userId: currentUser.id, settings: settings });
+        await window.electronAPI.updateSettings({ userId: currentUser.id, settings });
         showToast('Paramètres de numérotation enregistrés', 'success');
         await loadSerialSettings();
     } catch (err) {
@@ -656,7 +797,7 @@ function openResetCounterModal() {
     );
 }
 
-// ==================== PREVIEW & SAVE (using company images) ====================
+// ==================== PREVIEW & SAVE ====================
 function previewDocument() { if (!validateDocumentForm()) return; generatePreviewHTML(); document.getElementById('previewModal').classList.add('active'); }
 function closePreview() { document.getElementById('previewModal').classList.remove('active'); }
 
@@ -694,14 +835,14 @@ function generatePreviewHTML() {
         items.push({ description: desc, quantity: qty, price, tva });
     }
     const totalTTC = totalHT + tva19 + tva13 + tva7 + timbreAmount;
-    const logoHTML = companyImages.logo ? `<img src="${companyImages.logo}" style="max-width:140px;max-height:80px;object-fit:contain;margin-bottom:12px;display:block">` : '';
+    const logoHTML = logoImage ? `<img src="${logoImage}" style="max-width:140px;max-height:80px;object-fit:contain;margin-bottom:12px;display:block">` : '';
 
     document.getElementById('previewContent').innerHTML = buildInvoicePreviewHTML({
         color, typeLabel, companyName, companyMF, companyAddress, companyPhone, companyEmail, companyRC,
         clientName, clientMF, clientAddress, clientPhone, clientEmail,
         docNumber, docDate, docDueDate, currency, paymentMode, notes,
         logoHTML, items, totalHT, tva19, tva13, tva7, totalTTC, timbreAmount,
-        stampImage: companyImages.stamp, signatureImage: companyImages.signature
+        stampImage, signatureImage
     });
 }
 
@@ -795,18 +936,12 @@ async function saveAndDownloadPDF() {
         const result = await window.electronAPI.saveDocument(docData);
         if (result.success) {
             showToast('Document enregistré', 'success');
-
-            // Build and save the PDF for the just-saved document
             generatePreviewHTML();
             const html = buildFullHTML();
             const filename = `${result.document.number}.pdf`;
             hideLoading();
-
             const pdfResult = await window.electronAPI.savePDF({ html, filename });
-            if (pdfResult.success) {
-                showToast('PDF enregistré avec succès', 'success');
-            }
-
+            if (pdfResult.success) showToast('PDF enregistré avec succès', 'success');
             resetDocumentForm();
             navigateTo('documents');
         }
@@ -837,10 +972,8 @@ function buildFullHTML() {
 async function downloadPDF() {
     const docNumber = document.getElementById('docNumber')?.value || 'facture';
     const filename = `${docNumber}.pdf`;
-
     generatePreviewHTML();
     const html = buildFullHTML();
-
     showLoading('Génération du PDF...');
     try {
         const result = await window.electronAPI.savePDF({ html, filename });
@@ -860,13 +993,10 @@ async function downloadPDF() {
 async function printDocument() {
     generatePreviewHTML();
     const html = buildFullHTML();
-
     showLoading('Ouverture de l\'impression...');
     try {
         const result = await window.electronAPI.printPDF({ html });
-        if (!result.success && result.error) {
-            showToast('Erreur impression: ' + result.error, 'error');
-        }
+        if (!result.success && result.error) showToast('Erreur impression: ' + result.error, 'error');
     } catch (err) {
         showToast('Erreur impression: ' + err.message, 'error');
     } finally {
@@ -877,25 +1007,17 @@ async function printDocument() {
 async function downloadDocPDF(docId) {
     const doc = allDocuments.find(d => d.id === docId);
     if (!doc) return;
-
     const originalEditingId = editingDocId;
     editingDocId = docId;
-
     populateFormWithDoc(doc);
     generatePreviewHTML();
     const html = buildFullHTML();
     const filename = `${doc.number}.pdf`;
-
     editingDocId = originalEditingId;
-
     showLoading('Génération du PDF...');
     try {
         const result = await window.electronAPI.savePDF({ html, filename });
-        if (result.success) {
-            showToast('✅ PDF enregistré: ' + result.path, 'success');
-        } else if (!result.canceled) {
-            showToast('Erreur lors de la génération du PDF', 'error');
-        }
+        if (result.success) showToast('✅ PDF enregistré: ' + result.path, 'success');
     } catch (err) {
         showToast('Erreur PDF: ' + err.message, 'error');
     } finally {
@@ -904,53 +1026,68 @@ async function downloadDocPDF(docId) {
 }
 
 function collectDocumentData() {
+    const get = id => document.getElementById(id)?.value || '';
     const items = [];
-    for (let i = 1; i <= itemCount; i++) {
-        const desc = document.getElementById(`desc${i}`)?.value.trim();
+    for (let i=1;i<=itemCount;i++) {
+        const desc=document.getElementById(`desc${i}`)?.value.trim();
         if (!desc) continue;
-        items.push({
-            description: desc,
-            quantity: parseFloat(document.getElementById(`qty${i}`).value) || 0,
-            price: parseFloat(document.getElementById(`price${i}`).value) || 0,
-            tva: parseFloat(document.getElementById(`tva${i}`).value) || 0
-        });
+        const qty=parseFloat(document.getElementById(`qty${i}`)?.value)||0;
+        const price=parseFloat(document.getElementById(`price${i}`)?.value)||0;
+        const tva=parseFloat(document.getElementById(`tva${i}`)?.value)||0;
+        const line=qty*price;
+        items.push({ description:desc, quantity:qty, price, tva, total:line });
     }
+    let totalHT=0, tva19=0, tva13=0, tva7=0;
+    items.forEach(item => {
+        totalHT+=item.total;
+        if (item.tva===19) tva19+=item.total*0.19;
+        else if (item.tva===13) tva13+=item.total*0.13;
+        else if (item.tva===7) tva7+=item.total*0.07;
+    });
+    const totalTTC = totalHT+tva19+tva13+tva7+timbreAmount;
     return {
-        id: editingDocId,
+        id: editingDocId || undefined,
         userId: currentUser.id,
         type: currentDocType,
-        number: document.getElementById('docNumber').value,
-        date: document.getElementById('docDate').value,
-        dueDate: document.getElementById('docDueDate').value,
-        currency: document.getElementById('docCurrency').value,
-        paymentMode: document.getElementById('docPayment').value,
-        companyName: document.getElementById('docCompanyName').value,
-        companyMF: document.getElementById('docCompanyMF').value,
-        companyAddress: document.getElementById('docCompanyAddress').value,
-        companyPhone: document.getElementById('docCompanyPhone').value,
-        companyEmail: document.getElementById('docCompanyEmail').value,
-        companyRC: document.getElementById('docCompanyRC').value,
-        clientName: document.getElementById('docClientName').value,
-        clientMF: document.getElementById('docClientMF').value,
-        clientAddress: document.getElementById('docClientAddress').value,
-        clientPhone: document.getElementById('docClientPhone').value,
-        clientEmail: document.getElementById('docClientEmail').value,
+        number: get('docNumber'),
+        date: get('docDate'),
+        dueDate: get('docDueDate') || null,
+        currency: get('docCurrency') || 'TND',
+        paymentMode: get('docPayment'),
+        companyName: get('docCompanyName'),
+        companyMF: get('docCompanyMF'),
+        companyAddress: get('docCompanyAddress'),
+        companyPhone: get('docCompanyPhone'),
+        companyEmail: get('docCompanyEmail'),
+        companyRC: get('docCompanyRC'),
+        clientName: get('docClientName'),
+        clientMF: get('docClientMF'),
+        clientAddress: get('docClientAddress'),
+        clientPhone: get('docClientPhone'),
+        clientEmail: get('docClientEmail'),
         items,
         applyTimbre: document.getElementById('applyTimbre').checked,
         timbreAmount,
-        totalHT: parseFloat(document.getElementById('totalHT').textContent) || 0,
-        totalTTC: parseFloat(document.getElementById('totalTTC').textContent) || 0,
-        // No logo/stamp/signature per document – they come from company settings
-        notes: document.getElementById('docNotes').value
+        totalHT,
+        totalTTC,
+        logoImage,
+        stampImage,
+        signatureImage,
+        notes: get('docNotes')
     };
 }
 
 function resetDocumentForm() {
+    document.getElementById('docClientName').value = '';
+    document.getElementById('docClientMF').value = '';
+    document.getElementById('docClientAddress').value = '';
+    document.getElementById('docClientPhone').value = '';
+    document.getElementById('docClientEmail').value = '';
+    document.getElementById('docNotes').value = '';
+    document.getElementById('applyTimbre').checked = false;
     document.getElementById('itemsBody').innerHTML = '';
     itemCount = 0;
-    timbreAmount = 0; editingDocId = null;
-    document.getElementById('applyTimbre').checked = false;
-    document.getElementById('docNotes').value = '';
+    editingDocId = null;
     initNewDocument();
 }
 
@@ -1039,25 +1176,28 @@ function populateFormWithDoc(doc) {
     currentDocType = doc.type;
     document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === doc.type);
     updateDocType();
-    document.getElementById('docCompanyName').value = doc.companyName || '';
-    document.getElementById('docCompanyMF').value = doc.companyMF || '';
-    document.getElementById('docCompanyAddress').value = doc.companyAddress || '';
-    document.getElementById('docCompanyPhone').value = doc.companyPhone || '';
-    document.getElementById('docCompanyEmail').value = doc.companyEmail || '';
-    document.getElementById('docCompanyRC').value = doc.companyRC || '';
-    document.getElementById('docClientName').value = doc.clientName || '';
-    document.getElementById('docClientMF').value = doc.clientMF || '';
-    document.getElementById('docClientAddress').value = doc.clientAddress || '';
-    document.getElementById('docClientPhone').value = doc.clientPhone || '';
-    document.getElementById('docClientEmail').value = doc.clientEmail || '';
-    document.getElementById('docNumber').value = doc.number || '';
-    document.getElementById('docDate').value = doc.date || '';
-    document.getElementById('docDueDate').value = doc.dueDate || '';
+    document.getElementById('docCompanyName').value    = doc.companyName    || '';
+    document.getElementById('docCompanyMF').value      = doc.companyMF      || '';
+    document.getElementById('docCompanyAddress').value = doc.companyAddress  || '';
+    document.getElementById('docCompanyPhone').value   = doc.companyPhone    || '';
+    document.getElementById('docCompanyEmail').value   = doc.companyEmail    || '';
+    document.getElementById('docCompanyRC').value      = doc.companyRC       || '';
+    document.getElementById('docClientName').value    = doc.clientName    || '';
+    document.getElementById('docClientMF').value      = doc.clientMF      || '';
+    document.getElementById('docClientAddress').value = doc.clientAddress  || '';
+    document.getElementById('docClientPhone').value   = doc.clientPhone    || '';
+    document.getElementById('docClientEmail').value   = doc.clientEmail    || '';
+    document.getElementById('docNumber').value   = doc.number   || '';
+    document.getElementById('docDate').value     = doc.date     || '';
+    document.getElementById('docDueDate').value  = doc.dueDate  || '';
     document.getElementById('docCurrency').value = doc.currency || 'TND';
-    document.getElementById('docPayment').value = doc.paymentMode || 'Virement bancaire';
-    document.getElementById('docNotes').value = doc.notes || '';
+    document.getElementById('docPayment').value  = doc.paymentMode || 'Virement bancaire';
+    document.getElementById('docNotes').value    = doc.notes    || '';
     document.getElementById('applyTimbre').checked = doc.applyTimbre || false;
-    // Note: logo/stamp/signature not stored per document; they come from company settings
+    // Use document-embedded images if present, otherwise fall back to company images
+    logoImage      = doc.logoImage      || logoImage      || null;
+    stampImage     = doc.stampImage     || stampImage     || null;
+    signatureImage = doc.signatureImage || signatureImage || null;
     document.getElementById('itemsBody').innerHTML = '';
     itemCount = 0;
     if (doc.items && doc.items.length) {
@@ -1071,13 +1211,13 @@ function populateFormWithDoc(doc) {
                 <td><input type="number" class="item-input" id="price${itemCount}" value="${item.price}" min="0" step="0.001" onchange="calculateTotals()"></td>
                 <td>
                     <select class="tva-select" id="tva${itemCount}" onchange="calculateTotals()">
-                        <option value="19" ${item.tva === 19 ? 'selected' : ''}>19%</option>
-                        <option value="13" ${item.tva === 13 ? 'selected' : ''}>13%</option>
-                        <option value="7"  ${item.tva === 7  ? 'selected' : ''}>7%</option>
-                        <option value="0"  ${item.tva === 0  ? 'selected' : ''}>0%</option>
+                        <option value="19" ${item.tva===19?'selected':''}>19%</option>
+                        <option value="13" ${item.tva===13?'selected':''}>13%</option>
+                        <option value="7"  ${item.tva===7 ?'selected':''}>7%</option>
+                        <option value="0"  ${item.tva===0 ?'selected':''}>0%</option>
                     </select>
                 </td>
-                <td style="text-align:right;font-weight:500" id="total${itemCount}">${(item.quantity * item.price).toFixed(3)}</td>
+                <td style="text-align:right;font-weight:500" id="total${itemCount}">${(item.quantity*item.price).toFixed(3)}</td>
                 <td><button type="button" class="btn-icon btn-delete" onclick="removeItem(this)">🗑️</button></td>`;
             document.getElementById('itemsBody').appendChild(tr);
         });
@@ -1194,7 +1334,7 @@ async function exportClientsToExcel() {
     }
 }
 
-// ==================== COMPANY SETTINGS (with logo/stamp/signature) ====================
+// ==================== COMPANY SETTINGS ====================
 async function loadCompanyPage() {
     try {
         const c = await window.electronAPI.getCompany(currentUser.id) || {};
@@ -1208,59 +1348,42 @@ async function loadCompanyPage() {
         document.getElementById('companyBank').value    = c.bank     || '';
         document.getElementById('companyProfileName').textContent = c.name || currentUser.company || 'Votre Entreprise';
         document.getElementById('companyProfileMF').textContent   = (c.mf || currentUser.mf) ? `Matricule Fiscal: ${c.mf || currentUser.mf}` : 'Matricule Fiscal: —';
-        
-        // Load images
-        companyImages.logo      = c.logo_image || null;
-        companyImages.stamp     = c.stamp_image || null;
-        companyImages.signature = c.signature_image || null;
-        updateCompanyImagePreviews();
+
+        // Load company images
+        const loadImg = (imgData, previewId, placeholderId, boxId) => {
+            const previewEl = document.getElementById(previewId);
+            const placeholderEl = document.getElementById(placeholderId);
+            const boxEl = document.getElementById(boxId);
+            if (imgData && previewEl) {
+                previewEl.src = imgData;
+                previewEl.classList.remove('hidden');
+                if (placeholderEl) placeholderEl.classList.add('hidden');
+                if (boxEl) boxEl.classList.add('has-image');
+            } else if (previewEl) {
+                previewEl.src = '';
+                previewEl.classList.add('hidden');
+                if (placeholderEl) placeholderEl.classList.remove('hidden');
+                if (boxEl) boxEl.classList.remove('has-image');
+            }
+        };
+
+        loadImg(c.logo_image,      'companyLogoPreview',      'companyLogoPlaceholder',      'companyLogoBox');
+        loadImg(c.stamp_image,     'companyStampPreview',     'companyStampPlaceholder',     'companyStampBox');
+        loadImg(c.signature_image, 'companySignaturePreview', 'companySignaturePlaceholder', 'companySignatureBox');
+
+        // Sync to globals
+        if (c.logo_image)      logoImage = c.logo_image;
+        if (c.stamp_image)     stampImage = c.stamp_image;
+        if (c.signature_image) signatureImage = c.signature_image;
+
     } catch (err) {
         console.error('Error loading company:', err);
     }
 }
 
-function updateCompanyImagePreviews() {
-    const types = ['logo', 'stamp', 'signature'];
-    types.forEach(type => {
-        const img = companyImages[type];
-        const preview = document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Preview`);
-        const placeholder = document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Placeholder`);
-        const box = document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Box`);
-        if (img) {
-            preview.src = img;
-            preview.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            box.classList.add('has-image');
-        } else {
-            preview.src = '';
-            preview.classList.add('hidden');
-            placeholder.classList.remove('hidden');
-            box.classList.remove('has-image');
-        }
-    });
-}
-
-function handleCompanyImageUpload(input, type) {
-    if (!input.files?.[0]) return;
-    if (input.files[0].size > 5*1024*1024) { showToast('Image trop lourde (max 5 MB)','warning'); return; }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const data = e.target.result;
-        companyImages[type] = data;
-        updateCompanyImagePreviews();
-    };
-    reader.readAsDataURL(input.files[0]);
-}
-
-function removeCompanyImage(type) {
-    companyImages[type] = null;
-    updateCompanyImagePreviews();
-    document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Input`).value = '';
-}
-
 async function saveCompanySettings() {
     const settings = {
-        userId: currentUser.id,
+        userId:  currentUser.id,
         name:    document.getElementById('companyName').value.trim(),
         mf:      document.getElementById('companyMF').value.trim(),
         address: document.getElementById('companyAddress').value.trim(),
@@ -1269,9 +1392,10 @@ async function saveCompanySettings() {
         rc:      document.getElementById('companyRC').value.trim(),
         website: document.getElementById('companyWebsite').value.trim(),
         bank:    document.getElementById('companyBank').value.trim(),
-        logo_image: companyImages.logo,
-        stamp_image: companyImages.stamp,
-        signature_image: companyImages.signature
+        // Pass current images so they are not overwritten with null
+        logoImage,
+        stampImage,
+        signatureImage
     };
     try {
         await window.electronAPI.saveCompany(settings);
@@ -1282,165 +1406,14 @@ async function saveCompanySettings() {
     }
 }
 
-// ==================== CONTRAT FEATURE ====================
-let currentContractType = 'cdi';
-
-function selectContractType(type, element) {
-    currentContractType = type;
-    document.querySelectorAll('#page-contrat .doc-type-card').forEach(card => card.classList.remove('selected'));
-    element.classList.add('selected');
-    updateContractForm();
-}
-
-function updateContractForm() {
-    const container = document.getElementById('dynamicContractFields');
-    let html = '<div class="section-title">📝 Détails du contrat</div><div class="grid-2">';
-    if (currentContractType === 'cdi') {
-        html += `<div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
-                 <div class="form-group"><label>Période d'essai (mois)</label><input type="number" id="contractTrialMonths" value="2" step="1" min="0"></div>`;
-    } else if (currentContractType === 'cdd') {
-        html += `<div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
-                 <div class="form-group"><label>Date de fin</label><input type="date" id="contractEndDate"></div>
-                 <div class="form-group"><label>Motif (remplacement, accroissement...)</label><input type="text" id="contractCddReason" placeholder="ex: remplacement d'un salarié absent"></div>`;
-    } else if (currentContractType === 'essai') {
-        html += `<div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
-                 <div class="form-group"><label>Durée de la période d'essai (mois)</label><input type="number" id="contractTrialMonths" value="1" step="1" min="1"></div>`;
-    } else if (currentContractType === 'prestation') {
-        html += `<div class="form-group"><label>Description de la prestation</label><textarea id="contractServiceDesc" rows="2" placeholder="Détail des services à fournir..."></textarea></div>
-                 <div class="form-group"><label>Tarif journalier / forfait (TND)</label><input type="number" id="contractDailyRate" step="0.001" placeholder="0.000"></div>
-                 <div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
-                 <div class="form-group"><label>Date de fin (optionnel)</label><input type="date" id="contractEndDate"></div>`;
-    }
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-function initContractPage() {
-    // reset form
-    document.getElementById('contractClientName').value = '';
-    document.getElementById('contractClientAddress').value = '';
-    document.getElementById('contractClientPhone').value = '';
-    document.getElementById('contractClientEmail').value = '';
-    document.getElementById('contractPosition').value = '';
-    document.getElementById('contractSalary').value = '';
-    // Set default contract type to CDI
-    currentContractType = 'cdi';
-    const cards = document.querySelectorAll('#page-contrat .doc-type-card');
-    cards.forEach(card => card.classList.remove('selected'));
-    cards[0].classList.add('selected');
-    updateContractForm();
-}
-
-async function generateContract() {
-    const clientName = document.getElementById('contractClientName').value.trim();
-    if (!clientName) { showToast('Le nom du cocontractant est requis', 'warning'); return; }
-    const position = document.getElementById('contractPosition').value.trim();
-    if ((currentContractType === 'cdi' || currentContractType === 'cdd') && !position) {
-        showToast('Le poste est requis pour CDI/CDD', 'warning'); return;
-    }
-    const salary = parseFloat(document.getElementById('contractSalary').value);
-    if ((currentContractType === 'cdi' || currentContractType === 'cdd') && isNaN(salary)) {
-        showToast('Le salaire est requis', 'warning'); return;
-    }
-
-    // Get company info
-    const company = await window.electronAPI.getCompany(currentUser.id) || {};
-    const companyName = company.name || currentUser.company || 'Votre Entreprise';
-    const companyAddress = company.address || '';
-    const companyPhone = company.phone || '';
-    const companyEmail = company.email || '';
-    const companyMF = company.mf || currentUser.mf || '';
-
-    // Build contract HTML
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('fr-FR');
-    let contractHtml = `
-    <div style="font-family:'Times New Roman', serif; max-width:800px; margin:0 auto; padding:40px; background:white; line-height:1.5;">
-        <div style="text-align:center; margin-bottom:30px;">
-            ${companyImages.logo ? `<img src="${companyImages.logo}" style="max-height:80px; margin-bottom:10px;">` : ''}
-            <h1>CONTRAT DE TRAVAIL</h1>
-            <p><strong>${companyName}</strong><br>${companyAddress}<br>${companyPhone ? 'Tél: '+companyPhone : ''}${companyEmail ? ' - Email: '+companyEmail : ''}</p>
-        </div>
-        <p>Entre les soussignés :</p>
-        <p><strong>${companyName}</strong>, représentée par son gérant, agissant en qualité d'employeur,<br>
-        d'une part,</p>
-        <p>Et <strong>${escapeHtml(clientName)}</strong>, demeurant ${escapeHtml(document.getElementById('contractClientAddress').value || '...')},<br>
-        d'autre part,</p>
-        <p>Il a été convenu ce qui suit :</p>
-    `;
-    if (currentContractType === 'cdi') {
-        const startDate = document.getElementById('contractStartDate').value || now.toISOString().slice(0,10);
-        const trialMonths = document.getElementById('contractTrialMonths').value || 2;
-        contractHtml += `
-        <h3>Article 1 : Engagement</h3>
-        <p>L'employeur engage le salarié à compter du ${formatDate(startDate)} en qualité de <strong>${escapeHtml(position)}</strong>, dans le cadre d'un Contrat à Durée Indéterminée (CDI).</p>
-        <h3>Article 2 : Période d'essai</h3>
-        <p>Le présent contrat est assorti d'une période d'essai de ${trialMonths} mois, conformément à la convention collective applicable.</p>
-        <h3>Article 3 : Rémunération</h3>
-        <p>Le salarié percevra un salaire mensuel brut de <strong>${salary.toFixed(3)} TND</strong>, payable à la fin de chaque mois.</p>
-        `;
-    } else if (currentContractType === 'cdd') {
-        const startDate = document.getElementById('contractStartDate').value;
-        const endDate = document.getElementById('contractEndDate').value;
-        const reason = document.getElementById('contractCddReason').value || 'surcroît temporaire d\'activité';
-        contractHtml += `
-        <h3>Article 1 : Engagement</h3>
-        <p>L'employeur engage le salarié en qualité de <strong>${escapeHtml(position)}</strong> dans le cadre d'un Contrat à Durée Déterminée (CDD) du ${formatDate(startDate)} au ${formatDate(endDate)}.</p>
-        <p><strong>Motif du CDD :</strong> ${escapeHtml(reason)}.</p>
-        <h3>Article 2 : Rémunération</h3>
-        <p>Le salarié percevra un salaire mensuel brut de <strong>${salary.toFixed(3)} TND</strong>.</p>
-        `;
-    } else if (currentContractType === 'essai') {
-        const startDate = document.getElementById('contractStartDate').value || now.toISOString().slice(0,10);
-        const trialMonths = document.getElementById('contractTrialMonths').value || 1;
-        contractHtml += `
-        <h3>Article 1 : Engagement à l'essai</h3>
-        <p>L'employeur engage le salarié à compter du ${formatDate(startDate)} en qualité de <strong>${escapeHtml(position)}</strong> pour une période d'essai de ${trialMonths} mois.</p>
-        <p>A l'issue de cette période, si les aptitudes professionnelles sont satisfaisantes, un CDI pourra être proposé.</p>
-        <h3>Article 2 : Rémunération</h3>
-        <p>Pendant la période d'essai, le salarié percevra un salaire mensuel brut de <strong>${salary.toFixed(3)} TND</strong>.</p>
-        `;
-    } else if (currentContractType === 'prestation') {
-        const serviceDesc = document.getElementById('contractServiceDesc').value || 'prestations décrites en annexe';
-        const rate = parseFloat(document.getElementById('contractDailyRate').value) || 0;
-        const startDate = document.getElementById('contractStartDate').value;
-        const endDate = document.getElementById('contractEndDate').value;
-        contractHtml += `
-        <h3>Article 1 : Objet</h3>
-        <p>Le prestataire s'engage à fournir à la société <strong>${companyName}</strong> les prestations suivantes :<br>${escapeHtml(serviceDesc)}</p>
-        <h3>Article 2 : Durée</h3>
-        <p>La prestation débutera le ${formatDate(startDate)}${endDate ? ` et se terminera le ${formatDate(endDate)}` : ', sans date de fin prédéterminée'}.</p>
-        <h3>Article 3 : Rémunération</h3>
-        <p>En contrepartie, le prestataire facturera un tarif journalier de <strong>${rate.toFixed(3)} TND HT</strong> (hors taxes).</p>
-        `;
-    }
-    contractHtml += `
-        <h3>Article 4 : Lieu de travail</h3>
-        <p>Le travail sera effectué au siège social de l'entreprise ou à distance selon les besoins du service.</p>
-        <h3>Article 5 : Obligations</h3>
-        <p>Le salarié s'engage à respecter les règles internes et à faire preuve de discrétion professionnelle.</p>
-        <p>Fait en deux exemplaires originaux, à ${companyAddress || 'Tunis'}, le ${dateStr}.</p>
-        <div style="margin-top:50px; display:flex; justify-content:space-between;">
-            <div>Signature de l'employeur<br><br><br>${companyImages.signature ? `<img src="${companyImages.signature}" style="max-height:60px;">` : '(cachet et signature)'}</div>
-            <div>Signature du cocontractant<br><br><br>____________________</div>
-        </div>
-        ${companyImages.stamp ? `<div style="text-align:center; margin-top:30px;"><img src="${companyImages.stamp}" style="max-height:80px; opacity:0.8;"></div>` : ''}
-        <div style="margin-top:30px; font-size:10px; text-align:center;">Généré par TuniInvoice Pro le ${dateStr}</div>
-    </div>`;
-    
-    // Display in preview modal (reuse same modal)
-    document.getElementById('previewContent').innerHTML = contractHtml;
-    document.getElementById('previewModal').classList.add('active');
-}
-
 // ==================== BACKUP & SETTINGS ====================
 async function loadSettings() {
     try {
         const settings = await window.electronAPI.getBackupSettings();
-        document.getElementById('backupEnabled').checked  = settings.enabled   || false;
-        document.getElementById('backupFrequency').value  = settings.frequency || 'daily';
-        document.getElementById('backupTime').value       = settings.time      || '02:00';
-        document.getElementById('backupKeep').value       = settings.keepCount || 10;
+        document.getElementById('backupEnabled').checked   = settings.enabled    || false;
+        document.getElementById('backupFrequency').value   = settings.frequency  || 'daily';
+        document.getElementById('backupTime').value        = settings.time       || '02:00';
+        document.getElementById('backupKeep').value        = settings.keepCount  || 10;
         await loadBackupList();
     } catch (err) {
         console.error('Error loading settings:', err);
@@ -1541,17 +1514,17 @@ async function loadThemeSettings() {
 }
 
 function applyThemeToUI() {
-    document.getElementById('docFontFamily').value      = currentTheme.fontFamily;
-    document.getElementById('docFontSize').value        = currentTheme.fontSize;
-    document.getElementById('titleFacture').value       = currentTheme.titles.facture.text;
-    document.getElementById('colorFacture').value       = currentTheme.titles.facture.color;
-    document.getElementById('colorFactureHex').textContent = currentTheme.titles.facture.color;
-    document.getElementById('titleDevis').value         = currentTheme.titles.devis.text;
-    document.getElementById('colorDevis').value         = currentTheme.titles.devis.color;
-    document.getElementById('colorDevisHex').textContent   = currentTheme.titles.devis.color;
-    document.getElementById('titleBon').value           = currentTheme.titles.bon.text;
-    document.getElementById('colorBon').value           = currentTheme.titles.bon.color;
-    document.getElementById('colorBonHex').textContent     = currentTheme.titles.bon.color;
+    document.getElementById('docFontFamily').value        = currentTheme.fontFamily;
+    document.getElementById('docFontSize').value          = currentTheme.fontSize;
+    document.getElementById('titleFacture').value         = currentTheme.titles.facture.text;
+    document.getElementById('colorFacture').value         = currentTheme.titles.facture.color;
+    document.getElementById('colorFactureHex').textContent= currentTheme.titles.facture.color;
+    document.getElementById('titleDevis').value           = currentTheme.titles.devis.text;
+    document.getElementById('colorDevis').value           = currentTheme.titles.devis.color;
+    document.getElementById('colorDevisHex').textContent  = currentTheme.titles.devis.color;
+    document.getElementById('titleBon').value             = currentTheme.titles.bon.text;
+    document.getElementById('colorBon').value             = currentTheme.titles.bon.color;
+    document.getElementById('colorBonHex').textContent    = currentTheme.titles.bon.color;
 }
 
 function updateThemePreview() {
@@ -1601,6 +1574,254 @@ function resetThemeDefaults() {
     document.getElementById('titleBon').value      = "BON DE COMMANDE";
     document.getElementById('colorBon').value      = "#065f46";
     updateThemePreview();
+}
+
+// ==================== CONTRACTS ====================
+const CONTRACT_TYPES = {
+    cdi:        { label: 'CDI',                  icon: '📋', desc: 'Contrat à Durée Indéterminée' },
+    cdd:        { label: 'CDD',                  icon: '📄', desc: 'Contrat à Durée Déterminée' },
+    essai:      { label: "Période d'Essai",      icon: '🔍', desc: "Contrat avec période d'essai" },
+    prestation: { label: 'Prestation de service',icon: '🤝', desc: 'Contrat de prestation de services' },
+    alternance: { label: 'Alternance',           icon: '🎓', desc: "Contrat d'alternance" },
+    stage:      { label: 'Stage',                icon: '🏫', desc: 'Convention de stage' },
+    freelance:  { label: 'Freelance',            icon: '💻', desc: 'Contrat de travail indépendant' },
+    interim:    { label: 'Intérim',              icon: '⏱️', desc: 'Contrat de mission intérimaire' },
+    parttime:   { label: 'Temps partiel',        icon: '⏰', desc: 'Contrat à temps partiel' },
+    consulting: { label: 'Consulting',           icon: '📊', desc: 'Contrat de conseil et consulting' },
+};
+
+async function loadContracts() {
+    if (!currentUser) return;
+    try {
+        allContracts = await window.electronAPI.getContracts(currentUser.id);
+        renderContractsTable(allContracts);
+    } catch (err) {
+        showToast('Erreur chargement contrats', 'error');
+    }
+}
+
+function renderContractsTable(contracts) {
+    const container = document.getElementById('contractsTable');
+    if (!contracts || !contracts.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📃</div><h3>Aucun contrat</h3><p>Créez votre premier contrat en choisissant un type ci-dessus</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr><th>Type</th><th>Numéro</th><th>Salarié / Prestataire</th><th>Employeur</th><th>Date début</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+        ${contracts.map(c => `<tr>
+            <td><span class="badge badge-contract">${CONTRACT_TYPES[c.type]?.label || c.type}</span></td>
+            <td style="font-family:monospace;font-size:0.82rem">${c.number}</td>
+            <td style="font-weight:600">${escapeHtml(c.employeeName) || '—'}</td>
+            <td>${escapeHtml(c.employerName) || '—'}</td>
+            <td>${formatDate(c.startDate)}</td>
+            <td><span class="badge badge-${c.status === 'signé' ? 'active' : 'pending'}">${c.status || 'brouillon'}</span></td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-view"   onclick="previewContract('${c.id}')"   title="Aperçu">👁️</button>
+                <button class="btn-icon btn-edit"   onclick="editContract('${c.id}')"      title="Modifier">✏️</button>
+                <button class="btn-icon btn-pdf"    onclick="downloadContractPDF('${c.id}')" title="PDF">📄</button>
+                <button class="btn-icon btn-delete" onclick="confirmDeleteContract('${c.id}')" title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function openNewContractModal(type) {
+    editingContractId = null;
+    document.getElementById('contractType').value = type;
+    document.getElementById('contractModalTitle').textContent = `${CONTRACT_TYPES[type]?.icon || '📄'} ${CONTRACT_TYPES[type]?.label || type}`;
+
+    // Pre-fill employer from company settings
+    window.electronAPI.getCompany(currentUser.id).then(c => {
+        if (c) {
+            document.getElementById('cEmployerName').value    = c.name    || '';
+            document.getElementById('cEmployerMF').value      = c.mf      || '';
+            document.getElementById('cEmployerAddress').value = c.address  || '';
+        }
+    }).catch(() => {});
+
+    // Show/hide fields based on type
+    const showEndDate = ['cdd','essai','prestation','freelance','stage','consulting','alternance','interim'].includes(type);
+    const showTrialPeriod = ['cdi','parttime'].includes(type);
+    document.getElementById('cEndDateGroup').style.display    = showEndDate ? 'block' : 'none';
+    document.getElementById('cTrialGroup').style.display      = showTrialPeriod ? 'block' : 'none';
+
+    // Clear form
+    ['cEmployeeeName','cEmployeeCIN','cEmployeeAddress','cEmployeeRole','cEmployeeDept',
+     'cEmployerRep','cEmployerRepRole','cStartDate','cEndDate','cSalary','cWorkLocation',
+     'cNoticePeriod','cTrialDuration','cExtraClauses','cNotes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('cSalaryType').value = 'mensuel';
+    document.getElementById('cWorkHours').value  = '40';
+    document.getElementById('cTrialPeriod').checked = false;
+
+    document.getElementById('contractModal').classList.add('active');
+}
+
+function closeContractModal() {
+    document.getElementById('contractModal').classList.remove('active');
+    editingContractId = null;
+}
+
+async function saveContract() {
+    const employeeName = document.getElementById('cEmployeeeName').value.trim();
+    const employerName = document.getElementById('cEmployerName').value.trim();
+    if (!employeeName || !employerName) { showToast('Employeur et Salarié sont requis', 'warning'); return; }
+
+    const data = {
+        id:              editingContractId || undefined,
+        userId:          currentUser.id,
+        type:            document.getElementById('contractType').value,
+        employerName,
+        employerMF:      document.getElementById('cEmployerMF').value.trim(),
+        employerAddress: document.getElementById('cEmployerAddress').value.trim(),
+        employerRep:     document.getElementById('cEmployerRep').value.trim(),
+        employerRepRole: document.getElementById('cEmployerRepRole').value.trim(),
+        employeeName,
+        employeeCIN:     document.getElementById('cEmployeeCIN').value.trim(),
+        employeeAddress: document.getElementById('cEmployeeAddress').value.trim(),
+        employeeRole:    document.getElementById('cEmployeeRole').value.trim(),
+        employeeDepartment: document.getElementById('cEmployeeDept').value.trim(),
+        startDate:       document.getElementById('cStartDate').value,
+        endDate:         document.getElementById('cEndDate').value || null,
+        salary:          parseFloat(document.getElementById('cSalary').value) || null,
+        salaryType:      document.getElementById('cSalaryType').value,
+        workHours:       parseFloat(document.getElementById('cWorkHours').value) || 40,
+        workLocation:    document.getElementById('cWorkLocation').value.trim(),
+        trialPeriod:     document.getElementById('cTrialPeriod').checked,
+        trialDuration:   document.getElementById('cTrialDuration').value.trim(),
+        noticePeriod:    document.getElementById('cNoticePeriod').value.trim(),
+        extraClauses:    document.getElementById('cExtraClauses').value.trim(),
+        notes:           document.getElementById('cNotes').value.trim(),
+        status:          'brouillon',
+        // Attach company logo for contract header
+        employerLogo:    logoImage || null,
+    };
+
+    try {
+        const result = await window.electronAPI.saveContract(data);
+        if (result.success) {
+            showToast(editingContractId ? 'Contrat mis à jour' : 'Contrat créé', 'success');
+            closeContractModal();
+            await loadContracts();
+        } else {
+            showToast(result.error || 'Erreur lors de la sauvegarde', 'error');
+        }
+    } catch (err) {
+        showToast('Erreur: ' + err.message, 'error');
+    }
+}
+
+async function editContract(id) {
+    const c = allContracts.find(x => x.id === id);
+    if (!c) return;
+    editingContractId = id;
+
+    document.getElementById('contractType').value = c.type;
+    document.getElementById('contractModalTitle').textContent = `✏️ Modifier — ${CONTRACT_TYPES[c.type]?.label || c.type}`;
+
+    const showEndDate = ['cdd','essai','prestation','freelance','stage','consulting','alternance','interim'].includes(c.type);
+    const showTrialPeriod = ['cdi','parttime'].includes(c.type);
+    document.getElementById('cEndDateGroup').style.display    = showEndDate ? 'block' : 'none';
+    document.getElementById('cTrialGroup').style.display      = showTrialPeriod ? 'block' : 'none';
+
+    document.getElementById('cEmployerName').value    = c.employerName    || '';
+    document.getElementById('cEmployerMF').value      = c.employerMF      || '';
+    document.getElementById('cEmployerAddress').value = c.employerAddress  || '';
+    document.getElementById('cEmployerRep').value     = c.employerRep      || '';
+    document.getElementById('cEmployerRepRole').value = c.employerRepRole  || '';
+    document.getElementById('cEmployeeeName').value   = c.employeeName    || '';
+    document.getElementById('cEmployeeCIN').value     = c.employeeCIN     || '';
+    document.getElementById('cEmployeeAddress').value = c.employeeAddress  || '';
+    document.getElementById('cEmployeeRole').value    = c.employeeRole    || '';
+    document.getElementById('cEmployeeDept').value    = c.employeeDepartment || '';
+    document.getElementById('cStartDate').value       = c.startDate       || '';
+    document.getElementById('cEndDate').value         = c.endDate         || '';
+    document.getElementById('cSalary').value          = c.salary          || '';
+    document.getElementById('cSalaryType').value      = c.salaryType      || 'mensuel';
+    document.getElementById('cWorkHours').value       = c.workHours       || 40;
+    document.getElementById('cWorkLocation').value    = c.workLocation    || '';
+    document.getElementById('cTrialPeriod').checked   = c.trialPeriod     || false;
+    document.getElementById('cTrialDuration').value   = c.trialDuration   || '';
+    document.getElementById('cNoticePeriod').value    = c.noticePeriod    || '';
+    document.getElementById('cExtraClauses').value    = c.extraClauses    || '';
+    document.getElementById('cNotes').value           = c.notes           || '';
+
+    document.getElementById('contractModal').classList.add('active');
+}
+
+function buildContractHTMLFromData(c) {
+    // Dynamically import contract builder (it's an ES module export)
+    // Since this app uses plain script tags, we call a globally registered function
+    if (typeof window.buildContractHTML === 'function') {
+        return window.buildContractHTML({ ...c, employerLogo: logoImage });
+    }
+    return `<p>Contrat: ${c.number}</p>`;
+}
+
+async function previewContract(id) {
+    const c = allContracts.find(x => x.id === id);
+    if (!c) return;
+    const html = buildContractHTMLFromData(c);
+    document.getElementById('previewContent').innerHTML = `<div style="padding:40px;font-family:serif">${html.replace(/<html[^>]*>[\s\S]*?<body[^>]*>/i,'').replace(/<\/body>[\s\S]*?<\/html>/i,'')}</div>`;
+    document.getElementById('previewModal').classList.add('active');
+    // Store current contract id for download/print
+    window._previewingContractId = id;
+}
+
+async function downloadContractPDF(id) {
+    const c = allContracts.find(x => x.id === id);
+    if (!c) return;
+    const html = buildContractHTMLFromData(c);
+    const filename = `${c.number}-${(c.employeeName || 'contrat').replace(/\s+/g,'-')}.pdf`;
+    showLoading('Génération du PDF...');
+    try {
+        const result = await window.electronAPI.savePDF({ html, filename });
+        if (result.success) showToast('✅ Contrat PDF enregistré', 'success');
+        else if (!result.canceled) showToast('Erreur PDF', 'error');
+    } catch (err) {
+        showToast('Erreur PDF: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function printContract(id) {
+    const c = allContracts.find(x => x.id === id);
+    if (!c) return;
+    const html = buildContractHTMLFromData(c);
+    showLoading("Ouverture de l'impression...");
+    try {
+        await window.electronAPI.printPDF({ html });
+    } catch (err) {
+        showToast('Erreur: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function confirmDeleteContract(id) {
+    const c = allContracts.find(x => x.id === id);
+    showConfirm('🗑️ Supprimer', `Supprimer le contrat ${c?.number} ?`, async () => {
+        try {
+            await window.electronAPI.deleteContract(id);
+            showToast('Contrat supprimé', 'info');
+            await loadContracts();
+        } catch (err) {
+            showToast('Erreur suppression', 'error');
+        }
+    });
+}
+
+function filterContracts() {
+    const q = document.getElementById('searchContracts').value.toLowerCase();
+    const type = document.getElementById('filterContractType').value;
+    const filtered = allContracts.filter(c => {
+        const matchQ = !q || (c.employeeName||'').toLowerCase().includes(q) || (c.number||'').toLowerCase().includes(q);
+        const matchT = !type || c.type === type;
+        return matchQ && matchT;
+    });
+    renderContractsTable(filtered);
 }
 
 // ==================== UTILS ====================
