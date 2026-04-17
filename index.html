@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuniInvoice Pro</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js for dashboard graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toastContainer"></div>
+
+<!-- LOADING -->
+<div id="loadingOverlay" class="hidden">
+    <div class="loading-box">
+        <div class="spinner"></div>
+        <p id="loadingText">Traitement en cours...</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     AUTH
+═══════════════════════════════════════ -->
+<div id="authContainer" class="auth-container">
+    <div class="auth-box">
+        <div class="auth-logo">
+            <div class="logo-icon">🏛️</div>
+            <h1>TuniInvoice Pro</h1>
+            <p>Système de Facturation Professionnel</p>
+        </div>
+
+        <div class="auth-tabs">
+            <button class="auth-tab active" onclick="switchAuthTab('login', this)">Connexion</button>
+            <button class="auth-tab" onclick="switchAuthTab('register', this)">Créer un compte</button>
+        </div>
+
+        <div id="authError" class="error-message hidden">
+            <span>⚠️</span><span id="errorText"></span>
+        </div>
+
+        <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Adresse Email</label>
+                <input type="email" id="loginEmail" required placeholder="votre@entreprise.com" autocomplete="email">
+            </div>
+            <div class="form-group" style="margin-bottom:20px">
+                <label>Mot de passe</label>
+                <input type="password" id="loginPassword" required placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <div class="form-group" style="margin-bottom:20px">
+                <label class="checkbox-group">
+                    <input type="checkbox" id="rememberMeCheckbox">
+                    <span>Se souvenir de moi</span>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
+                🔐 Se connecter
+            </button>
+        </form>
+
+        <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+            <div class="grid-2" style="margin-bottom:14px">
+                <div class="form-group">
+                    <label>Nom complet *</label>
+                    <input type="text" id="regName" required placeholder="Prénom Nom">
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="regEmail" required placeholder="email@entreprise.com">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Nom de l'entreprise *</label>
+                <input type="text" id="regCompany" required placeholder="SARL MonEntreprise">
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Matricule Fiscal</label>
+                <input type="text" id="regMF" placeholder="XXXXXXX / XXX / XXX / XXX">
+            </div>
+            <div class="grid-2" style="margin-bottom:20px">
+                <div class="form-group">
+                    <label>Mot de passe *</label>
+                    <input type="password" id="regPassword" required minlength="6" placeholder="Min. 6 caractères">
+                </div>
+                <div class="form-group">
+                    <label>Confirmer *</label>
+                    <input type="password" id="regPasswordConfirm" required placeholder="Répéter">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
+                📝 Créer mon compte
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════ -->
+<div id="appContainer" class="app-container hidden">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="sidebar-logo-icon">🏛️</div>
+                <div>
+                    <h2>TuniInvoice</h2>
+                    <p>Pro Edition</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-details">
+                <h4 id="userName">Utilisateur</h4>
+                <p id="userEmail">email@example.com</p>
+            </div>
+        </div>
+
+        <nav class="nav-menu">
+            <div class="nav-section-label">Principal</div>
+            <div class="nav-item active" onclick="navigateTo('dashboard')">
+                <span class="nav-icon">📊</span> Tableau de bord
+            </div>
+            <div class="nav-item" onclick="navigateTo('new-document')">
+                <span class="nav-icon">➕</span> Nouveau Document
+            </div>
+
+            <div class="nav-section-label">Gestion</div>
+            <div class="nav-item" onclick="navigateTo('documents')">
+                <span class="nav-icon">📄</span> Mes Documents
+            </div>
+            <div class="nav-item" onclick="navigateTo('clients')">
+                <span class="nav-icon">👥</span> Clients
+            </div>
+            <div class="nav-item" onclick="navigateTo('services')">
+                <span class="nav-icon">🛍️</span> Services & Produits
+            </div>
+            <div class="nav-item" onclick="navigateTo('contrat')">
+                <span class="nav-icon">📑</span> Contrat
+            </div>
+            <div class="nav-item" onclick="navigateTo('company')">
+                <span class="nav-icon">🏢</span> Mon Entreprise
+            </div>
+
+            <div class="nav-section-label">Système</div>
+            <div class="nav-item" onclick="navigateTo('settings')">
+                <span class="nav-icon">⚙️</span> Paramètres
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="btn-logout" onclick="confirmLogout()">
+                🚪 Déconnexion
+            </button>
+        </div>
+    </aside>
+
+    <!-- ── TOP NAVBAR ── -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-search">
+                <span class="topbar-search-ico">🔍</span>
+                <input type="text" placeholder="Rechercher documents, clients..." id="globalSearch" oninput="globalSearchHandler()">
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="topbar-date" id="topbarDate">
+                📅 <span id="topbarDateText">—</span>
+            </div>
+            <div class="topbar-user" onclick="confirmLogout()">
+                <div class="topbar-user-avatar" id="topbarAvatar">U</div>
+                <span class="topbar-user-name" id="topbarName">Utilisateur</span>
+                <span>▾</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── MAIN ── -->
+    <main class="main-content">
+
+        <!-- ═════════════════════════════
+             DASHBOARD (ENHANCED)
+        ═════════════════════════════ -->
+        <div id="page-dashboard" class="page active">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Dashboard Overview</h1>
+                    <p id="dashboardGreeting">Bienvenue dans votre espace de facturation</p>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <div class="topbar-date">📅 <span id="dashDate">—</span></div>
+                    <button class="btn btn-primary" onclick="navigateTo('new-document')">➕ Nouveau Document</button>
+                </div>
+            </div>
+
+            <!-- Stats Row (existing) -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-top">
+                        <div>
+                            <div class="stat-label">Total Revenus (ce mois)</div>
+                            <div class="stat-value" id="statTotalRevenue">0 TND</div>
+                            <div class="stat-badge up" id="statRevBadge" style="display:none">▲ 12%</div>
+                        </div>
+                        <div class="stat-icon blue">💰</div>
+                    </div>
+                    <div class="stat-sub">Factures TTC encaissées</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-top">
+                        <div>
+                            <div class="stat-label">Factures en attente</div>
+                            <div class="stat-value" id="statTotalDocs">0</div>
+                        </div>
+                        <div class="stat-icon orange">📄</div>
+                    </div>
+                    <div class="stat-sub" id="statDocsSub">Documents créés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-top">
+                        <div>
+                            <div class="stat-label">Nouveaux Clients (mois)</div>
+                            <div class="stat-value" id="statTotalClients">0</div>
+                        </div>
+                        <div class="stat-icon green">👥</div>
+                    </div>
+                    <div class="stat-sub">Clients actifs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-top">
+                        <div>
+                            <div class="stat-label">Ce mois-ci</div>
+                            <div class="stat-value red" id="statThisMonth">0</div>
+                        </div>
+                        <div class="stat-icon red">📅</div>
+                    </div>
+                    <div class="stat-sub">Documents ce mois</div>
+                </div>
+            </div>
+
+            <!-- Charts row (NEW) -->
+            <div class="stats-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:20px;">
+                <div class="card" style="padding:16px;">
+                    <h3 style="margin-bottom:12px; font-size:0.9rem;">📈 Revenus mensuels (TND)</h3>
+                    <canvas id="monthlyRevenueChart" width="400" height="200" style="max-height:200px; width:100%;"></canvas>
+                </div>
+                <div class="card" style="padding:16px;">
+                    <h3 style="margin-bottom:12px; font-size:0.9rem;">🥧 Répartition des documents</h3>
+                    <canvas id="docTypeChart" width="400" height="200" style="max-height:200px; width:100%;"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Clients & Pending (NEW) -->
+            <div class="stats-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:20px;">
+                <div class="card">
+                    <div class="card-header"><h2>🏆 Top 3 clients (CA total)</h2></div>
+                    <div id="topClientsList" style="padding:12px;"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h2>⏳ Factures en attente de paiement</h2></div>
+                    <div id="pendingInvoicesList" style="padding:12px;"></div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <div class="quick-action-card" onclick="createDocOfType('facture')">
+                    <div class="qa-icon">📄</div>
+                    <div class="qa-label">Nouvelle Facture</div>
+                </div>
+                <div class="quick-action-card" onclick="createDocOfType('devis')">
+                    <div class="qa-icon">📋</div>
+                    <div class="qa-label">Nouveau Devis</div>
+                </div>
+                <div class="quick-action-card" onclick="createDocOfType('bon')">
+                    <div class="qa-icon">🛒</div>
+                    <div class="qa-label">Bon de Commande</div>
+                </div>
+                <div class="quick-action-card" onclick="navigateTo('clients')">
+                    <div class="qa-icon">👤</div>
+                    <div class="qa-label">Ajouter Client</div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📋 Documents récents</h2>
+                    <button class="btn btn-small btn-secondary" onclick="navigateTo('documents')">Voir tout →</button>
+                </div>
+                <div style="padding:0">
+                    <div id="recentDocsTable"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════
+             NEW DOCUMENT (removed image uploads)
+        ═════════════════════════════ -->
+        <div id="page-new-document" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Nouveau Document</h1>
+                    <p>Facture, devis ou bon de commande</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <!-- Type -->
+                <div class="form-section">
+                    <div class="section-title">📋 Type de Document</div>
+                    <div class="doc-type-grid">
+                        <label class="doc-type-card" onclick="selectDocType('facture', this)">
+                            <input type="radio" name="docType" value="facture" checked onchange="updateDocType()">
+                            <div class="doc-icon">📄</div>
+                            <div class="doc-label">Facture</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectDocType('devis', this)">
+                            <input type="radio" name="docType" value="devis" onchange="updateDocType()">
+                            <div class="doc-icon">📋</div>
+                            <div class="doc-label">Devis</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectDocType('bon', this)">
+                            <input type="radio" name="docType" value="bon" onchange="updateDocType()">
+                            <div class="doc-icon">🛒</div>
+                            <div class="doc-label">Bon de Commande</div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Company -->
+                <div class="form-section">
+                    <div class="section-title">🏢 Mon Entreprise</div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Raison Sociale *</label>
+                            <input type="text" id="docCompanyName" required placeholder="SARL Mon Entreprise">
+                        </div>
+                        <div class="form-group">
+                            <label>Matricule Fiscal *</label>
+                            <div class="input-group">
+                                <input type="text" id="docCompanyMF" required placeholder="XXXXXXX/XXX/XXX">
+                                <button type="button" class="btn-random" onclick="generateRandomMF()" title="Générer aléatoire">🎲</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Adresse</label>
+                            <input type="text" id="docCompanyAddress" placeholder="Rue, Ville, Code Postal">
+                        </div>
+                        <div class="form-group">
+                            <label>Téléphone</label>
+                            <input type="tel" id="docCompanyPhone" placeholder="+216 XX XXX XXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="docCompanyEmail" placeholder="contact@entreprise.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Registre de Commerce (RC)</label>
+                            <input type="text" id="docCompanyRC" placeholder="B XXXXXXXX XXXX">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Client -->
+                <div class="form-section">
+                    <div class="section-title">👤 Informations Client</div>
+                    <div class="client-selector">
+                        <select id="savedClientSelect" onchange="loadSavedClient()">
+                            <option value="">— Choisir un client existant —</option>
+                        </select>
+                        <button type="button" class="btn btn-small btn-secondary" onclick="openClientModal()">➕ Nouveau client</button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Nom / Raison Sociale *</label>
+                            <input type="text" id="docClientName" required placeholder="Client SARL">
+                        </div>
+                        <div class="form-group">
+                            <label>Matricule Fiscal</label>
+                            <input type="text" id="docClientMF" placeholder="XXXXXXX/XXX/XXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Adresse</label>
+                            <input type="text" id="docClientAddress" placeholder="Adresse complète">
+                        </div>
+                        <div class="form-group">
+                            <label>Téléphone</label>
+                            <input type="tel" id="docClientPhone" placeholder="+216 XX XXX XXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="docClientEmail" placeholder="client@email.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Details -->
+                <div class="form-section">
+                    <div class="section-title">📅 Détails du Document</div>
+                    <div class="grid-4">
+                        <div class="form-group">
+                            <label>Numéro *</label>
+                            <input type="text" id="docNumber" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" id="docDate" required>
+                        </div>
+                        <div class="form-group" id="dueDateGroup">
+                            <label>Date d'échéance</label>
+                            <input type="date" id="docDueDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Devise</label>
+                            <select id="docCurrency">
+                                <option value="TND" selected>🇹🇳 TND</option>
+                                <option value="EUR">🇪🇺 EUR</option>
+                                <option value="USD">🇺🇸 USD</option>
+                                <option value="GBP">🇬🇧 GBP</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Mode de Paiement</label>
+                            <select id="docPayment">
+                                <option value="Virement bancaire">🏦 Virement bancaire</option>
+                                <option value="Espèces">💵 Espèces</option>
+                                <option value="Chèque">📝 Chèque</option>
+                                <option value="Traite">📜 Traite</option>
+                                <option value="Carte bancaire">💳 Carte bancaire</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <div class="form-section">
+                    <div class="section-title">🛍️ Articles / Services</div>
+
+                    <div class="service-selector">
+                        <div style="display:flex;gap:10px;align-items:flex-end">
+                            <div class="form-group" style="flex:1;margin-bottom:0">
+                                <label style="font-size:0.78rem;color:var(--text-secondary)">Ajouter depuis le catalogue</label>
+                                <select id="presetServiceSelect" onchange="addPresetService()" style="padding:9px 12px;background:white;border:1px solid #bae6fd;border-radius:var(--radius-sm);font-family:inherit;font-size:0.875rem;color:var(--text);outline:none;width:100%">
+                                    <option value="">— Sélectionner un service enregistré —</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-small btn-secondary" onclick="navigateTo('services')">Gérer</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container items-table">
+                        <table id="itemsTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px">N°</th>
+                                    <th>Description</th>
+                                    <th style="width:80px">Qté</th>
+                                    <th style="width:130px">Prix Unit. HT</th>
+                                    <th style="width:90px">TVA %</th>
+                                    <th style="width:130px">Total HT</th>
+                                    <th style="width:40px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsBody"></tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn-add-item" onclick="addItem()">➕ Ajouter une ligne</button>
+
+                    <div class="timbre-box" style="margin-top:12px">
+                        <label class="checkbox-group">
+                            <input type="checkbox" id="applyTimbre" onchange="calculateTotals()">
+                            <span>Timbre Fiscal — 1,000 TND (applicable si montant &gt; 1 000 TND)</span>
+                        </label>
+                        <strong id="timbreDisplay">0.000 TND</strong>
+                    </div>
+
+                    <div class="totals-section">
+                        <div class="total-row"><span>Total HT</span><span id="totalHT">0.000 TND</span></div>
+                        <div class="total-row hidden" id="tva19Row"><span>TVA 19%</span><span id="tva19Amount">0.000 TND</span></div>
+                        <div class="total-row hidden" id="tva13Row"><span>TVA 13%</span><span id="tva13Amount">0.000 TND</span></div>
+                        <div class="total-row hidden" id="tva7Row"><span>TVA 7%</span><span id="tva7Amount">0.000 TND</span></div>
+                        <div class="total-row hidden" id="timbreRow"><span>Timbre Fiscal</span><span id="timbreTotal">0.000 TND</span></div>
+                        <div class="total-row grand-total"><span>Total TTC</span><span id="totalTTC">0.000 TND</span></div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-section">
+                    <div class="section-title">📝 Notes & Conditions</div>
+                    <textarea id="docNotes" rows="3" placeholder="Conditions de paiement, délai de livraison, notes diverses..."></textarea>
+                </div>
+
+                <!-- Actions -->
+                <div class="action-bar">
+                    <button type="button" class="btn btn-secondary" onclick="resetDocumentForm()">🔄 Réinitialiser</button>
+                    <button type="button" class="btn btn-secondary" onclick="previewDocument()">👁️ Prévisualiser</button>
+                    <button type="button" class="btn btn-success" id="saveBtn" onclick="saveAndDownloadPDF()">💾 Enregistrer & Exporter PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════
+             DOCUMENTS LIST
+        ═════════════════════════════ -->
+        <div id="page-documents" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Mes Documents</h1>
+                    <p>Historique complet de tous vos documents</p>
+                </div>
+                <button class="btn btn-primary" onclick="navigateTo('new-document')">➕ Nouveau</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>📋 Liste des Documents</h2>
+                    <div class="toolbar">
+                        <div class="search-box">
+                            <input type="text" id="searchDocs" placeholder="Rechercher par N°, client..." onkeyup="filterDocuments()">
+                        </div>
+                        <select id="filterType" onchange="filterDocuments()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;outline:none;background:white">
+                            <option value="">Tous les types</option>
+                            <option value="facture">Factures</option>
+                            <option value="devis">Devis</option>
+                            <option value="bon">Bons de commande</option>
+                        </select>
+                        <button class="btn btn-small btn-success" onclick="exportAllToExcel()">📊 Excel</button>
+                    </div>
+                </div>
+                <div style="padding:0">
+                    <div id="allDocsTable" class="table-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════
+             CLIENTS
+        ═════════════════════════════ -->
+        <div id="page-clients" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Gestion des Clients</h1>
+                    <p>Gérez votre base de données clients</p>
+                </div>
+                <div style="display:flex;gap:10px">
+                    <button class="btn btn-secondary" onclick="exportClientsToExcel()">📊 Exporter Clients</button>
+                    <button class="btn btn-primary" onclick="openClientModal()">➕ Ajouter un Client</button>
+                </div>
+            </div>
+
+            <!-- Clients mini stats -->
+            <div class="stats-mini-row">
+                <div class="stats-mini-card">
+                    <div class="label">Clients Actifs</div>
+                    <div class="value" id="clientsActiveCount">0</div>
+                </div>
+                <div class="stats-mini-card">
+                    <div class="label">Total Clients</div>
+                    <div class="value" id="clientsTotalCount">0</div>
+                </div>
+                <div class="stats-mini-card" style="display:flex;align-items:center;padding:0 20px">
+                    <div class="search-box" style="width:100%">
+                        <input type="text" id="searchClients" placeholder="Rechercher un client..." onkeyup="filterClients()" style="width:100%">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>👥 Clients</h2>
+                </div>
+                <div style="padding:0">
+                    <div id="clientsTable" class="table-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════
+             SERVICES
+        ═════════════════════════════ -->
+        <div id="page-services" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Services & Produits</h1>
+                    <p>Gérez vos prestations pour un remplissage rapide des documents</p>
+                </div>
+                <button class="btn btn-primary" onclick="openServiceModal()">➕ Nouveau Service</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>🛍️ Catalogue de services</h2>
+                    <div class="search-box">
+                        <input type="text" id="searchServices" placeholder="Rechercher un service..." onkeyup="filterServices()">
+                    </div>
+                </div>
+                <div style="padding:0">
+                    <div id="servicesTable" class="table-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════
+             CONTRAT (NEW)
+        ═════════════════════════════ -->
+        <div id="page-contrat" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Générer un contrat</h1>
+                    <p>CDI, CDD, période d'essai, prestation de service</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="form-section">
+                    <div class="section-title">📄 Type de contrat</div>
+                    <div class="doc-type-grid" style="max-width:100%; grid-template-columns: repeat(4,1fr);">
+                        <label class="doc-type-card" onclick="selectContractType('cdi', this)">
+                            <input type="radio" name="contractType" value="cdi" checked onchange="updateContractForm()">
+                            <div class="doc-icon">📑</div>
+                            <div class="doc-label">CDI</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectContractType('cdd', this)">
+                            <input type="radio" name="contractType" value="cdd" onchange="updateContractForm()">
+                            <div class="doc-icon">📅</div>
+                            <div class="doc-label">CDD</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectContractType('essai', this)">
+                            <input type="radio" name="contractType" value="essai" onchange="updateContractForm()">
+                            <div class="doc-icon">⏳</div>
+                            <div class="doc-label">Période d'essai</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectContractType('prestation', this)">
+                            <input type="radio" name="contractType" value="prestation" onchange="updateContractForm()">
+                            <div class="doc-icon">🤝</div>
+                            <div class="doc-label">Prestation de service</div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">👤 Informations du cocontractant</div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Nom complet *</label>
+                            <input type="text" id="contractClientName" required placeholder="Nom et prénom">
+                        </div>
+                        <div class="form-group">
+                            <label>Adresse</label>
+                            <input type="text" id="contractClientAddress" placeholder="Adresse complète">
+                        </div>
+                        <div class="form-group">
+                            <label>Téléphone</label>
+                            <input type="tel" id="contractClientPhone" placeholder="+216 XX XXX XXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="contractClientEmail" placeholder="email@exemple.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Poste / Fonction (CDI/CDD)</label>
+                            <input type="text" id="contractPosition" placeholder="Ex: Développeur Web">
+                        </div>
+                        <div class="form-group" id="contractSalaryGroup">
+                            <label>Salaire mensuel brut (TND)</label>
+                            <input type="number" id="contractSalary" step="0.001" placeholder="0.000">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section" id="dynamicContractFields">
+                    <!-- Fields that change based on contract type (filled by JS) -->
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-primary" onclick="generateContract()">📄 Générer le contrat</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════
+             COMPANY (with logo/stamp/signature uploads)
+        ═════════════════════════════ -->
+        <div id="page-company" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Mon Entreprise</h1>
+                    <p>Informations pré-remplies automatiquement sur chaque document</p>
+                </div>
+            </div>
+
+            <div class="company-profile-card">
+                <h2 id="companyProfileName">Votre Entreprise</h2>
+                <p id="companyProfileMF">Matricule Fiscal: —</p>
+            </div>
+
+            <div class="card">
+                <div class="form-section">
+                    <div class="section-title">🏢 Informations de l'entreprise</div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Raison Sociale *</label>
+                            <input type="text" id="companyName" placeholder="SARL Mon Entreprise">
+                        </div>
+                        <div class="form-group">
+                            <label>Matricule Fiscal</label>
+                            <input type="text" id="companyMF" placeholder="XXXXXXX/XXX/XXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Adresse</label>
+                            <input type="text" id="companyAddress" placeholder="Rue, Ville, Code Postal">
+                        </div>
+                        <div class="form-group">
+                            <label>Téléphone</label>
+                            <input type="tel" id="companyPhone" placeholder="+216 XX XXX XXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="companyEmail" placeholder="contact@entreprise.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Registre de Commerce (RC)</label>
+                            <input type="text" id="companyRC" placeholder="B XXXXXXXX XXXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Site Web</label>
+                            <input type="url" id="companyWebsite" placeholder="www.monentreprise.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Banque / RIB</label>
+                            <input type="text" id="companyBank" placeholder="Banque XYZ — RIB XXXXX">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Logo, Stamp, Signature uploads -->
+                <div class="form-section">
+                    <div class="section-title">🖼️ Logo, Cachet & Signature (utilisés sur tous les documents)</div>
+                    <div class="upload-grid">
+                        <div class="upload-box" id="companyLogoBox" onclick="document.getElementById('companyLogoInput').click()">
+                            <input type="file" id="companyLogoInput" accept="image/*" onchange="handleCompanyImageUpload(this, 'logo')">
+                            <button type="button" class="remove-img" onclick="event.stopPropagation(); removeCompanyImage('logo')">×</button>
+                            <div class="upload-placeholder" id="companyLogoPlaceholder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                                <p><strong>Logo</strong><br><span style="font-size:0.75rem">Cliquer pour importer</span></p>
+                            </div>
+                            <img id="companyLogoPreview" class="upload-preview hidden">
+                        </div>
+                        <div class="upload-box" id="companyStampBox" onclick="document.getElementById('companyStampInput').click()">
+                            <input type="file" id="companyStampInput" accept="image/*" onchange="handleCompanyImageUpload(this, 'stamp')">
+                            <button type="button" class="remove-img" onclick="event.stopPropagation(); removeCompanyImage('stamp')">×</button>
+                            <div class="upload-placeholder" id="companyStampPlaceholder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                                <p><strong>Cachet</strong><br><span style="font-size:0.75rem">Cliquer pour importer</span></p>
+                            </div>
+                            <img id="companyStampPreview" class="upload-preview hidden">
+                        </div>
+                        <div class="upload-box" id="companySignatureBox" onclick="document.getElementById('companySignatureInput').click()">
+                            <input type="file" id="companySignatureInput" accept="image/*" onchange="handleCompanyImageUpload(this, 'signature')">
+                            <button type="button" class="remove-img" onclick="event.stopPropagation(); removeCompanyImage('signature')">×</button>
+                            <div class="upload-placeholder" id="companySignaturePlaceholder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h18M3 17l4-8 4 4 6-10 4 14H3z"/></svg>
+                                <p><strong>Signature</strong><br><span style="font-size:0.75rem">Cliquer pour importer</span></p>
+                            </div>
+                            <img id="companySignaturePreview" class="upload-preview hidden">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-primary" onclick="saveCompanySettings()">💾 Enregistrer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════
+             SETTINGS
+        ═════════════════════════════ -->
+        <div id="page-settings" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>Paramètres</h1>
+                    <p>Configuration de la numérotation, thème des documents et sauvegardes</p>
+                </div>
+            </div>
+
+            <!-- Serial Numbers -->
+            <div class="card">
+                <div class="form-section">
+                    <div class="section-title">🔢 Numérotation des Documents</div>
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Préfixe Factures</label>
+                            <input type="text" id="prefixFacture" value="FAC" maxlength="10" oninput="updateSerialPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Préfixe Devis</label>
+                            <input type="text" id="prefixDevis" value="DEV" maxlength="10" oninput="updateSerialPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Préfixe Bons de Commande</label>
+                            <input type="text" id="prefixBon" value="BC" maxlength="10" oninput="updateSerialPreview()">
+                        </div>
+                    </div>
+                    <div class="serial-preview-box">
+                        <h4>Aperçu du prochain numéro :</h4>
+                        <div id="serialPreview">FAC-2026-001</div>
+                    </div>
+                    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+                        <button class="btn btn-primary" onclick="saveSerialSettings()">💾 Enregistrer les préfixes</button>
+                        <button class="btn btn-warning" onclick="openResetCounterModal()">🔄 Réinitialiser le compteur</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theme Settings -->
+            <div class="card">
+                <div class="form-section">
+                    <div class="section-title">🎨 Thème des Documents</div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Police principale</label>
+                            <select id="docFontFamily" onchange="updateThemePreview()">
+                                <option value="'Segoe UI', sans-serif">Segoe UI (Moderne)</option>
+                                <option value="'Times New Roman', serif">Times New Roman (Classique)</option>
+                                <option value="Arial, sans-serif">Arial (Standard)</option>
+                                <option value="'Courier New', monospace">Courier New (Monospace)</option>
+                                <option value="Georgia, serif">Georgia (Élégant)</option>
+                                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Taille de base</label>
+                            <select id="docFontSize" onchange="updateThemePreview()">
+                                <option value="12px">Petite (12px)</option>
+                                <option value="14px" selected>Normale (14px)</option>
+                                <option value="16px">Grande (16px)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:20px">
+                        <h4 style="margin-bottom:14px;color:var(--text-secondary);font-size:0.875rem;font-weight:600">Titres personnalisés</h4>
+                        <div class="theme-type-grid">
+                            <div class="theme-type-card">
+                                <div class="theme-type-header" style="background:linear-gradient(135deg,#1e3a8a,#3b82f6)">
+                                    <span>📄</span><span>FACTURE</span>
+                                </div>
+                                <div class="theme-type-body">
+                                    <div class="form-group" style="margin-bottom:12px">
+                                        <label>Texte</label>
+                                        <input type="text" id="titleFacture" value="FACTURE" oninput="updateThemePreview()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Couleur</label>
+                                        <div class="color-picker-wrapper">
+                                            <input type="color" id="colorFacture" value="#1e3a8a" onchange="updateThemePreview()">
+                                            <span id="colorFactureHex">#1e3a8a</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="theme-type-card">
+                                <div class="theme-type-header" style="background:linear-gradient(135deg,#92400e,#f59e0b)">
+                                    <span>📋</span><span>DEVIS</span>
+                                </div>
+                                <div class="theme-type-body">
+                                    <div class="form-group" style="margin-bottom:12px">
+                                        <label>Texte</label>
+                                        <input type="text" id="titleDevis" value="DEVIS" oninput="updateThemePreview()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Couleur</label>
+                                        <div class="color-picker-wrapper">
+                                            <input type="color" id="colorDevis" value="#92400e" onchange="updateThemePreview()">
+                                            <span id="colorDevisHex">#92400e</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="theme-type-card">
+                                <div class="theme-type-header" style="background:linear-gradient(135deg,#065f46,#10b981)">
+                                    <span>🛒</span><span>BON DE COMMANDE</span>
+                                </div>
+                                <div class="theme-type-body">
+                                    <div class="form-group" style="margin-bottom:12px">
+                                        <label>Texte</label>
+                                        <input type="text" id="titleBon" value="BON DE COMMANDE" oninput="updateThemePreview()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Couleur</label>
+                                        <div class="color-picker-wrapper">
+                                            <input type="color" id="colorBon" value="#065f46" onchange="updateThemePreview()">
+                                            <span id="colorBonHex">#065f46</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="theme-preview-box" style="margin-top:20px">
+                        <h4 style="margin-bottom:12px;color:var(--text-secondary);font-size:0.8rem;font-weight:600">Aperçu en temps réel</h4>
+                        <div id="themePreview"></div>
+                    </div>
+
+                    <div style="margin-top:16px;display:flex;gap:10px">
+                        <button class="btn btn-primary" onclick="saveThemeSettings()">💾 Enregistrer</button>
+                        <button class="btn btn-secondary" onclick="resetThemeDefaults()">🔄 Réinitialiser</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backup -->
+            <div class="card">
+                <div class="form-section">
+                    <div class="section-title">⚙️ Sauvegarde automatique</div>
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label class="checkbox-group" style="font-weight:600">
+                            <input type="checkbox" id="backupEnabled" style="width:16px;height:16px;accent-color:var(--primary)">
+                            <span>Activer la sauvegarde automatique</span>
+                        </label>
+                    </div>
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Fréquence</label>
+                            <select id="backupFrequency">
+                                <option value="daily">Quotidienne</option>
+                                <option value="weekly">Hebdomadaire</option>
+                                <option value="monthly">Mensuelle</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Heure de sauvegarde</label>
+                            <input type="time" id="backupTime" value="02:00">
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre à conserver</label>
+                            <input type="number" id="backupKeep" value="10" min="1" max="50">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBackupSettings()">Enregistrer</button>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">📦 Sauvegarde manuelle</div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap">
+                        <button class="btn btn-success" onclick="createManualBackup()">📥 Créer une sauvegarde</button>
+                        <button class="btn btn-secondary" onclick="restoreFromBackup()">📤 Restaurer depuis un fichier</button>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">📋 Sauvegardes disponibles</div>
+                    <div id="backupList"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- ═══════════════════════════════════════
+     PREVIEW MODAL (added close button)
+═══════════════════════════════════════ -->
+<div id="previewModal" class="preview-container">
+    <div class="preview-toolbar">
+        <button class="btn btn-secondary" onclick="closePreview()">✏️ Modifier</button>
+        <button class="btn btn-primary" onclick="downloadPDF()">📄 Télécharger PDF</button>
+        <button class="btn btn-success" onclick="printDocument()">🖨️ Imprimer</button>
+        <button class="btn btn-danger" onclick="closePreview()">✖ Fermer</button>
+    </div>
+    <div class="document-sheet" id="previewContent"></div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     CLIENT MODAL
+═══════════════════════════════════════ -->
+<div id="clientModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>➕ Nouveau Client</h2>
+            <button class="modal-close" onclick="closeClientModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="grid-2" style="margin-bottom:14px">
+                <div class="form-group">
+                    <label>Nom / Raison Sociale *</label>
+                    <input type="text" id="newClientName" required placeholder="Client SARL">
+                </div>
+                <div class="form-group">
+                    <label>Matricule Fiscal</label>
+                    <input type="text" id="newClientMF" placeholder="XXXXXXX/XXX/XXX">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Adresse</label>
+                <input type="text" id="newClientAddress" placeholder="Adresse complète">
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="tel" id="newClientPhone" placeholder="+216 XX XXX XXX">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="newClientEmail" placeholder="client@email.com">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeClientModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="saveNewClient()">💾 Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SERVICE MODAL
+═══════════════════════════════════════ -->
+<div id="serviceModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="serviceModalTitle">➕ Nouveau Service</h2>
+            <button class="modal-close" onclick="closeServiceModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Nom du service/produit *</label>
+                <input type="text" id="serviceName" required placeholder="Ex: Consultation, Produit XYZ...">
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Description</label>
+                <input type="text" id="serviceDescription" placeholder="Description détaillée...">
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Prix unitaire HT (TND)</label>
+                    <input type="number" id="servicePrice" value="0.000" min="0" step="0.001">
+                </div>
+                <div class="form-group">
+                    <label>TVA %</label>
+                    <select id="serviceTva">
+                        <option value="19" selected>19%</option>
+                        <option value="13">13%</option>
+                        <option value="7">7%</option>
+                        <option value="0">0%</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeServiceModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="saveService()">💾 Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     CONFIRM MODAL
+═══════════════════════════════════════ -->
+<div id="confirmModal" class="modal-overlay">
+    <div class="modal" style="max-width:400px">
+        <div class="modal-header">
+            <h2 id="confirmTitle">Confirmation</h2>
+            <button class="modal-close" onclick="closeConfirm()">×</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage" style="color:var(--text-secondary);line-height:1.6"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeConfirm()">Annuler</button>
+            <button class="btn btn-danger" id="confirmBtn" onclick="executeConfirm()">Confirmer</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+
+<script>
+// Update topbar date
+function updateTopbarDate() {
+    const now = new Date();
+    const opts = { weekday:'short', year:'numeric', month:'short', day:'numeric' };
+    const str = now.toLocaleDateString('fr-FR', opts);
+    const el = document.getElementById('topbarDateText');
+    const el2 = document.getElementById('dashDate');
+    if (el) el.textContent = str;
+    if (el2) el2.textContent = str;
+}
+updateTopbarDate();
+
+// Sync topbar user info
+const _origShowApp = typeof showApp === 'function' ? showApp : null;
+document.addEventListener('DOMContentLoaded', () => {
+    const origShowApp = window.showApp;
+    if (origShowApp) {
+        window.showApp = function() {
+            origShowApp.apply(this, arguments);
+            setTimeout(() => {
+                const u = document.getElementById('userName')?.textContent;
+                const av = document.getElementById('userAvatar')?.textContent;
+                if (document.getElementById('topbarName')) document.getElementById('topbarName').textContent = u || '';
+                if (document.getElementById('topbarAvatar')) document.getElementById('topbarAvatar').textContent = av || 'U';
+            }, 100);
+        };
+    }
+});
+
+// Update clients count when clients page loads
+const origLoadClients = window.loadClients;
+if (typeof origLoadClients === 'function') {
+    window.loadClients = async function() {
+        await origLoadClients.apply(this, arguments);
+        const total = (window.allClients || []).length;
+        const activeEl = document.getElementById('clientsActiveCount');
+        const totalEl  = document.getElementById('clientsTotalCount');
+        if (activeEl) activeEl.textContent = total;
+        if (totalEl)  totalEl.textContent = total;
+    };
+}
+
+// Better renderClientsTable with avatars
+const origRenderClients = window.renderClientsTable;
+if (typeof origRenderClients !== 'function') {
+    window.addEventListener('load', () => {
+        const colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#6366f1'];
+        window.renderClientsTable = function(clients) {
+            const container = document.getElementById('clientsTable');
+            if (!container) return;
+            const total = (window.allClients || clients).length;
+            const activeEl = document.getElementById('clientsActiveCount');
+            const totalEl  = document.getElementById('clientsTotalCount');
+            if (activeEl) activeEl.textContent = total;
+            if (totalEl)  totalEl.textContent = total;
+
+            if (!clients.length) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Aucun client</h3><p>Ajoutez votre premier client</p></div>';
+                return;
+            }
+            const escHtml = (t) => { if (!t) return ''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; };
+            container.innerHTML = `<table><thead><tr>
+                <th>Client</th><th>Matricule Fiscal</th><th>Téléphone</th><th>Email</th><th>Statut</th><th>Actions</th>
+            </tr></thead><tbody>
+            ${clients.map((c,i) => {
+                const color = colors[i % colors.length];
+                const initial = (c.name || '?').charAt(0).toUpperCase();
+                return `<tr>
+                    <td>
+                        <div class="client-name-cell">
+                            <div class="client-avatar" style="background:${color}">${initial}</div>
+                            <div>
+                                <div style="font-weight:600">${escHtml(c.name)}</div>
+                                ${c.address ? `<div style="font-size:0.75rem;color:var(--text-muted)">${escHtml(c.address)}</div>` : ''}
+                            </div>
+                        </div>
+                    </td>
+                    <td>${escHtml(c.mf) || '—'}</td>
+                    <td>${escHtml(c.phone) || '—'}</td>
+                    <td>${escHtml(c.email) || '—'}</td>
+                    <td><span class="badge badge-active">Actif</span></td>
+                    <td class="actions-cell">
+                        <button class="btn-icon btn-delete" onclick="confirmDeleteClient('${c.id}')" title="Supprimer">🗑️</button>
+                    </td>
+                </tr>`;
+            }).join('')}
+            </tbody></table>
+            <div class="table-pagination">
+                <span>Affichage 1 à ${clients.length} sur ${clients.length} résultats</span>
+                <div class="pagination-btns">
+                    <button class="page-btn" disabled>‹</button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn" disabled>›</button>
+                </div>
+            </div>`;
+        };
+    });
+}
+
+// Better renderDocumentsTable
+window.addEventListener('load', () => {
+    const origRender = window.renderDocumentsTable;
+    window.renderDocumentsTable = function(docs) {
+        const container = document.getElementById('allDocsTable');
+        if (!container) return;
+        if (!docs.length) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Aucun document</h3><p>Créez votre premier document pour commencer</p></div>';
+            return;
+        }
+        const escHtml = (t) => { if (!t) return ''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; };
+        const fmtDate = (s) => { if(!s) return ''; return new Date(s).toLocaleDateString('fr-FR'); };
+        container.innerHTML = `<table><thead><tr>
+            <th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Échéance</th><th>Total TTC</th><th>Actions</th>
+        </tr></thead><tbody>
+        ${docs.map(doc => `<tr>
+            <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
+            <td style="font-family:'Courier New',monospace;font-size:0.82rem;font-weight:600">${escHtml(doc.number)}</td>
+            <td style="font-weight:500">${escHtml(doc.clientName)}</td>
+            <td>${fmtDate(doc.date)}</td>
+            <td>${fmtDate(doc.dueDate) || '—'}</td>
+            <td style="font-weight:700">${doc.totalTTC.toFixed(3)} ${doc.currency}</td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-view"    onclick="viewDocument('${doc.id}')" title="Aperçu">👁️</button>
+                ${doc.type==='devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir">🔄</button>` : ''}
+                <button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')" title="Modifier">✏️</button>
+                <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')" title="PDF">📄</button>
+                <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+        </tbody></table>
+        <div class="table-pagination">
+            <span>Affichage 1 à ${docs.length} sur ${docs.length} résultats</span>
+            <div class="pagination-btns">
+                <button class="page-btn" disabled>‹</button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn" disabled>›</button>
+            </div>
+        </div>`;
+    };
+});
+
+function globalSearchHandler() { /* placeholder */ }
+
+const _origNav = window.navigateTo;
+window.navigateTo = function(page) {
+    if (_origNav) _origNav.apply(this, arguments);
+    const u = document.getElementById('userName')?.textContent;
+    const av = document.getElementById('userAvatar')?.textContent;
+    if (document.getElementById('topbarName') && u) document.getElementById('topbarName').textContent = u;
+    if (document.getElementById('topbarAvatar') && av) document.getElementById('topbarAvatar').textContent = av;
+};
+</script>
+
+</body>
+</html>
