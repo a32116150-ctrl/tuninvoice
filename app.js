@@ -2,9 +2,6 @@
 let currentUser = null;
 let currentDocType = 'facture';
 let itemCount = 0;
-let logoImage = null;
-let stampImage = null;
-let signatureImage = null;
 let timbreAmount = 0;
 let allDocuments = [];
 let allClients = [];
@@ -13,9 +10,20 @@ let editingServiceId = null;
 let editingDocId = null;
 let confirmCallback = null;
 let currentSettings = {};
+let companyImages = { logo: null, stamp: null, signature: null }; // from company settings
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check localStorage first for persistent login
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        try {
+            currentUser = JSON.parse(storedUser);
+            showApp();
+            return;
+        } catch {}
+    }
+    // Fallback to sessionStorage
     const savedUser = sessionStorage.getItem('currentUser');
     if (savedUser) {
         try {
@@ -96,14 +104,21 @@ async function handleLogin(e) {
         });
         if (result.success) {
             const safeUser = { 
-        id: result.user.id || result.user._id, 
-        name: result.user.name || 'User', 
-        email: result.user.email, 
-        company: result.user.company || '', 
-        mf: result.user.mf || '' 
-    };
+                id: result.user.id || result.user._id, 
+                name: result.user.name || 'User', 
+                email: result.user.email, 
+                company: result.user.company || '', 
+                mf: result.user.mf || '' 
+            };
             currentUser = safeUser;
-            sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
+            const remember = document.getElementById('rememberMeCheckbox').checked;
+            if (remember) {
+                localStorage.setItem('currentUser', JSON.stringify(safeUser));
+                sessionStorage.removeItem('currentUser');
+            } else {
+                sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
+                localStorage.removeItem('currentUser');
+            }
             showApp();
         } else { showError(result.error || 'Identifiants incorrects'); }
     } catch { showError('Erreur de connexion. Veuillez réessayer.'); }
@@ -143,6 +158,7 @@ function confirmLogout() {
 function logout() {
     currentUser = null;
     sessionStorage.removeItem('currentUser');
+    localStorage.removeItem('currentUser');
     document.getElementById('appContainer').classList.add('hidden');
     document.getElementById('authContainer').classList.remove('hidden');
     document.getElementById('loginForm').reset();
@@ -169,7 +185,7 @@ function navigateTo(page) {
     const pageEl = document.getElementById(`page-${page}`);
     if (!pageEl) return;
     pageEl.classList.add('active');
-    const pages = ['dashboard','new-document','documents','clients','services','company','settings'];
+    const pages = ['dashboard','new-document','documents','clients','services','contrat','company','settings'];
     const idx = pages.indexOf(page);
     const navItems = document.querySelectorAll('.nav-item');
     if (idx !== -1 && navItems[idx]) navItems[idx].classList.add('active');
@@ -177,6 +193,7 @@ function navigateTo(page) {
     if (page === 'documents')  loadDocuments();
     if (page === 'clients')    loadClients();
     if (page === 'services')   loadServices();
+    if (page === 'contrat')    initContractPage();
     if (page === 'company')    loadCompanyPage();
     if (page === 'settings')   { loadSettings(); loadSerialSettings(); loadThemeSettings(); }
 }
@@ -188,7 +205,9 @@ function createDocOfType(type) {
     navigateTo('new-document');
 }
 
-// ==================== DASHBOARD ====================
+// ==================== DASHBOARD (ENHANCED) ====================
+let monthlyChart = null, docTypeChart = null;
+
 async function loadDashboard() {
     try {
         const stats = await window.electronAPI.getStats(currentUser.id);
@@ -197,8 +216,63 @@ async function loadDashboard() {
         document.getElementById('statTotalClients').textContent = stats.totalClients;
         document.getElementById('statThisMonth').textContent    = stats.thisMonth;
         const docs = await window.electronAPI.getDocuments(currentUser.id);
+        allDocuments = docs;
         renderRecentDocs(docs.slice(0, 6));
+
+        // Prepare charts data
+        const monthlyData = await prepareMonthlyRevenueData(docs);
+        const typeCounts = { facture:0, devis:0, bon:0 };
+        docs.forEach(d => typeCounts[d.type]++);
+        
+        // Render charts
+        if (monthlyChart) monthlyChart.destroy();
+        if (docTypeChart) docTypeChart.destroy();
+        const ctx1 = document.getElementById('monthlyRevenueChart').getContext('2d');
+        monthlyChart = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: monthlyData.labels,
+                datasets: [{ label: 'Revenus (TND)', data: monthlyData.values, backgroundColor: '#3b82f6' }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        const ctx2 = document.getElementById('docTypeChart').getContext('2d');
+        docTypeChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['Factures', 'Devis', 'Bons de commande'],
+                datasets: [{ data: [typeCounts.facture, typeCounts.devis, typeCounts.bon], backgroundColor: ['#3b82f6', '#f59e0b', '#10b981'] }]
+            }
+        });
+
+        // Top clients by total amount
+        const clientTotals = {};
+        docs.forEach(doc => {
+            if (doc.type === 'facture') {
+                clientTotals[doc.clientName] = (clientTotals[doc.clientName] || 0) + doc.totalTTC;
+            }
+        });
+        const topClients = Object.entries(clientTotals).sort((a,b) => b[1]-a[1]).slice(0,3);
+        const topClientsDiv = document.getElementById('topClientsList');
+        topClientsDiv.innerHTML = topClients.length ? topClients.map(([name,amount]) => `<div><strong>${escapeHtml(name)}</strong> : ${amount.toFixed(2)} TND</div>`).join('') : '<p>Aucune facture</p>';
+        
+        // Pending invoices (simulated - you may add a 'status' field later)
+        const pendingDiv = document.getElementById('pendingInvoicesList');
+        pendingDiv.innerHTML = '<p>Fonctionnalité à venir (statut de paiement)</p>';
     } catch { showToast('Erreur tableau de bord', 'error'); }
+}
+
+async function prepareMonthlyRevenueData(docs) {
+    const months = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+    const values = new Array(12).fill(0);
+    docs.forEach(doc => {
+        if (doc.type === 'facture') {
+            const date = new Date(doc.date);
+            const month = date.getMonth();
+            values[month] += doc.totalTTC;
+        }
+    });
+    return { labels: months, values };
 }
 
 function renderRecentDocs(docs) {
@@ -220,8 +294,9 @@ function renderRecentDocs(docs) {
                 <button class="btn-icon btn-edit" onclick="editExistingDoc('${doc.id}')" title="Modifier">✏️</button>
                 <button class="btn-icon btn-pdf"    onclick="downloadDocPDF('${doc.id}')"   title="PDF">📄</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer">🗑️</button>
-            </td></tr>`).join('')}
-    </tbody></table>`;
+            </td>
+        </tr>`).join('')}
+    </tbody></tr>`;
 }
 
 // ==================== NEW DOCUMENT ====================
@@ -253,6 +328,10 @@ async function loadCompanyIntoForm() {
         document.getElementById('docCompanyPhone').value   = c.phone    || '';
         document.getElementById('docCompanyEmail').value   = c.email    || '';
         document.getElementById('docCompanyRC').value      = c.rc       || '';
+        // Load company images (will be used in preview)
+        companyImages.logo      = c.logo_image || null;
+        companyImages.stamp     = c.stamp_image || null;
+        companyImages.signature = c.signature_image || null;
     } catch {}
 }
 
@@ -374,31 +453,6 @@ function addPresetService() {
     select.value = '';
     calculateTotals();
     showToast('Service ajouté', 'success');
-}
-
-// ==================== IMAGES ====================
-function handleImageUpload(input, type) {
-    if (!input.files?.[0]) return;
-    if (input.files[0].size > 5*1024*1024) { showToast('Image trop lourde (max 5 MB)','warning'); return; }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const data = e.target.result;
-        document.getElementById(`${type}Preview`).src = data;
-        document.getElementById(`${type}Preview`).classList.remove('hidden');
-        document.getElementById(`${type}Placeholder`).classList.add('hidden');
-        document.getElementById(`${type}Box`).classList.add('has-image');
-        if (type==='logo') logoImage=data; else if (type==='stamp') stampImage=data; else if (type==='signature') signatureImage=data;
-    };
-    reader.readAsDataURL(input.files[0]);
-}
-
-function removeImage(type) {
-    document.getElementById(`${type}Preview`).src='';
-    document.getElementById(`${type}Preview`).classList.add('hidden');
-    document.getElementById(`${type}Placeholder`).classList.remove('hidden');
-    document.getElementById(`${type}Box`).classList.remove('has-image');
-    document.getElementById(`${type}Input`).value='';
-    if (type==='logo') logoImage=null; else if (type==='stamp') stampImage=null; else if (type==='signature') signatureImage=null;
 }
 
 // ==================== CLIENTS DROPDOWN ====================
@@ -602,7 +656,7 @@ function openResetCounterModal() {
     );
 }
 
-// ==================== PREVIEW & SAVE ====================
+// ==================== PREVIEW & SAVE (using company images) ====================
 function previewDocument() { if (!validateDocumentForm()) return; generatePreviewHTML(); document.getElementById('previewModal').classList.add('active'); }
 function closePreview() { document.getElementById('previewModal').classList.remove('active'); }
 
@@ -640,14 +694,14 @@ function generatePreviewHTML() {
         items.push({ description: desc, quantity: qty, price, tva });
     }
     const totalTTC = totalHT + tva19 + tva13 + tva7 + timbreAmount;
-    const logoHTML = logoImage ? `<img src="${logoImage}" style="max-width:140px;max-height:80px;object-fit:contain;margin-bottom:12px;display:block">` : '';
+    const logoHTML = companyImages.logo ? `<img src="${companyImages.logo}" style="max-width:140px;max-height:80px;object-fit:contain;margin-bottom:12px;display:block">` : '';
 
     document.getElementById('previewContent').innerHTML = buildInvoicePreviewHTML({
         color, typeLabel, companyName, companyMF, companyAddress, companyPhone, companyEmail, companyRC,
         clientName, clientMF, clientAddress, clientPhone, clientEmail,
         docNumber, docDate, docDueDate, currency, paymentMode, notes,
         logoHTML, items, totalHT, tva19, tva13, tva7, totalTTC, timbreAmount,
-        stampImage, signatureImage
+        stampImage: companyImages.stamp, signatureImage: companyImages.signature
     });
 }
 
@@ -764,12 +818,6 @@ async function saveAndDownloadPDF() {
 }
 
 // ==================== PDF HELPERS ====================
-
-/**
- * Build a full, self-contained HTML document from the current preview content.
- * This wraps the raw innerHTML in a proper <html> shell so Electron can
- * render it in a hidden window and produce a pixel-perfect PDF.
- */
 function buildFullHTML() {
     const inner = document.getElementById('previewContent').innerHTML;
     return `<!DOCTYPE html>
@@ -786,15 +834,7 @@ function buildFullHTML() {
 </html>`;
 }
 
-/**
- * "Télécharger PDF" — called from the preview modal toolbar.
- * Gets the current invoice number to suggest a filename, builds the HTML,
- * then asks the main process to render it and save via a Save dialog.
- */
 async function downloadPDF() {
-    // Try to derive a meaningful filename from the visible invoice number
-    const numberEl = document.getElementById('previewContent')
-        ?.querySelector('strong')?.closest('div')?.querySelector('div');
     const docNumber = document.getElementById('docNumber')?.value || 'facture';
     const filename = `${docNumber}.pdf`;
 
@@ -817,10 +857,6 @@ async function downloadPDF() {
     }
 }
 
-/**
- * "Imprimer" — called from the preview modal toolbar.
- * Sends the invoice HTML to the main process which opens the system print dialog.
- */
 async function printDocument() {
     generatePreviewHTML();
     const html = buildFullHTML();
@@ -838,16 +874,10 @@ async function printDocument() {
     }
 }
 
-/**
- * Download PDF for a document from the documents list (📄 button).
- * Temporarily populates the form with the stored doc data, renders preview,
- * then generates the PDF — all without disturbing the current edit state.
- */
 async function downloadDocPDF(docId) {
     const doc = allDocuments.find(d => d.id === docId);
     if (!doc) return;
 
-    // Stash current state
     const originalEditingId = editingDocId;
     editingDocId = docId;
 
@@ -856,7 +886,6 @@ async function downloadDocPDF(docId) {
     const html = buildFullHTML();
     const filename = `${doc.number}.pdf`;
 
-    // Restore state
     editingDocId = originalEditingId;
 
     showLoading('Génération du PDF...');
@@ -911,9 +940,7 @@ function collectDocumentData() {
         timbreAmount,
         totalHT: parseFloat(document.getElementById('totalHT').textContent) || 0,
         totalTTC: parseFloat(document.getElementById('totalTTC').textContent) || 0,
-        logoImage,
-        stampImage,
-        signatureImage,
+        // No logo/stamp/signature per document – they come from company settings
         notes: document.getElementById('docNotes').value
     };
 }
@@ -921,15 +948,7 @@ function collectDocumentData() {
 function resetDocumentForm() {
     document.getElementById('itemsBody').innerHTML = '';
     itemCount = 0;
-    logoImage = null; stampImage = null; signatureImage = null;
     timbreAmount = 0; editingDocId = null;
-    ['logo', 'stamp', 'signature'].forEach(type => {
-        document.getElementById(`${type}Preview`).src = '';
-        document.getElementById(`${type}Preview`).classList.add('hidden');
-        document.getElementById(`${type}Placeholder`).classList.remove('hidden');
-        document.getElementById(`${type}Box`).classList.remove('has-image');
-        document.getElementById(`${type}Input`).value = '';
-    });
     document.getElementById('applyTimbre').checked = false;
     document.getElementById('docNotes').value = '';
     initNewDocument();
@@ -1038,23 +1057,7 @@ function populateFormWithDoc(doc) {
     document.getElementById('docPayment').value = doc.paymentMode || 'Virement bancaire';
     document.getElementById('docNotes').value = doc.notes || '';
     document.getElementById('applyTimbre').checked = doc.applyTimbre || false;
-    logoImage = doc.logoImage || null;
-    stampImage = doc.stampImage || null;
-    signatureImage = doc.signatureImage || null;
-    ['logo', 'stamp', 'signature'].forEach(type => {
-        const img = type === 'logo' ? logoImage : type === 'stamp' ? stampImage : signatureImage;
-        if (img) {
-            document.getElementById(`${type}Preview`).src = img;
-            document.getElementById(`${type}Preview`).classList.remove('hidden');
-            document.getElementById(`${type}Placeholder`).classList.add('hidden');
-            document.getElementById(`${type}Box`).classList.add('has-image');
-        } else {
-            document.getElementById(`${type}Preview`).src = '';
-            document.getElementById(`${type}Preview`).classList.add('hidden');
-            document.getElementById(`${type}Placeholder`).classList.remove('hidden');
-            document.getElementById(`${type}Box`).classList.remove('has-image');
-        }
-    });
+    // Note: logo/stamp/signature not stored per document; they come from company settings
     document.getElementById('itemsBody').innerHTML = '';
     itemCount = 0;
     if (doc.items && doc.items.length) {
@@ -1191,7 +1194,7 @@ async function exportClientsToExcel() {
     }
 }
 
-// ==================== COMPANY SETTINGS ====================
+// ==================== COMPANY SETTINGS (with logo/stamp/signature) ====================
 async function loadCompanyPage() {
     try {
         const c = await window.electronAPI.getCompany(currentUser.id) || {};
@@ -1205,9 +1208,54 @@ async function loadCompanyPage() {
         document.getElementById('companyBank').value    = c.bank     || '';
         document.getElementById('companyProfileName').textContent = c.name || currentUser.company || 'Votre Entreprise';
         document.getElementById('companyProfileMF').textContent   = (c.mf || currentUser.mf) ? `Matricule Fiscal: ${c.mf || currentUser.mf}` : 'Matricule Fiscal: —';
+        
+        // Load images
+        companyImages.logo      = c.logo_image || null;
+        companyImages.stamp     = c.stamp_image || null;
+        companyImages.signature = c.signature_image || null;
+        updateCompanyImagePreviews();
     } catch (err) {
         console.error('Error loading company:', err);
     }
+}
+
+function updateCompanyImagePreviews() {
+    const types = ['logo', 'stamp', 'signature'];
+    types.forEach(type => {
+        const img = companyImages[type];
+        const preview = document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Preview`);
+        const placeholder = document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Placeholder`);
+        const box = document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Box`);
+        if (img) {
+            preview.src = img;
+            preview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            box.classList.add('has-image');
+        } else {
+            preview.src = '';
+            preview.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+            box.classList.remove('has-image');
+        }
+    });
+}
+
+function handleCompanyImageUpload(input, type) {
+    if (!input.files?.[0]) return;
+    if (input.files[0].size > 5*1024*1024) { showToast('Image trop lourde (max 5 MB)','warning'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const data = e.target.result;
+        companyImages[type] = data;
+        updateCompanyImagePreviews();
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function removeCompanyImage(type) {
+    companyImages[type] = null;
+    updateCompanyImagePreviews();
+    document.getElementById(`company${type.charAt(0).toUpperCase() + type.slice(1)}Input`).value = '';
 }
 
 async function saveCompanySettings() {
@@ -1220,7 +1268,10 @@ async function saveCompanySettings() {
         email:   document.getElementById('companyEmail').value.trim(),
         rc:      document.getElementById('companyRC').value.trim(),
         website: document.getElementById('companyWebsite').value.trim(),
-        bank:    document.getElementById('companyBank').value.trim()
+        bank:    document.getElementById('companyBank').value.trim(),
+        logo_image: companyImages.logo,
+        stamp_image: companyImages.stamp,
+        signature_image: companyImages.signature
     };
     try {
         await window.electronAPI.saveCompany(settings);
@@ -1229,6 +1280,157 @@ async function saveCompanySettings() {
     } catch (err) {
         showToast('Erreur d\'enregistrement', 'error');
     }
+}
+
+// ==================== CONTRAT FEATURE ====================
+let currentContractType = 'cdi';
+
+function selectContractType(type, element) {
+    currentContractType = type;
+    document.querySelectorAll('#page-contrat .doc-type-card').forEach(card => card.classList.remove('selected'));
+    element.classList.add('selected');
+    updateContractForm();
+}
+
+function updateContractForm() {
+    const container = document.getElementById('dynamicContractFields');
+    let html = '<div class="section-title">📝 Détails du contrat</div><div class="grid-2">';
+    if (currentContractType === 'cdi') {
+        html += `<div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
+                 <div class="form-group"><label>Période d'essai (mois)</label><input type="number" id="contractTrialMonths" value="2" step="1" min="0"></div>`;
+    } else if (currentContractType === 'cdd') {
+        html += `<div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
+                 <div class="form-group"><label>Date de fin</label><input type="date" id="contractEndDate"></div>
+                 <div class="form-group"><label>Motif (remplacement, accroissement...)</label><input type="text" id="contractCddReason" placeholder="ex: remplacement d'un salarié absent"></div>`;
+    } else if (currentContractType === 'essai') {
+        html += `<div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
+                 <div class="form-group"><label>Durée de la période d'essai (mois)</label><input type="number" id="contractTrialMonths" value="1" step="1" min="1"></div>`;
+    } else if (currentContractType === 'prestation') {
+        html += `<div class="form-group"><label>Description de la prestation</label><textarea id="contractServiceDesc" rows="2" placeholder="Détail des services à fournir..."></textarea></div>
+                 <div class="form-group"><label>Tarif journalier / forfait (TND)</label><input type="number" id="contractDailyRate" step="0.001" placeholder="0.000"></div>
+                 <div class="form-group"><label>Date de début</label><input type="date" id="contractStartDate"></div>
+                 <div class="form-group"><label>Date de fin (optionnel)</label><input type="date" id="contractEndDate"></div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function initContractPage() {
+    // reset form
+    document.getElementById('contractClientName').value = '';
+    document.getElementById('contractClientAddress').value = '';
+    document.getElementById('contractClientPhone').value = '';
+    document.getElementById('contractClientEmail').value = '';
+    document.getElementById('contractPosition').value = '';
+    document.getElementById('contractSalary').value = '';
+    // Set default contract type to CDI
+    currentContractType = 'cdi';
+    const cards = document.querySelectorAll('#page-contrat .doc-type-card');
+    cards.forEach(card => card.classList.remove('selected'));
+    cards[0].classList.add('selected');
+    updateContractForm();
+}
+
+async function generateContract() {
+    const clientName = document.getElementById('contractClientName').value.trim();
+    if (!clientName) { showToast('Le nom du cocontractant est requis', 'warning'); return; }
+    const position = document.getElementById('contractPosition').value.trim();
+    if ((currentContractType === 'cdi' || currentContractType === 'cdd') && !position) {
+        showToast('Le poste est requis pour CDI/CDD', 'warning'); return;
+    }
+    const salary = parseFloat(document.getElementById('contractSalary').value);
+    if ((currentContractType === 'cdi' || currentContractType === 'cdd') && isNaN(salary)) {
+        showToast('Le salaire est requis', 'warning'); return;
+    }
+
+    // Get company info
+    const company = await window.electronAPI.getCompany(currentUser.id) || {};
+    const companyName = company.name || currentUser.company || 'Votre Entreprise';
+    const companyAddress = company.address || '';
+    const companyPhone = company.phone || '';
+    const companyEmail = company.email || '';
+    const companyMF = company.mf || currentUser.mf || '';
+
+    // Build contract HTML
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR');
+    let contractHtml = `
+    <div style="font-family:'Times New Roman', serif; max-width:800px; margin:0 auto; padding:40px; background:white; line-height:1.5;">
+        <div style="text-align:center; margin-bottom:30px;">
+            ${companyImages.logo ? `<img src="${companyImages.logo}" style="max-height:80px; margin-bottom:10px;">` : ''}
+            <h1>CONTRAT DE TRAVAIL</h1>
+            <p><strong>${companyName}</strong><br>${companyAddress}<br>${companyPhone ? 'Tél: '+companyPhone : ''}${companyEmail ? ' - Email: '+companyEmail : ''}</p>
+        </div>
+        <p>Entre les soussignés :</p>
+        <p><strong>${companyName}</strong>, représentée par son gérant, agissant en qualité d'employeur,<br>
+        d'une part,</p>
+        <p>Et <strong>${escapeHtml(clientName)}</strong>, demeurant ${escapeHtml(document.getElementById('contractClientAddress').value || '...')},<br>
+        d'autre part,</p>
+        <p>Il a été convenu ce qui suit :</p>
+    `;
+    if (currentContractType === 'cdi') {
+        const startDate = document.getElementById('contractStartDate').value || now.toISOString().slice(0,10);
+        const trialMonths = document.getElementById('contractTrialMonths').value || 2;
+        contractHtml += `
+        <h3>Article 1 : Engagement</h3>
+        <p>L'employeur engage le salarié à compter du ${formatDate(startDate)} en qualité de <strong>${escapeHtml(position)}</strong>, dans le cadre d'un Contrat à Durée Indéterminée (CDI).</p>
+        <h3>Article 2 : Période d'essai</h3>
+        <p>Le présent contrat est assorti d'une période d'essai de ${trialMonths} mois, conformément à la convention collective applicable.</p>
+        <h3>Article 3 : Rémunération</h3>
+        <p>Le salarié percevra un salaire mensuel brut de <strong>${salary.toFixed(3)} TND</strong>, payable à la fin de chaque mois.</p>
+        `;
+    } else if (currentContractType === 'cdd') {
+        const startDate = document.getElementById('contractStartDate').value;
+        const endDate = document.getElementById('contractEndDate').value;
+        const reason = document.getElementById('contractCddReason').value || 'surcroît temporaire d\'activité';
+        contractHtml += `
+        <h3>Article 1 : Engagement</h3>
+        <p>L'employeur engage le salarié en qualité de <strong>${escapeHtml(position)}</strong> dans le cadre d'un Contrat à Durée Déterminée (CDD) du ${formatDate(startDate)} au ${formatDate(endDate)}.</p>
+        <p><strong>Motif du CDD :</strong> ${escapeHtml(reason)}.</p>
+        <h3>Article 2 : Rémunération</h3>
+        <p>Le salarié percevra un salaire mensuel brut de <strong>${salary.toFixed(3)} TND</strong>.</p>
+        `;
+    } else if (currentContractType === 'essai') {
+        const startDate = document.getElementById('contractStartDate').value || now.toISOString().slice(0,10);
+        const trialMonths = document.getElementById('contractTrialMonths').value || 1;
+        contractHtml += `
+        <h3>Article 1 : Engagement à l'essai</h3>
+        <p>L'employeur engage le salarié à compter du ${formatDate(startDate)} en qualité de <strong>${escapeHtml(position)}</strong> pour une période d'essai de ${trialMonths} mois.</p>
+        <p>A l'issue de cette période, si les aptitudes professionnelles sont satisfaisantes, un CDI pourra être proposé.</p>
+        <h3>Article 2 : Rémunération</h3>
+        <p>Pendant la période d'essai, le salarié percevra un salaire mensuel brut de <strong>${salary.toFixed(3)} TND</strong>.</p>
+        `;
+    } else if (currentContractType === 'prestation') {
+        const serviceDesc = document.getElementById('contractServiceDesc').value || 'prestations décrites en annexe';
+        const rate = parseFloat(document.getElementById('contractDailyRate').value) || 0;
+        const startDate = document.getElementById('contractStartDate').value;
+        const endDate = document.getElementById('contractEndDate').value;
+        contractHtml += `
+        <h3>Article 1 : Objet</h3>
+        <p>Le prestataire s'engage à fournir à la société <strong>${companyName}</strong> les prestations suivantes :<br>${escapeHtml(serviceDesc)}</p>
+        <h3>Article 2 : Durée</h3>
+        <p>La prestation débutera le ${formatDate(startDate)}${endDate ? ` et se terminera le ${formatDate(endDate)}` : ', sans date de fin prédéterminée'}.</p>
+        <h3>Article 3 : Rémunération</h3>
+        <p>En contrepartie, le prestataire facturera un tarif journalier de <strong>${rate.toFixed(3)} TND HT</strong> (hors taxes).</p>
+        `;
+    }
+    contractHtml += `
+        <h3>Article 4 : Lieu de travail</h3>
+        <p>Le travail sera effectué au siège social de l'entreprise ou à distance selon les besoins du service.</p>
+        <h3>Article 5 : Obligations</h3>
+        <p>Le salarié s'engage à respecter les règles internes et à faire preuve de discrétion professionnelle.</p>
+        <p>Fait en deux exemplaires originaux, à ${companyAddress || 'Tunis'}, le ${dateStr}.</p>
+        <div style="margin-top:50px; display:flex; justify-content:space-between;">
+            <div>Signature de l'employeur<br><br><br>${companyImages.signature ? `<img src="${companyImages.signature}" style="max-height:60px;">` : '(cachet et signature)'}</div>
+            <div>Signature du cocontractant<br><br><br>____________________</div>
+        </div>
+        ${companyImages.stamp ? `<div style="text-align:center; margin-top:30px;"><img src="${companyImages.stamp}" style="max-height:80px; opacity:0.8;"></div>` : ''}
+        <div style="margin-top:30px; font-size:10px; text-align:center;">Généré par TuniInvoice Pro le ${dateStr}</div>
+    </div>`;
+    
+    // Display in preview modal (reuse same modal)
+    document.getElementById('previewContent').innerHTML = contractHtml;
+    document.getElementById('previewModal').classList.add('active');
 }
 
 // ==================== BACKUP & SETTINGS ====================
@@ -1381,7 +1583,6 @@ async function saveThemeSettings() {
         }
     };
     try {
-        // preload expects { userId, theme } — matching main.js handler
         await window.electronAPI.saveThemeSettings({ userId: currentUser.id, theme: themeData });
         currentTheme = themeData;
         showToast('Thème enregistré', 'success');

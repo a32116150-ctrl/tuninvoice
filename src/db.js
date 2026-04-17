@@ -11,6 +11,32 @@ class AppDatabase {
         this.dbPath = path.join(userDataPath, 'tuniinvoice.db');
         this.db = new Database(this.dbPath);
         this.initTables();
+        this.migrateTables();   // add missing columns
+    }
+
+    // ==================== MIGRATION ====================
+    migrateTables() {
+        const columnsToAdd = {
+            companies: [
+                { name: 'website', type: 'TEXT' },
+                { name: 'bank', type: 'TEXT' },
+                { name: 'logo_image', type: 'TEXT' },
+                { name: 'stamp_image', type: 'TEXT' },
+                { name: 'signature_image', type: 'TEXT' }
+            ]
+        };
+        for (const [table, columns] of Object.entries(columnsToAdd)) {
+            for (const col of columns) {
+                try {
+                    this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type}`);
+                    console.log(`Added column ${col.name} to ${table}`);
+                } catch (err) {
+                    if (!err.message.includes('duplicate column name')) {
+                        console.error(`Error adding column ${col.name}:`, err.message);
+                    }
+                }
+            }
+        }
     }
 
     // ==================== THEME SETTINGS ====================
@@ -44,12 +70,10 @@ class AppDatabase {
             theme.titles.facture.text, theme.titles.facture.color,
             theme.titles.devis.text, theme.titles.devis.color,
             theme.titles.bon.text, theme.titles.bon.color);
-        
         return { success: true };
     }
 
     initTables() {
-        // Document themes table (NEW)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS document_themes (
                 user_id TEXT PRIMARY KEY,
@@ -63,8 +87,6 @@ class AppDatabase {
                 title_bon_color TEXT DEFAULT '#065f46'
             )
         `);
-
-        // Users table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -76,8 +98,6 @@ class AppDatabase {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
-        // Documents table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS documents (
                 id TEXT PRIMARY KEY,
@@ -104,15 +124,10 @@ class AppDatabase {
                 timbre_amount REAL DEFAULT 0,
                 total_ht REAL NOT NULL,
                 total_ttc REAL NOT NULL,
-                logo_image TEXT,
-                stamp_image TEXT,
-                signature_image TEXT,
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
-        // Clients table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS clients (
                 id TEXT PRIMARY KEY,
@@ -125,8 +140,6 @@ class AppDatabase {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
-        // Companies table
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS companies (
                 user_id TEXT PRIMARY KEY,
@@ -139,8 +152,6 @@ class AppDatabase {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
-        // Document counters table (for sequence numbers)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS doc_counters (
                 user_id TEXT NOT NULL,
@@ -150,8 +161,6 @@ class AppDatabase {
                 PRIMARY KEY (user_id, type, year)
             )
         `);
-
-        // Services/Products presets table (NEW)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS services (
                 id TEXT PRIMARY KEY,
@@ -163,8 +172,6 @@ class AppDatabase {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
-        // User settings table for custom prefixes (NEW)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS user_settings (
                 user_id TEXT PRIMARY KEY,
@@ -176,9 +183,7 @@ class AppDatabase {
         `);
     }
 
-    getDatabasePath() {
-        return this.dbPath;
-    }
+    getDatabasePath() { return this.dbPath; }
 
     restore(backupPath) {
         this.db.close();
@@ -189,145 +194,78 @@ class AppDatabase {
     registerUser({ name, email, password, company, mf }) {
         const existing = this.db.prepare('SELECT id FROM users WHERE email = ?').get(email);
         if (existing) throw new Error('Email already exists');
-
         const id = uuidv4();
         const passwordHash = bcrypt.hashSync(password, 10);
-
-        this.db.prepare(`
-            INSERT INTO users (id, name, email, password_hash, company, mf)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `).run(id, name, email, passwordHash, company || null, mf || null);
-
-        // Initialize default settings for new user (NEW)
-        this.db.prepare(`
-            INSERT INTO user_settings (user_id, prefix_facture, prefix_devis, prefix_bon)
-            VALUES (?, 'FAC', 'DEV', 'BC')
-        `).run(id);
-
+        this.db.prepare(`INSERT INTO users (id, name, email, password_hash, company, mf) VALUES (?,?,?,?,?,?)`)
+            .run(id, name, email, passwordHash, company || null, mf || null);
+        this.db.prepare(`INSERT INTO user_settings (user_id, prefix_facture, prefix_devis, prefix_bon) VALUES (?, 'FAC', 'DEV', 'BC')`).run(id);
         return { id, name, email, company, mf };
     }
 
     loginUser(email, password) {
         const user = this.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
         if (!user) throw new Error('Invalid credentials');
-
         const valid = bcrypt.compareSync(password, user.password_hash);
         if (!valid) throw new Error('Invalid credentials');
-
-        return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            company: user.company,
-            mf: user.mf
-        };
+        return { id: user.id, name: user.name, email: user.email, company: user.company, mf: user.mf };
     }
 
-    // MODIFIED: Now uses custom prefixes from user_settings
     getNextDocumentNumber(userId, type, year) {
-        const counter = this.db.prepare(`
-            SELECT last_number FROM doc_counters 
-            WHERE user_id = ? AND type = ? AND year = ?
-        `).get(userId, type, year);
-
+        const counter = this.db.prepare(`SELECT last_number FROM doc_counters WHERE user_id = ? AND type = ? AND year = ?`).get(userId, type, year);
         const nextNum = (counter?.last_number || 0) + 1;
-
-        this.db.prepare(`
-            INSERT INTO doc_counters (user_id, type, year, last_number)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(user_id, type, year) DO UPDATE SET last_number = ?
-        `).run(userId, type, year, nextNum, nextNum);
-
-        // Get custom prefix from settings (NEW)
+        this.db.prepare(`INSERT INTO doc_counters (user_id, type, year, last_number) VALUES (?,?,?,?) ON CONFLICT(user_id, type, year) DO UPDATE SET last_number = ?`)
+            .run(userId, type, year, nextNum, nextNum);
         const settings = this.getUserSettings(userId);
         let prefix;
         if (type === 'facture') prefix = settings.prefix_facture || 'FAC';
         else if (type === 'devis') prefix = settings.prefix_devis || 'DEV';
         else prefix = settings.prefix_bon || 'BC';
-        
         return `${prefix}-${year}-${String(nextNum).padStart(3, '0')}`;
     }
 
-    // NEW: Reset document counter for a specific type/year
     resetDocumentCounter(userId, type, year) {
-        this.db.prepare(`
-            DELETE FROM doc_counters 
-            WHERE user_id = ? AND type = ? AND year = ?
-        `).run(userId, type, year);
+        this.db.prepare(`DELETE FROM doc_counters WHERE user_id = ? AND type = ? AND year = ?`).run(userId, type, year);
         return { success: true };
     }
 
     saveDocument(docData) {
         const id = docData.id || uuidv4();
-        const number = docData.number || this.getNextDocumentNumber(
-            docData.userId,
-            docData.type,
-            new Date().getFullYear()
-        );
-
+        const number = docData.number || this.getNextDocumentNumber(docData.userId, docData.type, new Date().getFullYear());
         const existing = this.db.prepare('SELECT id FROM documents WHERE id = ?').get(id);
-
         if (existing) {
-            // Update
             this.db.prepare(`
-                UPDATE documents SET
-                    type = ?, number = ?, date = ?, due_date = ?, currency = ?,
-                    payment_mode = ?, company_name = ?, company_mf = ?,
-                    company_address = ?, company_phone = ?, company_email = ?,
-                    company_rc = ?, client_name = ?, client_mf = ?,
-                    client_address = ?, client_phone = ?, client_email = ?,
-                    items_json = ?, apply_timbre = ?, timbre_amount = ?,
-                    total_ht = ?, total_ttc = ?, logo_image = ?,
-                    stamp_image = ?, signature_image = ?, notes = ?
-                WHERE id = ?
-            `).run(
-                docData.type, number, docData.date, docData.dueDate || null,
-                docData.currency || 'TND', docData.paymentMode || null,
-                docData.companyName || null, docData.companyMF || null,
-                docData.companyAddress || null, docData.companyPhone || null,
-                docData.companyEmail || null, docData.companyRC || null,
-                docData.clientName, docData.clientMF || null,
-                docData.clientAddress || null, docData.clientPhone || null,
-                docData.clientEmail || null, JSON.stringify(docData.items),
-                docData.applyTimbre ? 1 : 0, docData.timbreAmount || 0,
-                docData.totalHT, docData.totalTTC, docData.logoImage || null,
-                docData.stampImage || null, docData.signatureImage || null,
-                docData.notes || null, id
-            );
+                UPDATE documents SET type=?, number=?, date=?, due_date=?, currency=?, payment_mode=?,
+                company_name=?, company_mf=?, company_address=?, company_phone=?, company_email=?, company_rc=?,
+                client_name=?, client_mf=?, client_address=?, client_phone=?, client_email=?,
+                items_json=?, apply_timbre=?, timbre_amount=?, total_ht=?, total_ttc=?, notes=?
+                WHERE id=?
+            `).run(docData.type, number, docData.date, docData.dueDate || null, docData.currency || 'TND',
+                docData.paymentMode || null, docData.companyName || null, docData.companyMF || null,
+                docData.companyAddress || null, docData.companyPhone || null, docData.companyEmail || null,
+                docData.companyRC || null, docData.clientName, docData.clientMF || null,
+                docData.clientAddress || null, docData.clientPhone || null, docData.clientEmail || null,
+                JSON.stringify(docData.items), docData.applyTimbre ? 1 : 0, docData.timbreAmount || 0,
+                docData.totalHT, docData.totalTTC, docData.notes || null, id);
         } else {
-            // Insert
             this.db.prepare(`
-                INSERT INTO documents (
-                    id, user_id, type, number, date, due_date, currency,
-                    payment_mode, company_name, company_mf, company_address,
-                    company_phone, company_email, company_rc, client_name,
-                    client_mf, client_address, client_phone, client_email,
-                    items_json, apply_timbre, timbre_amount, total_ht, total_ttc,
-                    logo_image, stamp_image, signature_image, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(
-                id, docData.userId, docData.type, number, docData.date,
-                docData.dueDate || null, docData.currency || 'TND',
-                docData.paymentMode || null, docData.companyName || null,
-                docData.companyMF || null, docData.companyAddress || null,
-                docData.companyPhone || null, docData.companyEmail || null,
-                docData.companyRC || null, docData.clientName,
-                docData.clientMF || null, docData.clientAddress || null,
-                docData.clientPhone || null, docData.clientEmail || null,
-                JSON.stringify(docData.items), docData.applyTimbre ? 1 : 0,
-                docData.timbreAmount || 0, docData.totalHT, docData.totalTTC,
-                docData.logoImage || null, docData.stampImage || null,
-                docData.signatureImage || null, docData.notes || null
-            );
+                INSERT INTO documents (id, user_id, type, number, date, due_date, currency, payment_mode,
+                company_name, company_mf, company_address, company_phone, company_email, company_rc,
+                client_name, client_mf, client_address, client_phone, client_email, items_json,
+                apply_timbre, timbre_amount, total_ht, total_ttc, notes)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            `).run(id, docData.userId, docData.type, number, docData.date, docData.dueDate || null,
+                docData.currency || 'TND', docData.paymentMode || null, docData.companyName || null,
+                docData.companyMF || null, docData.companyAddress || null, docData.companyPhone || null,
+                docData.companyEmail || null, docData.companyRC || null, docData.clientName,
+                docData.clientMF || null, docData.clientAddress || null, docData.clientPhone || null,
+                docData.clientEmail || null, JSON.stringify(docData.items), docData.applyTimbre ? 1 : 0,
+                docData.timbreAmount || 0, docData.totalHT, docData.totalTTC, docData.notes || null);
         }
-
         return this.getDocumentById(id);
     }
 
     getDocuments(userId) {
-        const docs = this.db.prepare(`
-            SELECT * FROM documents WHERE user_id = ? ORDER BY created_at DESC
-        `).all(userId);
+        const docs = this.db.prepare('SELECT * FROM documents WHERE user_id = ? ORDER BY created_at DESC').all(userId);
         return docs.map(d => this.formatDocument(d));
     }
 
@@ -342,57 +280,27 @@ class AppDatabase {
 
     formatDocument(doc) {
         return {
-            id: doc.id,
-            userId: doc.user_id,
-            type: doc.type,
-            number: doc.number,
-            date: doc.date,
-            dueDate: doc.due_date,
-            currency: doc.currency,
-            paymentMode: doc.payment_mode,
-            companyName: doc.company_name,
-            companyMF: doc.company_mf,
-            companyAddress: doc.company_address,
-            companyPhone: doc.company_phone,
-            companyEmail: doc.company_email,
-            companyRC: doc.company_rc,
-            clientName: doc.client_name,
-            clientMF: doc.client_mf,
-            clientAddress: doc.client_address,
-            clientPhone: doc.client_phone,
-            clientEmail: doc.client_email,
-            items: JSON.parse(doc.items_json),
-            applyTimbre: doc.apply_timbre === 1,
-            timbreAmount: doc.timbre_amount,
-            totalHT: doc.total_ht,
-            totalTTC: doc.total_ttc,
-            logoImage: doc.logo_image,
-            stampImage: doc.stamp_image,
-            signatureImage: doc.signature_image,
-            notes: doc.notes,
-            createdAt: doc.created_at
+            id: doc.id, userId: doc.user_id, type: doc.type, number: doc.number, date: doc.date,
+            dueDate: doc.due_date, currency: doc.currency, paymentMode: doc.payment_mode,
+            companyName: doc.company_name, companyMF: doc.company_mf, companyAddress: doc.company_address,
+            companyPhone: doc.company_phone, companyEmail: doc.company_email, companyRC: doc.company_rc,
+            clientName: doc.client_name, clientMF: doc.client_mf, clientAddress: doc.client_address,
+            clientPhone: doc.client_phone, clientEmail: doc.client_email, items: JSON.parse(doc.items_json),
+            applyTimbre: doc.apply_timbre === 1, timbreAmount: doc.timbre_amount, totalHT: doc.total_ht,
+            totalTTC: doc.total_ttc, notes: doc.notes, createdAt: doc.created_at
         };
     }
 
-    // ==================== CLIENTS ====================
     saveClient(clientData) {
         const id = clientData.id || uuidv4();
         const existing = this.db.prepare('SELECT id FROM clients WHERE id = ?').get(id);
-
         if (existing) {
-            this.db.prepare(`
-                UPDATE clients SET name = ?, mf = ?, address = ?, phone = ?, email = ?
-                WHERE id = ?
-            `).run(clientData.name, clientData.mf || null, clientData.address || null,
-                clientData.phone || null, clientData.email || null, id);
+            this.db.prepare('UPDATE clients SET name=?, mf=?, address=?, phone=?, email=? WHERE id=?')
+                .run(clientData.name, clientData.mf || null, clientData.address || null, clientData.phone || null, clientData.email || null, id);
         } else {
-            this.db.prepare(`
-                INSERT INTO clients (id, user_id, name, mf, address, phone, email)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            `).run(id, clientData.userId, clientData.name, clientData.mf || null,
-                clientData.address || null, clientData.phone || null, clientData.email || null);
+            this.db.prepare('INSERT INTO clients (id, user_id, name, mf, address, phone, email) VALUES (?,?,?,?,?,?,?)')
+                .run(id, clientData.userId, clientData.name, clientData.mf || null, clientData.address || null, clientData.phone || null, clientData.email || null);
         }
-
         return { id, ...clientData };
     }
 
@@ -404,18 +312,17 @@ class AppDatabase {
         this.db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
     }
 
-    // ==================== COMPANY ====================
     saveCompanySettings(settings) {
         this.db.prepare(`
-            INSERT INTO companies (user_id, name, mf, address, phone, email, rc)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO companies (user_id, name, mf, address, phone, email, rc, website, bank, logo_image, stamp_image, signature_image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
-                name = ?, mf = ?, address = ?, phone = ?, email = ?, rc = ?,
-                updated_at = CURRENT_TIMESTAMP
-        `).run(settings.userId, settings.name, settings.mf, settings.address,
-            settings.phone, settings.email, settings.rc,
-            settings.name, settings.mf, settings.address,
-            settings.phone, settings.email, settings.rc);
+                name=excluded.name, mf=excluded.mf, address=excluded.address, phone=excluded.phone,
+                email=excluded.email, rc=excluded.rc, website=excluded.website, bank=excluded.bank,
+                logo_image=excluded.logo_image, stamp_image=excluded.stamp_image, signature_image=excluded.signature_image,
+                updated_at=CURRENT_TIMESTAMP
+        `).run(settings.userId, settings.name, settings.mf, settings.address, settings.phone, settings.email,
+            settings.rc, settings.website, settings.bank, settings.logo_image, settings.stamp_image, settings.signature_image);
         return settings;
     }
 
@@ -423,38 +330,29 @@ class AppDatabase {
         return this.db.prepare('SELECT * FROM companies WHERE user_id = ?').get(userId);
     }
 
-    // ==================== STATS ====================
     getDashboardStats(userId) {
-        const totalDocs = this.db.prepare('SELECT COUNT(*) as count FROM documents WHERE user_id = ?').get(userId).count;
-        const totalRevenue = this.db.prepare(`
-            SELECT COALESCE(SUM(total_ttc), 0) as total FROM documents WHERE user_id = ? AND type = 'facture'
-        `).get(userId).total;
-        const totalClients = this.db.prepare('SELECT COUNT(*) as count FROM clients WHERE user_id = ?').get(userId).count;
-        const thisMonth = this.db.prepare(`
-            SELECT COUNT(*) as count FROM documents 
-            WHERE user_id = ? AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
-        `).get(userId).count;
+    const totalDocs = this.db.prepare('SELECT COUNT(*) as count FROM documents WHERE user_id = ?').get(userId).count;
+    const totalRevenue = this.db.prepare(`
+        SELECT COALESCE(SUM(total_ttc), 0) as total FROM documents WHERE user_id = ? AND type = ?
+    `).get(userId, 'facture').total;
+    const totalClients = this.db.prepare('SELECT COUNT(*) as count FROM clients WHERE user_id = ?').get(userId).count;
+    const thisMonth = this.db.prepare(`
+        SELECT COUNT(*) as count FROM documents 
+        WHERE user_id = ? AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
+    `).get(userId).count;
+    return { totalDocs, totalRevenue, totalClients, thisMonth };
+}
 
-        return { totalDocs, totalRevenue, totalClients, thisMonth };
-    }
-
-    // ==================== SERVICES (NEW) ====================
     saveService(serviceData) {
         const id = serviceData.id || uuidv4();
         const existing = this.db.prepare('SELECT id FROM services WHERE id = ?').get(id);
-
         if (existing) {
-            this.db.prepare(`
-                UPDATE services SET name = ?, description = ?, price = ?, tva = ?
-                WHERE id = ?
-            `).run(serviceData.name, serviceData.description || null, serviceData.price, serviceData.tva, id);
+            this.db.prepare('UPDATE services SET name=?, description=?, price=?, tva=? WHERE id=?')
+                .run(serviceData.name, serviceData.description || null, serviceData.price, serviceData.tva, id);
         } else {
-            this.db.prepare(`
-                INSERT INTO services (id, user_id, name, description, price, tva)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `).run(id, serviceData.userId, serviceData.name, serviceData.description || null, serviceData.price, serviceData.tva);
+            this.db.prepare('INSERT INTO services (id, user_id, name, description, price, tva) VALUES (?,?,?,?,?,?)')
+                .run(id, serviceData.userId, serviceData.name, serviceData.description || null, serviceData.price, serviceData.tva);
         }
-
         return { id, ...serviceData };
     }
 
@@ -466,29 +364,18 @@ class AppDatabase {
         this.db.prepare('DELETE FROM services WHERE id = ?').run(serviceId);
     }
 
-    // ==================== USER SETTINGS (NEW) ====================
     getUserSettings(userId) {
         let settings = this.db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(userId);
         if (!settings) {
-            // Create default settings if not exists
-            this.db.prepare(`
-                INSERT INTO user_settings (user_id, prefix_facture, prefix_devis, prefix_bon)
-                VALUES (?, 'FAC', 'DEV', 'BC')
-            `).run(userId);
+            this.db.prepare('INSERT INTO user_settings (user_id, prefix_facture, prefix_devis, prefix_bon) VALUES (?, "FAC", "DEV", "BC")').run(userId);
             settings = this.db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get(userId);
         }
         return settings;
     }
 
     updateUserSettings(userId, settings) {
-        this.db.prepare(`
-            UPDATE user_settings SET
-                prefix_facture = COALESCE(?, prefix_facture),
-                prefix_devis = COALESCE(?, prefix_devis),
-                prefix_bon = COALESCE(?, prefix_bon)
-            WHERE user_id = ?
-        `).run(settings.prefix_facture, settings.prefix_devis, settings.prefix_bon, userId);
-        
+        this.db.prepare('UPDATE user_settings SET prefix_facture=COALESCE(?,prefix_facture), prefix_devis=COALESCE(?,prefix_devis), prefix_bon=COALESCE(?,prefix_bon) WHERE user_id=?')
+            .run(settings.prefix_facture, settings.prefix_devis, settings.prefix_bon, userId);
         return this.getUserSettings(userId);
     }
 }
