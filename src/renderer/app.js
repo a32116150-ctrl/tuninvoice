@@ -215,6 +215,9 @@ function navigateTo(page) {
     if (page === 'services')    loadServices();
     if (page === 'company')     loadCompanyPage();
     if (page === 'contracts')   loadContracts();
+    if (page === 'notes')       loadNotes();
+    if (page === 'reminders')   loadReminders();
+    if (page === 'annual')      loadAnnualReport();
     if (page === 'settings')    { loadSettings(); loadSerialSettings(); loadThemeSettings(); loadDocumentThemeSettings(); loadFormatSettings(); }
 }
 
@@ -1117,12 +1120,13 @@ function renderDocumentsTable(docs) {
             <td style="font-weight:600">${formatAmount(doc.totalTTC)} ${doc.currency}</td>
             <td>${renderPaymentBadge(doc)}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"    onclick="viewDocument('${doc.id}')"      title="Aperçu">👁️</button>
+                <button class="btn-icon btn-view"    onclick="viewDocument('${doc.id}')"           title="Aperçu">👁️</button>
                 ${doc.type==='devis'?`<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir">🔄</button>`:''}
-                <button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"   title="Modifier">✏️</button>
-                <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"    title="PDF">📄</button>
+                <button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier">✏️</button>
+                <button class="btn-icon"             onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6">📋</button>
+                <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"           title="PDF">📄</button>
                 ${doc.type==='facture'?`<button class="btn-icon btn-payment" onclick="openPaymentModal('${doc.id}')" title="Paiement" style="color:#10b981">💰</button>`:''}
-                <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"  title="Supprimer">🗑️</button>
+                <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer">🗑️</button>
             </td></tr>`).join('')}
     </tbody></table>`;
 }
@@ -1677,3 +1681,466 @@ function formatDate(dateStr) {
 
 function getDocTypeLabel(type) { return currentTheme.titles[type]?.text || type.toUpperCase(); }
 function getDocTypeColor(type) { return currentTheme.titles[type]?.color || '#1e3a8a'; }
+
+// ==================== AUTO-UPDATER UI ====================
+let updateBannerShown = false;
+
+function initUpdaterListener() {
+    if (!window.electronAPI?.onUpdaterEvent) return;
+    window.electronAPI.onUpdaterEvent((payload) => {
+        const { event, version, percent, message } = payload;
+        if (event === 'available' && !updateBannerShown) {
+            updateBannerShown = true;
+            showUpdateBanner(version, 'downloading');
+        }
+        if (event === 'progress') {
+            const bar = document.getElementById('updateProgressBar');
+            const pct = document.getElementById('updateProgressPct');
+            if (bar) bar.style.width = percent + '%';
+            if (pct) pct.textContent  = percent + '%';
+        }
+        if (event === 'downloaded') {
+            showUpdateBanner(version, 'ready');
+        }
+        if (event === 'error') {
+            console.warn('[updater]', message);
+        }
+    });
+}
+
+function showUpdateBanner(version, state) {
+    let banner = document.getElementById('updateBanner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'updateBanner';
+        banner.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:#1e293b;color:#f1f5f9;border-radius:12px;padding:14px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.35);min-width:280px;max-width:340px;font-size:0.875rem;transition:all 0.3s';
+        document.body.appendChild(banner);
+    }
+    if (state === 'downloading') {
+        banner.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <span style="font-size:1.2rem">⬇️</span>
+                <div>
+                    <div style="font-weight:700">Mise à jour ${version}</div>
+                    <div style="color:#94a3b8;font-size:0.8rem">Téléchargement en cours…</div>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem">×</button>
+            </div>
+            <div style="background:#334155;border-radius:4px;height:6px;overflow:hidden">
+                <div id="updateProgressBar" style="background:#3b82f6;height:6px;width:0%;transition:width 0.3s"></div>
+            </div>
+            <div id="updateProgressPct" style="text-align:right;color:#94a3b8;font-size:0.75rem;margin-top:4px">0%</div>`;
+    } else {
+        banner.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:1.3rem">🎉</span>
+                <div style="flex:1">
+                    <div style="font-weight:700">Version ${version} prête !</div>
+                    <div style="color:#94a3b8;font-size:0.8rem">Redémarrer pour mettre à jour</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+                <button onclick="window.electronAPI.installUpdate()" style="flex:1;background:#3b82f6;color:white;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:0.8rem;font-weight:600">🔄 Redémarrer</button>
+                <button onclick="this.parentElement.parentElement.remove()" style="background:#334155;color:#94a3b8;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:0.8rem">Plus tard</button>
+            </div>`;
+    }
+}
+
+// Show current version in settings
+async function loadAppVersion() {
+    try {
+        const v = await window.electronAPI.getAppVersion();
+        const el = document.getElementById('appVersionLabel');
+        if (el) el.textContent = `TuniInvoice Pro v${v}`;
+    } catch {}
+}
+
+async function manualCheckUpdate() {
+    showToast('Vérification des mises à jour…', 'info', 2500);
+    try {
+        const r = await window.electronAPI.checkForUpdates();
+        if (r.success && r.version) showToast(`Mise à jour ${r.version} trouvée, téléchargement…`, 'success');
+        else showToast("Vous avez déjà la dernière version.", 'info');
+    } catch { showToast('Impossible de vérifier les mises à jour.', 'warning'); }
+}
+
+// ==================== GLOBAL SEARCH ====================
+let searchDebounce = null;
+function globalSearchHandler() {
+    clearTimeout(searchDebounce);
+    const q = document.getElementById('globalSearch')?.value?.trim();
+    if (!q || q.length < 2) { closeGlobalSearchResults(); return; }
+    searchDebounce = setTimeout(() => runGlobalSearch(q), 280);
+}
+
+async function runGlobalSearch(query) {
+    try {
+        const results = await window.electronAPI.searchDocuments({ userId: currentUser.id, query });
+        renderGlobalSearchResults(results, query);
+    } catch {}
+}
+
+function renderGlobalSearchResults(results, query) {
+    let box = document.getElementById('globalSearchResults');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'globalSearchResults';
+        box.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.12);z-index:1000;max-height:320px;overflow-y:auto;margin-top:4px';
+        document.querySelector('.topbar-search').style.position = 'relative';
+        document.querySelector('.topbar-search').appendChild(box);
+    }
+    if (!results.length) {
+        box.innerHTML = `<div style="padding:16px;color:var(--text-muted);text-align:center;font-size:0.875rem">Aucun résultat pour "<strong>${escapeHtml(query)}</strong>"</div>`;
+        return;
+    }
+    box.innerHTML = results.map(doc => `
+        <div onclick="openDocFromSearch('${doc.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+            <span class="badge badge-${doc.type}" style="min-width:56px;text-align:center">${doc.type.toUpperCase()}</span>
+            <div style="flex:1">
+                <div style="font-weight:600;font-size:0.875rem">${escapeHtml(doc.number)}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted)">${escapeHtml(doc.clientName)} · ${formatDate(doc.date)}</div>
+            </div>
+            <div style="font-size:0.875rem;font-weight:600;color:var(--primary)">${formatAmount(doc.totalTTC)} ${doc.currency}</div>
+        </div>`).join('');
+}
+
+function closeGlobalSearchResults() {
+    document.getElementById('globalSearchResults')?.remove();
+}
+
+async function openDocFromSearch(docId) {
+    closeGlobalSearchResults();
+    document.getElementById('globalSearch').value = '';
+    allDocuments = await window.electronAPI.getDocuments(currentUser.id);
+    const doc = allDocuments.find(d => d.id === docId);
+    if (doc) { populateFormWithDoc(doc); generatePreviewHTML(); document.getElementById('previewModal').classList.add('active'); }
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.topbar-search')) closeGlobalSearchResults();
+});
+
+// ==================== NOTES (Sticky Notes) ====================
+let allNotes = [];
+const NOTE_COLORS = ['#fef9c3','#dcfce7','#dbeafe','#fce7f3','#ede9fe','#ffedd5','#f1f5f9'];
+
+async function loadNotes() {
+    try {
+        allNotes = await window.electronAPI.getNotes(currentUser.id);
+        renderNotes();
+    } catch {}
+}
+
+function renderNotes() {
+    const container = document.getElementById('notesGrid');
+    if (!container) return;
+    if (!allNotes.length) {
+        container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
+            <div style="font-size:2.5rem;margin-bottom:8px">📝</div>
+            <div style="font-weight:600">Aucune note</div>
+            <div style="font-size:0.875rem">Cliquez sur "Nouvelle note" pour commencer</div>
+        </div>`;
+        return;
+    }
+    container.innerHTML = allNotes.map(note => `
+        <div class="note-card" style="background:${note.color||'#fef9c3'};border-radius:12px;padding:16px;position:relative;min-height:120px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+            ${note.pinned ? `<div style="position:absolute;top:10px;right:36px;font-size:0.9rem">📌</div>` : ''}
+            <button onclick="deleteNote('${note.id}')" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:#6b7280;font-size:1rem;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">🗑️</button>
+            <div onclick="openNoteModal('${note.id}')" style="cursor:pointer">
+                ${note.title ? `<div style="font-weight:700;font-size:0.95rem;margin-bottom:6px;color:#1e293b">${escapeHtml(note.title)}</div>` : ''}
+                <div style="font-size:0.875rem;color:#374151;white-space:pre-wrap;line-height:1.5">${escapeHtml(note.content||'').substring(0,200)}${(note.content||'').length>200?'…':''}</div>
+                <div style="margin-top:8px;font-size:0.75rem;color:#9ca3af">${formatDate(note.updated_at?.split('T')[0]||note.updated_at)}</div>
+            </div>
+        </div>`).join('');
+}
+
+let editingNoteId = null;
+function openNoteModal(noteId) {
+    editingNoteId = noteId || null;
+    const note = noteId ? allNotes.find(n => n.id === noteId) : null;
+    document.getElementById('noteTitle').value   = note?.title   || '';
+    document.getElementById('noteContent').value = note?.content || '';
+    document.getElementById('notePinned').checked = note?.pinned || false;
+    const colorPicker = document.getElementById('noteColorPicker');
+    if (colorPicker) {
+        colorPicker.innerHTML = NOTE_COLORS.map(c =>
+            `<div onclick="selectNoteColor('${c}')" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:${(note?.color||'#fef9c3')===c?'3px solid #1e293b':'2px solid transparent'}" data-color="${c}"></div>`
+        ).join('');
+    }
+    document.getElementById('selectedNoteColor').value = note?.color || '#fef9c3';
+    document.getElementById('noteModal').classList.add('active');
+}
+
+function selectNoteColor(color) {
+    document.getElementById('selectedNoteColor').value = color;
+    document.querySelectorAll('#noteColorPicker > div').forEach(el => {
+        el.style.border = el.dataset.color === color ? '3px solid #1e293b' : '2px solid transparent';
+    });
+}
+
+function closeNoteModal() { document.getElementById('noteModal').classList.remove('active'); editingNoteId = null; }
+
+async function saveNote() {
+    const title   = document.getElementById('noteTitle').value.trim();
+    const content = document.getElementById('noteContent').value.trim();
+    if (!title && !content) { showToast('Contenu de la note requis', 'warning'); return; }
+    try {
+        await window.electronAPI.saveNote({
+            id: editingNoteId || undefined,
+            userId: currentUser.id,
+            title, content,
+            color:  document.getElementById('selectedNoteColor').value || '#fef9c3',
+            pinned: document.getElementById('notePinned').checked
+        });
+        showToast(editingNoteId ? 'Note mise à jour' : 'Note créée', 'success');
+        closeNoteModal();
+        await loadNotes();
+    } catch { showToast('Erreur sauvegarde note', 'error'); }
+}
+
+async function deleteNote(id) {
+    try { await window.electronAPI.deleteNote(id); showToast('Note supprimée', 'info'); await loadNotes(); }
+    catch { showToast('Erreur suppression', 'error'); }
+}
+
+// ==================== REMINDERS ====================
+let allReminders = [];
+
+async function loadReminders() {
+    try {
+        allReminders = await window.electronAPI.getReminders(currentUser.id);
+        renderReminders();
+        updateReminderBadge();
+    } catch {}
+}
+
+function renderReminders() {
+    const container = document.getElementById('remindersList');
+    if (!container) return;
+    const pending = allReminders.filter(r => !r.done);
+    const done    = allReminders.filter(r =>  r.done);
+    if (!allReminders.length) {
+        container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">
+            <div style="font-size:2.5rem;margin-bottom:8px">⏰</div>
+            <div style="font-weight:600">Aucun rappel</div>
+        </div>`;
+        return;
+    }
+    const renderGroup = (items, label) => items.length ? `
+        <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px">${label} (${items.length})</div>
+        ${items.map(r => {
+            const overdue = !r.done && new Date(`${r.dueDate}T${r.dueTime||'09:00'}`) < new Date();
+            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:6px;background:${r.done?'#f8fafc':overdue?'#fff1f2':'white'};border:1px solid ${r.done?'#e5e7eb':overdue?'#fecaca':'#e5e7eb'}">
+                <input type="checkbox" ${r.done?'checked':''} onchange="toggleReminder('${r.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer">
+                <div style="flex:1">
+                    <div style="font-weight:600;font-size:0.875rem;color:${r.done?'#9ca3af':'#1e293b'};text-decoration:${r.done?'line-through':'none'}">${escapeHtml(r.title)}</div>
+                    ${r.description?`<div style="font-size:0.8rem;color:#6b7280">${escapeHtml(r.description)}</div>`:''}
+                    <div style="font-size:0.75rem;color:${overdue&&!r.done?'#ef4444':'#9ca3af'}">${overdue&&!r.done?'⚠️ En retard — ':''}${formatDate(r.dueDate)} à ${r.dueTime||'09:00'}</div>
+                </div>
+                <button onclick="deleteReminder('${r.id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:0.9rem">🗑️</button>
+            </div>`;
+        }).join('')}` : '';
+
+    container.innerHTML = renderGroup(pending, '📋 À faire') + renderGroup(done, '✅ Terminés');
+}
+
+function updateReminderBadge() {
+    const badge = document.getElementById('reminderBadge');
+    if (!badge) return;
+    const overdue = allReminders.filter(r => !r.done && new Date(`${r.dueDate}T${r.dueTime||'09:00'}`) < new Date()).length;
+    badge.textContent = overdue || '';
+    badge.style.display = overdue ? 'flex' : 'none';
+}
+
+async function toggleReminder(id, checked) {
+    try {
+        if (checked) await window.electronAPI.markReminderDone(id);
+        await loadReminders();
+    } catch { showToast('Erreur', 'error'); }
+}
+
+async function deleteReminder(id) {
+    try { await window.electronAPI.deleteReminder(id); await loadReminders(); showToast('Rappel supprimé', 'info'); }
+    catch { showToast('Erreur suppression', 'error'); }
+}
+
+function openReminderModal(prefill) {
+    const f = prefill || {};
+    document.getElementById('reminderTitle').value       = f.title       || '';
+    document.getElementById('reminderDesc').value        = f.description || '';
+    document.getElementById('reminderDate').value        = f.dueDate     || new Date().toISOString().split('T')[0];
+    document.getElementById('reminderTime').value        = f.dueTime     || '09:00';
+    document.getElementById('reminderEntityType').value  = f.entityType  || '';
+    document.getElementById('reminderEntityId').value    = f.entityId    || '';
+    document.getElementById('reminderModal').classList.add('active');
+}
+function closeReminderModal() { document.getElementById('reminderModal').classList.remove('active'); }
+
+async function saveReminder() {
+    const title = document.getElementById('reminderTitle').value.trim();
+    const date  = document.getElementById('reminderDate').value;
+    if (!title) { showToast('Titre du rappel requis', 'warning'); return; }
+    if (!date)  { showToast('Date requise', 'warning'); return; }
+    try {
+        await window.electronAPI.saveReminder({
+            userId: currentUser.id, title, date,
+            description: document.getElementById('reminderDesc').value.trim(),
+            dueDate:     date,
+            dueTime:     document.getElementById('reminderTime').value || '09:00',
+            entityType:  document.getElementById('reminderEntityType').value || null,
+            entityId:    document.getElementById('reminderEntityId').value || null
+        });
+        showToast('Rappel créé', 'success');
+        closeReminderModal();
+        await loadReminders();
+    } catch { showToast('Erreur création rappel', 'error'); }
+}
+
+// Listen for reminder:due events pushed by main process
+if (window.electronAPI?.onReminderDue) {
+    window.electronAPI.onReminderDue((r) => {
+        showToast(`⏰ Rappel : ${r.title}`, 'warning', 8000);
+        loadReminders();
+    });
+}
+
+// ==================== DUPLICATE DOCUMENT ====================
+async function duplicateDocument(docId) {
+    try {
+        const result = await window.electronAPI.duplicateDocument({ docId, userId: currentUser.id });
+        if (result.success) {
+            showToast(`Document dupliqué : ${result.document.number}`, 'success');
+            await loadDocuments();
+        }
+    } catch (e) { showToast('Erreur duplication', 'error'); }
+}
+
+// ==================== CHANGE PASSWORD ====================
+function openChangePasswordModal() {
+    document.getElementById('cpOldPassword').value = '';
+    document.getElementById('cpNewPassword').value = '';
+    document.getElementById('cpConfirmPassword').value = '';
+    document.getElementById('changePasswordModal').classList.add('active');
+}
+function closeChangePasswordModal() { document.getElementById('changePasswordModal').classList.remove('active'); }
+
+async function saveNewPassword() {
+    const oldPw  = document.getElementById('cpOldPassword').value;
+    const newPw  = document.getElementById('cpNewPassword').value;
+    const confPw = document.getElementById('cpConfirmPassword').value;
+    if (!oldPw || !newPw) { showToast('Tous les champs sont requis', 'warning'); return; }
+    if (newPw !== confPw) { showToast('Les mots de passe ne correspondent pas', 'warning'); return; }
+    if (newPw.length < 6) { showToast('Minimum 6 caractères', 'warning'); return; }
+    try {
+        const r = await window.electronAPI.changePassword({ userId: currentUser.id, oldPassword: oldPw, newPassword: newPw });
+        if (r.success) { showToast('Mot de passe modifié avec succès', 'success'); closeChangePasswordModal(); }
+        else showToast(r.error || 'Erreur', 'error');
+    } catch { showToast('Erreur', 'error'); }
+}
+
+// ==================== ANNUAL REPORT ====================
+let annualReportYear = new Date().getFullYear();
+
+async function loadAnnualReport() {
+    const el = document.getElementById('page-annual');
+    if (!el?.classList.contains('active')) return;
+    try {
+        document.getElementById('annualReportYear').textContent = annualReportYear;
+        const data = await window.electronAPI.getAnnualStats({ userId: currentUser.id, year: annualReportYear });
+        renderAnnualReport(data);
+    } catch {}
+}
+
+function renderAnnualReport(data) {
+    const monthNames = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+    const monthMap = {};
+    (data.monthly || []).forEach(m => { monthMap[m.month] = m; });
+
+    // Revenue by month table
+    const table = document.getElementById('annualMonthlyTable');
+    if (table) {
+        table.innerHTML = `<table style="width:100%"><thead><tr>
+            <th>Mois</th><th style="text-align:right">Documents</th><th style="text-align:right">Revenus TTC</th>
+        </tr></thead><tbody>
+        ${monthNames.map((name, i) => {
+            const key = String(i + 1).padStart(2, '0');
+            const row = monthMap[key] || { count: 0, revenue: 0 };
+            return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 0">${name}</td>
+                <td style="text-align:right;color:var(--text-muted)">${row.count || 0}</td>
+                <td style="text-align:right;font-weight:600;color:var(--primary)">${formatAmount(row.revenue || 0)} TND</td>
+            </tr>`;
+        }).join('')}
+        <tr style="background:var(--bg-secondary);font-weight:700">
+            <td style="padding:10px 0">TOTAL ${annualReportYear}</td>
+            <td style="text-align:right">${data.monthly.reduce((s,m)=>s+(m.count||0),0)}</td>
+            <td style="text-align:right;color:var(--primary)">${formatAmount(data.totalRevenue)} TND</td>
+        </tr></tbody></table>`;
+    }
+
+    // Canvas bar chart
+    renderAnnualBarChart(data.monthly || [], monthNames);
+
+    // Top clients
+    const topEl = document.getElementById('annualTopClients');
+    if (topEl) {
+        topEl.innerHTML = (data.topClients || []).map((c, i) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:white;font-size:0.75rem;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</div>
+                <div style="flex:1;font-size:0.875rem;font-weight:600">${escapeHtml(c.client_name)}</div>
+                <div style="font-size:0.875rem;color:var(--primary);font-weight:700">${formatAmount(c.revenue)} TND</div>
+            </div>`).join('') || '<p style="color:var(--text-muted);font-size:0.875rem">Aucune donnée</p>';
+    }
+}
+
+function renderAnnualBarChart(monthly, monthNames) {
+    const canvas = document.getElementById('annualRevenueChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const monthMap = {};
+    monthly.forEach(m => { monthMap[m.month] = parseFloat(m.revenue); });
+    const values = Array.from({length:12}, (_, i) => monthMap[String(i+1).padStart(2,'0')] || 0);
+    const max = Math.max(...values, 1);
+    const W = canvas.width, H = canvas.height;
+    const pad = { top:20, right:10, bottom:44, left:60 };
+    const cW = W-pad.left-pad.right, cH = H-pad.top-pad.bottom;
+    ctx.clearRect(0,0,W,H);
+    // Grid
+    for (let i=0;i<=4;i++) {
+        const y = pad.top+(cH/4)*i;
+        ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cW,y); ctx.stroke();
+        const val = max-(max/4)*i;
+        ctx.fillStyle='#9ca3af'; ctx.font='10px sans-serif'; ctx.textAlign='right';
+        ctx.fillText(val>=1000?(val/1000).toFixed(1)+'k':val.toFixed(0), pad.left-4, y+4);
+    }
+    const barW = cW/12*0.6, gap = cW/12;
+    const primary = currentDocumentTheme?.colors?.primary || '#3b82f6';
+    values.forEach((v,i) => {
+        const x = pad.left+gap*i+(gap-barW)/2;
+        const bH = (v/max)*cH, y = pad.top+cH-bH;
+        const grad = ctx.createLinearGradient(0,y,0,y+bH);
+        grad.addColorStop(0, primary); grad.addColorStop(1, primary+'66');
+        ctx.fillStyle = v>0 ? grad : '#f1f5f9';
+        if (ctx.roundRect) ctx.roundRect(x,y,barW,Math.max(bH,2),3); else ctx.rect(x,y,barW,Math.max(bH,2));
+        ctx.fill();
+        ctx.fillStyle='#6b7280'; ctx.font='9px sans-serif'; ctx.textAlign='center';
+        ctx.fillText(monthNames[i].slice(0,3), x+barW/2, pad.top+cH+14);
+    });
+}
+
+function changeReportYear(delta) {
+    annualReportYear += delta;
+    loadAnnualReport();
+}
+
+// ==================== HOOK showApp to init new features ====================
+const _origShowApp = window.showApp;
+window.showApp = async function() {
+    if (_origShowApp) _origShowApp.apply(this, arguments);
+    // Init updater listener after login
+    setTimeout(() => {
+        initUpdaterListener();
+        loadAppVersion();
+    }, 500);
+};

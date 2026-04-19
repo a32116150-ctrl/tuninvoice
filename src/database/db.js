@@ -33,6 +33,9 @@ class AppDatabase {
         tryAlter(`ALTER TABLE documents ADD COLUMN paid_amount REAL DEFAULT 0`);
         tryAlter(`ALTER TABLE documents ADD COLUMN paid_date TEXT`);
         tryAlter(`ALTER TABLE documents ADD COLUMN rounding_adjustment REAL DEFAULT 0`);
+        // clients: extra fields
+        tryAlter(`ALTER TABLE clients ADD COLUMN notes TEXT`);
+        tryAlter(`ALTER TABLE clients ADD COLUMN tags TEXT`);
     }
 
     // ==================== THEME SETTINGS (legacy per-type colours) ====================
@@ -225,6 +228,33 @@ class AppDatabase {
                 entity_type TEXT,
                 entity_id TEXT,
                 entity_label TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS notes (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                title TEXT,
+                content TEXT,
+                color TEXT DEFAULT '#fef9c3',
+                pinned INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS reminders (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                due_date TEXT NOT NULL,
+                due_time TEXT DEFAULT '09:00',
+                entity_type TEXT,
+                entity_id TEXT,
+                done INTEGER DEFAULT 0,
+                notified INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -551,6 +581,148 @@ class AppDatabase {
     // ==================== ACTIVITY LOG ====================
     logActivity(userId, action, entityType, entityId, entityLabel) {
         try { this.db.prepare(`INSERT INTO activity_log (id,user_id,action,entity_type,entity_id,entity_label) VALUES (?,?,?,?,?,?)`).run(uuidv4(),userId,action,entityType||null,entityId||null,entityLabel||null); } catch {}
+    }
+
+    // ==================== CHANGE PASSWORD ====================
+    changePassword(userId, oldPassword, newPassword) {
+        const user = this.db.prepare('SELECT * FROM users WHERE id=?').get(userId);
+        if (!user) throw new Error('Utilisateur introuvable');
+        if (!require('bcryptjs').compareSync(oldPassword, user.password_hash)) throw new Error('Mot de passe actuel incorrect');
+        if (newPassword.length < 6) throw new Error('Le nouveau mot de passe doit contenir au moins 6 caractères');
+        const hash = require('bcryptjs').hashSync(newPassword, 10);
+        this.db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash, userId);
+    }
+
+    // ==================== CLIENTS EXTRA ====================
+    getClientById(id)   { return this.db.prepare('SELECT * FROM clients WHERE id=?').get(id); }
+
+    getClientHistory(userId, clientName) {
+        const docs = this.db.prepare(`
+            SELECT type, number, date, total_ttc, currency, payment_status
+            FROM documents WHERE user_id=? AND client_name=? ORDER BY date DESC
+        `).all(userId, clientName);
+        const totalRevenue = docs.filter(d=>d.type==='facture').reduce((s,d)=>s+d.total_ttc,0);
+        return { docs, totalRevenue, docCount: docs.length };
+    }
+
+    // ==================== DOCUMENT SEARCH ====================
+    searchDocuments(userId, query) {
+        const q = `%${query}%`;
+        return this.db.prepare(`
+            SELECT * FROM documents
+            WHERE user_id=? AND (
+                number LIKE ? OR client_name LIKE ? OR company_name LIKE ? OR notes LIKE ?
+            )
+            ORDER BY created_at DESC LIMIT 30
+        `).all(userId, q, q, q, q).map(d => this.formatDocument(d));
+    }
+
+    // ==================== ANNUAL STATS ====================
+    getAnnualStats(userId, year) {
+        const y = year || new Date().getFullYear();
+        const monthly = this.db.prepare(`
+            SELECT strftime('%m', date) as month,
+                   COUNT(*) as count,
+                   COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc ELSE 0 END),0) as revenue
+            FROM documents WHERE user_id=? AND strftime('%Y',date)=?
+            GROUP BY month ORDER BY month ASC
+        `).all(userId, String(y));
+
+        const byType = this.db.prepare(`
+            SELECT type, COUNT(*) as count, COALESCE(SUM(total_ttc),0) as total
+            FROM documents WHERE user_id=? AND strftime('%Y',date)=?
+            GROUP BY type
+        `).all(userId, String(y));
+
+        const totalRevenue = this.db.prepare(`
+            SELECT COALESCE(SUM(total_ttc),0) as total
+            FROM documents WHERE user_id=? AND type='facture' AND strftime('%Y',date)=?
+        `).get(userId, String(y)).total;
+
+        const topClients = this.db.prepare(`
+            SELECT client_name, COUNT(*) as count, COALESCE(SUM(total_ttc),0) as revenue
+            FROM documents WHERE user_id=? AND type='facture' AND strftime('%Y',date)=?
+            GROUP BY client_name ORDER BY revenue DESC LIMIT 10
+        `).all(userId, String(y));
+
+        return { year: y, monthly, byType, totalRevenue, topClients };
+    }
+
+    // ==================== CLIENT STATS ====================
+    getClientStats(userId, clientName) {
+        const docs = this.db.prepare(`
+            SELECT * FROM documents WHERE user_id=? AND client_name=? ORDER BY date DESC
+        `).all(userId, clientName).map(d => this.formatDocument(d));
+
+        const totalRevenue   = docs.filter(d=>d.type==='facture').reduce((s,d)=>s+d.totalTTC,0);
+        const unpaidRevenue  = docs.filter(d=>d.type==='facture'&&d.paymentStatus!=='paid').reduce((s,d)=>s+d.totalTTC-d.paidAmount,0);
+        const monthlyRevenue = this.db.prepare(`
+            SELECT strftime('%Y-%m', date) as month, COALESCE(SUM(total_ttc),0) as revenue
+            FROM documents WHERE user_id=? AND client_name=? AND type='facture'
+            GROUP BY month ORDER BY month ASC
+        `).all(userId, clientName);
+
+        return { docs, totalRevenue, unpaidRevenue, docCount: docs.length, monthlyRevenue };
+    }
+
+    // ==================== NOTES ====================
+    initNotesTables() {
+        // Called lazily only if not already done by initTables
+    }
+
+    saveNote(data) {
+        const id = data.id || uuidv4();
+        const now = new Date().toISOString();
+        const ex = this.db.prepare('SELECT id FROM notes WHERE id=?').get(id);
+        if (ex) {
+            this.db.prepare(`UPDATE notes SET title=?,content=?,color=?,pinned=?,updated_at=? WHERE id=?`).run(data.title||null, data.content||null, data.color||'#fef9c3', data.pinned?1:0, now, id);
+        } else {
+            this.db.prepare(`INSERT INTO notes (id,user_id,title,content,color,pinned) VALUES (?,?,?,?,?,?)`).run(id, data.userId, data.title||null, data.content||null, data.color||'#fef9c3', data.pinned?1:0);
+        }
+        return this.db.prepare('SELECT * FROM notes WHERE id=?').get(id);
+    }
+
+    getNotes(userId) {
+        return this.db.prepare('SELECT * FROM notes WHERE user_id=? ORDER BY pinned DESC, updated_at DESC').all(userId);
+    }
+
+    deleteNote(id) { this.db.prepare('DELETE FROM notes WHERE id=?').run(id); }
+
+    // ==================== REMINDERS ====================
+    saveReminder(data) {
+        const id = data.id || uuidv4();
+        const ex = this.db.prepare('SELECT id FROM reminders WHERE id=?').get(id);
+        if (ex) {
+            this.db.prepare(`UPDATE reminders SET title=?,description=?,due_date=?,due_time=?,entity_type=?,entity_id=?,done=? WHERE id=?`).run(data.title, data.description||null, data.dueDate, data.dueTime||'09:00', data.entityType||null, data.entityId||null, data.done?1:0, id);
+        } else {
+            this.db.prepare(`INSERT INTO reminders (id,user_id,title,description,due_date,due_time,entity_type,entity_id) VALUES (?,?,?,?,?,?,?,?)`).run(id, data.userId, data.title, data.description||null, data.dueDate, data.dueTime||'09:00', data.entityType||null, data.entityId||null);
+        }
+        return this.db.prepare('SELECT * FROM reminders WHERE id=?').get(id);
+    }
+
+    getReminders(userId) {
+        return this.db.prepare('SELECT * FROM reminders WHERE user_id=? ORDER BY done ASC, due_date ASC, due_time ASC').all(userId).map(r => this.formatReminder(r));
+    }
+
+    getDueReminders() {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().slice(0,5);
+        return this.db.prepare(`
+            SELECT * FROM reminders
+            WHERE done=0 AND notified=0
+              AND (due_date < ? OR (due_date = ? AND due_time <= ?))
+        `).all(today, today, timeStr).map(r => {
+            this.db.prepare('UPDATE reminders SET notified=1 WHERE id=?').run(r.id);
+            return this.formatReminder(r);
+        });
+    }
+
+    markReminderDone(id) { this.db.prepare('UPDATE reminders SET done=1 WHERE id=?').run(id); }
+    deleteReminder(id)   { this.db.prepare('DELETE FROM reminders WHERE id=?').run(id); }
+
+    formatReminder(r) {
+        return { id:r.id, userId:r.user_id, title:r.title, description:r.description, dueDate:r.due_date, dueTime:r.due_time, entityType:r.entity_type, entityId:r.entity_id, done:r.done===1, notified:r.notified===1, createdAt:r.created_at };
     }
 }
 

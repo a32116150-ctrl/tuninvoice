@@ -157,7 +157,7 @@ ${data.extraClauses ? `
 </div>
 
 <div class="footer-note">
-    Document généré par TuniInvoice Pro — ${today} &nbsp;|&nbsp; Ce document a valeur contractuelle une fois signé par les deux parties.
+    Ce document a valeur contractuelle une fois signé par les deux parties.
 </div>
 
 </body>
