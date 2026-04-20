@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculatrice Fiscale — TuniInvoice Pro</title>
+<style>
+  :root {
+    --bg:        #f1f5f9;
+    --card:      #ffffff;
+    --primary:   #1e3a8a;
+    --accent:    #3b82f6;
+    --text:      #1e293b;
+    --muted:     #64748b;
+    --border:    #e2e8f0;
+    --red:       #dc2626;
+    --green:     #16a34a;
+    --yellow:    #d97706;
+    --radius:    10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; background: var(--bg); color: var(--text); }
+  
+  header {
+    background: var(--primary);
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+    -webkit-app-region: drag;
+  }
+  header h1 { font-size: 15px; font-weight: 700; }
+  header span { font-size: 11px; opacity: 0.75; }
+  
+  .tabs {
+    display: flex;
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+    padding: 0 16px;
+  }
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  
+  .panels { padding: 16px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  
+  /* ── Cards ── */
+  .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; border: 1px solid var(--border); }
+  .card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 12px; }
+  
+  /* ── Fields ── */
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%; padding: 8px 10px; border: 1.5px solid var(--border);
+    border-radius: 6px; font-size: 13px; outline: none; background: #f8fafc;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); background: #fff; }
+  .field .hint { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  
+  /* ── Results ── */
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .result-box {
+    background: #f8fafc; border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; text-align: center;
+  }
+  .result-box .r-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .result-box .r-value { font-size: 16px; font-weight: 700; color: var(--primary); margin-top: 3px; }
+  .result-box.highlight { border-color: var(--accent); background: #eff6ff; }
+  .result-box.highlight .r-value { color: var(--accent); }
+  .result-box.warn { border-color: var(--yellow); background: #fffbeb; }
+  .result-box.warn .r-value { color: var(--yellow); }
+  .result-box.grand { grid-column: 1/-1; border-color: var(--primary); background: var(--primary); }
+  .result-box.grand .r-label { color: rgba(255,255,255,0.7); }
+  .result-box.grand .r-value { color: #fff; font-size: 20px; }
+  
+  /* ── Button ── */
+  .calc-btn {
+    width: 100%; padding: 10px; background: var(--primary); color: #fff;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+    cursor: pointer; margin-top: 8px; transition: background 0.15s;
+  }
+  .calc-btn:hover { background: #1e40af; }
+  
+  /* ── Divider ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  
+  /* ── Table (RIB check) ── */
+  .info-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .info-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .info-table td:first-child { color: var(--muted); width: 55%; }
+  .info-table td:last-child { font-weight: 600; }
+  
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+  .badge.ok   { background: #dcfce7; color: var(--green); }
+  .badge.err  { background: #fee2e2; color: var(--red); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <span>🧮</span>
+  <div>
+    <h1>Calculatrice Fiscale</h1>
+    <span>TuniInvoice Pro — Outil fiscal tunisien</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('tva')">TVA & Prix</button>
+  <button class="tab-btn" onclick="showTab('retenue')">Retenue RS</button>
+  <button class="tab-btn" onclick="showTab('invoice')">Simulateur Facture</button>
+</div>
+
+<div class="panels">
+
+  <!-- ══ TAB 1 : TVA ═══════════════════════════════════ -->
+  <div id="panel-tva" class="panel active">
+    <div class="card">
+      <h3>Calcul TVA (Taxe sur la Valeur Ajoutée)</h3>
+      <div class="field">
+        <label>Montant connu</label>
+        <input type="number" id="tva-amount" placeholder="Ex: 1000" oninput="calcTVA()">
+      </div>
+      <div class="field">
+        <label>Type de montant</label>
+        <select id="tva-type" onchange="calcTVA()">
+          <option value="ht">Hors Taxes (HT)</option>
+          <option value="ttc">Toutes Taxes Comprises (TTC)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Taux TVA (%)</label>
+        <select id="tva-rate" onchange="calcTVA()">
+          <option value="19">19% — Taux normal</option>
+          <option value="13">13% — Taux intermédiaire</option>
+          <option value="7">7%  — Taux réduit</option>
+          <option value="0">0%  — Exonéré / Hors champ</option>
+        </select>
+      </div>
+      <div class="result-grid" id="tva-results" style="display:none">
+        <div class="result-box"><div class="r-label">Montant HT</div><div class="r-value" id="r-ht">—</div></div>
+        <div class="result-box highlight"><div class="r-label">TVA</div><div class="r-value" id="r-tva">—</div></div>
+        <div class="result-box grand"><div class="r-label">Montant TTC</div><div class="r-value" id="r-ttc">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Timbre Fiscal (Droit de Timbre)</h3>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px">
+        Applicable sur les factures de services selon Art. 37 du Code des Droits de Timbre.
+        Taux en vigueur : <strong>1.000 TND</strong> par facture.
+      </p>
+      <div class="field">
+        <label>Nombre de factures</label>
+        <input type="number" id="timbre-count" placeholder="1" min="1" oninput="calcTimbre()">
+      </div>
+      <div class="result-grid" id="timbre-results" style="display:none">
+        <div class="result-box highlight">
+          <div class="r-label">Total Timbre Fiscal</div>
+          <div class="r-value" id="r-timbre">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 2 : RETENUE ════════════════════════════════ -->
+  <div id="panel-retenue" class="panel">
+    <div class="card">
+      <h3>Calculatrice Retenue à la Source</h3>
+      <div class="field">
+        <label>Montant brut (HT)</label>
+        <input type="number" id="rs-amount" placeholder="Ex: 5000.000" oninput="calcRS()">
+      </div>
+      <div class="field">
+        <label>Taux de retenue</label>
+        <select id="rs-rate" onchange="calcRS()">
+          <option value="1.5">1.5% — Honoraires & commissions (personnes morales)</option>
+          <option value="2.5">2.5% — Honoraires (personnes physiques, hors régime réel)</option>
+          <option value="3">3%   — Loyers immobiliers</option>
+          <option value="5">5%   — Services / travaux (non-résidents)</option>
+          <option value="10">10%  — Dividendes</option>
+          <option value="15">15%  — Intérêts / capitaux mobiliers</option>
+          <option value="25">25%  — Non-résidents sans convention</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>TVA applicable (%)</label>
+        <select id="rs-tva" onchange="calcRS()">
+          <option value="19">19%</option>
+          <option value="13">13%</option>
+          <option value="7">7%</option>
+          <option value="0">0% / Exonéré</option>
+        </select>
+      </div>
+      <div class="result-grid" id="rs-results" style="display:none">
+        <div class="result-box"><div class="r-label">Montant HT</div><div class="r-value" id="rs-r-ht">—</div></div>
+        <div class="result-box highlight"><div class="r-label">TVA</div><div class="r-value" id="rs-r-tva">—</div></div>
+        <div class="result-box warn"><div class="r-label">Retenue déduite</div><div class="r-value" id="rs-r-retenue">—</div></div>
+        <div class="result-box"><div class="r-label">Montant TTC facturé</div><div class="r-value" id="rs-r-ttc">—</div></div>
+        <div class="result-box grand"><div class="r-label">Net à recevoir</div><div class="r-value" id="rs-r-net">—</div></div>
+      </div>
+      <div id="rs-legal" style="display:none;margin-top:12px;font-size:10.5px;color:var(--muted);padding:8px;background:#f8fafc;border-radius:6px;border-left:3px solid var(--accent)"></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3 : SIMULATEUR ════════════════════════════ -->
+  <div id="panel-invoice" class="panel">
+    <div class="card">
+      <h3>Simulateur de facture complète</h3>
+      <div id="sim-items">
+        <div class="sim-item" data-idx="0">
+          <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+            <div class="field" style="flex:3;margin:0">
+              <label>Description</label>
+              <input type="text" class="si-desc" placeholder="Prestation de service...">
+            </div>
+            <div class="field" style="flex:1;margin:0">
+              <label>Qté</label>
+              <input type="number" class="si-qty" value="1" min="0.001" oninput="calcSim()">
+            </div>
+            <div class="field" style="flex:2;margin:0">
+              <label>Prix HT</label>
+              <input type="number" class="si-price" placeholder="0.000" oninput="calcSim()">
+            </div>
+            <div class="field" style="flex:1;margin:0">
+              <label>TVA %</label>
+              <select class="si-tva" onchange="calcSim()">
+                <option value="19">19%</option>
+                <option value="13">13%</option>
+                <option value="7">7%</option>
+                <option value="0">0%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="calc-btn" style="background:#475569;margin-bottom:8px" onclick="addSimItem()">+ Ajouter une ligne</button>
+      
+      <hr>
+      <div style="display:flex;gap:12px">
+        <div class="field" style="flex:1">
+          <label>Remise (%)</label>
+          <input type="number" id="sim-discount" placeholder="0" min="0" max="100" oninput="calcSim()">
+        </div>
+        <div class="field" style="flex:1">
+          <label>Timbre fiscal</label>
+          <select id="sim-timbre" onchange="calcSim()">
+            <option value="0">Non</option>
+            <option value="1">Oui (+1.000 TND)</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1">
+          <label>Retenue RS (%)</label>
+          <select id="sim-rs" onchange="calcSim()">
+            <option value="0">Aucune</option>
+            <option value="1.5">1.5%</option>
+            <option value="2.5">2.5%</option>
+            <option value="3">3%</option>
+            <option value="5">5%</option>
+          </select>
+        </div>
+      </div>
+      <button class="calc-btn" onclick="calcSim()">🔢 Calculer</button>
+    </div>
+    <div class="card" id="sim-result-card" style="display:none">
+      <h3>Résultat simulation</h3>
+      <table class="info-table" id="sim-result-table"></table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function f3(v) {
+    return (parseFloat(v)||0).toLocaleString('fr-TN',{minimumFractionDigits:3,maximumFractionDigits:3});
+}
+
+// ── Tab switching ────────────────────────────────────────────────
+function showTab(id) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-'+id).classList.add('active');
+    event.target.classList.add('active');
+}
+
+// ── TVA calculator ───────────────────────────────────────────────
+function calcTVA() {
+    const amt = parseFloat(document.getElementById('tva-amount').value);
+    const type = document.getElementById('tva-type').value;
+    const rate = parseFloat(document.getElementById('tva-rate').value) / 100;
+    if (!amt || amt <= 0) { document.getElementById('tva-results').style.display='none'; return; }
+    let ht, tva, ttc;
+    if (type === 'ht') { ht=amt; tva=ht*rate; ttc=ht+tva; }
+    else               { ttc=amt; ht=ttc/(1+rate); tva=ttc-ht; }
+    document.getElementById('r-ht').textContent  = f3(ht)  + ' TND';
+    document.getElementById('r-tva').textContent = f3(tva) + ' TND';
+    document.getElementById('r-ttc').textContent = f3(ttc) + ' TND';
+    document.getElementById('tva-results').style.display = 'grid';
+}
+
+function calcTimbre() {
+    const n = parseInt(document.getElementById('timbre-count').value) || 0;
+    if (n <= 0) { document.getElementById('timbre-results').style.display='none'; return; }
+    document.getElementById('r-timbre').textContent = f3(n * 1.0) + ' TND';
+    document.getElementById('timbre-results').style.display = 'grid';
+}
+
+// ── Retenue calculator ───────────────────────────────────────────
+const RS_LEGAL = {
+    '1.5': "Art. 52 IRPP/IS — Honoraires et commissions (personnes morales résidentes)",
+    '2.5': "Art. 52 IRPP/IS — Honoraires (personnes physiques, hors régime réel)",
+    '3':   "Art. 52 IRPP/IS — Revenus fonciers et loyers immobiliers",
+    '5':   "Art. 52 IRPP/IS — Services et travaux pour non-résidents",
+    '10':  "Art. 29 IRPP/IS — Dividendes et revenus de valeurs mobilières",
+    '15':  "Art. 30 IRPP/IS — Intérêts et revenus de capitaux mobiliers",
+    '25':  "Convention fiscale — Paiements à des non-résidents sans convention"
+};
+
+function calcRS() {
+    const ht = parseFloat(document.getElementById('rs-amount').value);
+    const rsRate = parseFloat(document.getElementById('rs-rate').value) / 100;
+    const tvaRate = parseFloat(document.getElementById('rs-tva').value) / 100;
+    const rsRateVal = document.getElementById('rs-rate').value;
+    if (!ht || ht <= 0) { document.getElementById('rs-results').style.display='none'; return; }
+    const tva = ht * tvaRate;
+    const ttc = ht + tva;
+    const retenue = ht * rsRate;   // retenue is on HT
+    const net = ttc - retenue;
+    document.getElementById('rs-r-ht').textContent      = f3(ht)      + ' TND';
+    document.getElementById('rs-r-tva').textContent     = f3(tva)     + ' TND';
+    document.getElementById('rs-r-ttc').textContent     = f3(ttc)     + ' TND';
+    document.getElementById('rs-r-retenue').textContent = f3(retenue) + ' TND';
+    document.getElementById('rs-r-net').textContent     = f3(net)     + ' TND';
+    document.getElementById('rs-results').style.display = 'grid';
+    const legalEl = document.getElementById('rs-legal');
+    legalEl.textContent = '📜 ' + (RS_LEGAL[rsRateVal] || '');
+    legalEl.style.display = 'block';
+}
+
+// ── Simulator ────────────────────────────────────────────────────
+let simItemCount = 1;
+
+function addSimItem() {
+    const idx = simItemCount++;
+    const div = document.createElement('div');
+    div.className = 'sim-item';
+    div.dataset.idx = idx;
+    div.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+        <div class="field" style="flex:3;margin:0"><input type="text" class="si-desc" placeholder="Description..."></div>
+        <div class="field" style="flex:1;margin:0"><input type="number" class="si-qty" value="1" min="0.001" oninput="calcSim()"></div>
+        <div class="field" style="flex:2;margin:0"><input type="number" class="si-price" placeholder="0.000" oninput="calcSim()"></div>
+        <div class="field" style="flex:1;margin:0">
+          <select class="si-tva" onchange="calcSim()">
+            <option value="19">19%</option><option value="13">13%</option>
+            <option value="7">7%</option><option value="0">0%</option>
+          </select>
+        </div>
+        <button onclick="this.closest('.sim-item').remove();calcSim()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:8px 10px;cursor:pointer;margin-bottom:0">✕</button>
+      </div>`;
+    document.getElementById('sim-items').appendChild(div);
+}
+
+function calcSim() {
+    const items = document.querySelectorAll('.sim-item');
+    let totalHT = 0, totalTVA = 0;
+    const tvaMap = {};
+    items.forEach(item => {
+        const qty   = parseFloat(item.querySelector('.si-qty')?.value)   || 0;
+        const price = parseFloat(item.querySelector('.si-price')?.value) || 0;
+        const tvaR  = parseFloat(item.querySelector('.si-tva')?.value)   || 0;
+        const ht    = qty * price;
+        const tva   = ht * tvaR / 100;
+        totalHT  += ht;
+        totalTVA += tva;
+        tvaMap[tvaR] = (tvaMap[tvaR]||0) + tva;
+    });
+
+    const discPct  = parseFloat(document.getElementById('sim-discount')?.value) || 0;
+    const timbre   = parseInt(document.getElementById('sim-timbre')?.value)      || 0;
+    const rsRate   = parseFloat(document.getElementById('sim-rs')?.value)        || 0;
+
+    const discount   = totalHT * discPct / 100;
+    const netHT      = totalHT - discount;
+    const netTVA     = totalTVA * (1 - discPct/100);
+    const ttc        = netHT + netTVA + timbre;
+    const retenue    = netHT * rsRate / 100;
+    const netReceive = ttc - retenue;
+
+    const rows = [
+        ['Total HT',                    f3(netHT)      + ' TND'],
+        discPct > 0 ? ['Remise ('+discPct+'%)', '– '+f3(discount)+' TND'] : null,
+        ...Object.entries(tvaMap).filter(([,v])=>v>0).map(([r,v])=>['TVA '+r+'%', f3(v*(1-discPct/100))+' TND']),
+        timbre  ? ['Timbre fiscal',     f3(timbre)     + ' TND'] : null,
+        ['<strong>Total TTC</strong>',  '<strong>'+f3(ttc)+'</strong> TND'],
+        rsRate  ? ['Retenue ('+rsRate+'%)', '– '+f3(retenue)+' TND'] : null,
+        rsRate  ? ['<strong>Net à recevoir</strong>', '<strong>'+f3(netReceive)+'</strong> TND'] : null,
+    ].filter(Boolean);
+
+    const tbody = rows.map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join('');
+    document.getElementById('sim-result-table').innerHTML = tbody;
+    document.getElementById('sim-result-card').style.display = 'block';
+}
+</script>
+</body>
+</html>

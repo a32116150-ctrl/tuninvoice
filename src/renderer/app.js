@@ -215,6 +215,7 @@ function navigateTo(page) {
     if (page === 'services')    loadServices();
     if (page === 'company')     loadCompanyPage();
     if (page === 'contracts')   loadContracts();
+    if (page === 'retenues')    loadRetenues();
     if (page === 'notes')       loadNotes();
     if (page === 'reminders')   loadReminders();
     if (page === 'annual')      loadAnnualReport();
@@ -2144,3 +2145,446 @@ window.showApp = async function() {
         loadAppVersion();
     }, 500);
 };
+// ==================== RETENUE À LA SOURCE ====================
+let allRetenues = [];
+let editingRetenueId = null;
+
+async function loadRetenues() {
+    if (!currentUser) return;
+    try {
+        allRetenues = await window.electronAPI.getRetenues(currentUser.id);
+        renderRetenuesTable(allRetenues);
+    } catch (e) { showToast('Erreur chargement retenues', 'error'); }
+}
+
+function renderRetenuesTable(retenues) {
+    const container = document.getElementById('retenuesTable');
+    if (!container) return;
+    if (!retenues.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🧾</div><h3>Aucun certificat</h3><p>Créez votre premier certificat de retenue à la source</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr>
+        <th>N°</th><th>Date</th><th>Période</th><th>Bénéficiaire</th>
+        <th>Montant Brut</th><th>Taux</th><th>Montant Retenu</th><th>Statut</th><th>Actions</th>
+    </tr></thead><tbody>
+        ${retenues.map(r => `<tr>
+            <td style="font-family:monospace;font-size:0.82rem">${escapeHtml(r.number)}</td>
+            <td>${formatDate(r.date)}</td>
+            <td>${['','Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sep.','Oct.','Nov.','Déc.'][r.month]||r.month} ${r.year}</td>
+            <td style="font-weight:600">${escapeHtml(r.beneficiaireName)}</td>
+            <td>${formatAmount(r.montantBrut)} TND</td>
+            <td style="font-weight:600;color:#92400e">${r.tauxRetenue}%</td>
+            <td style="font-weight:700;color:#b45309">${formatAmount(r.montantRetenue)} TND</td>
+            <td><span class="badge" style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:6px;font-size:0.75rem">${r.status||'emis'}</span></td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-view"   onclick="previewRetenue('${r.id}')"        title="Aperçu">👁️</button>
+                <button class="btn-icon btn-edit"   onclick="editRetenue('${r.id}')"           title="Modifier">✏️</button>
+                <button class="btn-icon btn-pdf"    onclick="downloadRetenuePDF('${r.id}')"    title="PDF">📄</button>
+                <button class="btn-icon btn-delete" onclick="confirmDeleteRetenue('${r.id}')"  title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function filterRetenues() {
+    const q    = document.getElementById('searchRetenues').value.toLowerCase();
+    const year = document.getElementById('filterRetenueYear').value;
+    renderRetenuesTable(allRetenues.filter(r => {
+        const mQ = !q || (r.number||'').toLowerCase().includes(q) || (r.beneficiaireName||'').toLowerCase().includes(q) || (r.retenuerName||'').toLowerCase().includes(q);
+        const mY = !year || String(r.year) === year;
+        return mQ && mY;
+    }));
+}
+
+async function openRetenueModal(prefill) {
+    editingRetenueId = null;
+    const today = new Date();
+    document.getElementById('rDate').value          = today.toISOString().split('T')[0];
+    document.getElementById('rMonth').value         = String(today.getMonth() + 1);
+    document.getElementById('rRetenuerName').value  = '';
+    document.getElementById('rRetenuerMF').value    = '';
+    document.getElementById('rRetenuerAddress').value = '';
+    document.getElementById('rRetenuerRep').value   = '';
+    document.getElementById('rBeneficiaireName').value = '';
+    document.getElementById('rBeneficiaireMF').value   = '';
+    document.getElementById('rBeneficiaireAddress').value = '';
+    document.getElementById('rBeneficiaireRib').value = '';
+    document.getElementById('rFactureNumber').value = '';
+    document.getElementById('rFactureDate').value   = '';
+    document.getElementById('rMontantBrut').value   = '';
+    document.getElementById('rMontantRetenue').value = '';
+    document.getElementById('rTaux').value          = '1.5';
+    document.getElementById('rNatureRevenu').value  = 'Honoraires et commissions';
+    document.getElementById('rNotes').value         = '';
+    // Pre-fill company info
+    try {
+        const c = await window.electronAPI.getCompany(currentUser.id) || {};
+        document.getElementById('rRetenuerName').value    = c.name    || currentUser.company || '';
+        document.getElementById('rRetenuerMF').value      = c.mf      || currentUser.mf      || '';
+        document.getElementById('rRetenuerAddress').value = c.address  || '';
+    } catch {}
+    if (prefill) {
+        if (prefill.beneficiaireName) document.getElementById('rBeneficiaireName').value = prefill.beneficiaireName;
+        if (prefill.beneficiaireMF)   document.getElementById('rBeneficiaireMF').value   = prefill.beneficiaireMF;
+        if (prefill.factureNumber)    document.getElementById('rFactureNumber').value    = prefill.factureNumber;
+        if (prefill.factureDate)      document.getElementById('rFactureDate').value      = prefill.factureDate;
+        if (prefill.montantBrut)      { document.getElementById('rMontantBrut').value = prefill.montantBrut; calculateRetenueAmount(); }
+    }
+    document.getElementById('retenueModalTitle').textContent = '➕ Nouveau Certificat de Retenue';
+    document.getElementById('retenueModal').classList.add('active');
+}
+
+function closeRetenueModal() {
+    document.getElementById('retenueModal').classList.remove('active');
+    editingRetenueId = null;
+}
+
+function calculateRetenueAmount() {
+    const brut = parseFloat(document.getElementById('rMontantBrut').value) || 0;
+    const taux = parseFloat(document.getElementById('rTaux').value) || 1.5;
+    const retenu = Math.round(brut * (taux / 100) * 1000) / 1000;
+    document.getElementById('rMontantRetenue').value = retenu.toFixed(3);
+}
+
+function collectRetenueData() {
+    const get = id => document.getElementById(id)?.value || '';
+    const brut  = parseFloat(get('rMontantBrut')) || 0;
+    const taux  = parseFloat(get('rTaux')) || 1.5;
+    const retenu = Math.round(brut * (taux / 100) * 1000) / 1000;
+    const today = new Date();
+    return {
+        id: editingRetenueId || undefined,
+        userId: currentUser.id,
+        date:   get('rDate') || today.toISOString().split('T')[0],
+        year:   today.getFullYear(),
+        month:  parseInt(get('rMonth')) || (today.getMonth() + 1),
+        retenuerName:    get('rRetenuerName'),
+        retenuerMF:      get('rRetenuerMF'),
+        retenuerAddress: get('rRetenuerAddress'),
+        retenuerRep:     get('rRetenuerRep'),
+        beneficiaireName:    get('rBeneficiaireName'),
+        beneficiaireMF:      get('rBeneficiaireMF'),
+        beneficiaireAddress: get('rBeneficiaireAddress'),
+        beneficiaireRib:     get('rBeneficiaireRib'),
+        factureNumber: get('rFactureNumber') || null,
+        factureDate:   get('rFactureDate')   || null,
+        montantBrut:    brut,
+        tauxRetenue:    taux,
+        montantRetenue: retenu,
+        natureRevenu:  get('rNatureRevenu') || 'Honoraires et commissions',
+        notes:         get('rNotes') || null,
+        logoImage:     logoImage   || null,
+        stampImage:    stampImage  || null,
+        signatureImage: signatureImage || null,
+        status: 'emis'
+    };
+}
+
+async function saveRetenue() {
+    const data = collectRetenueData();
+    if (!data.retenuerName)    { showToast('La raison sociale de l\'entreprise est requise', 'warning'); return; }
+    if (!data.beneficiaireName){ showToast('Le nom du bénéficiaire est requis', 'warning'); return; }
+    if (!data.montantBrut)     { showToast('Le montant brut est requis', 'warning'); return; }
+    try {
+        const result = await window.electronAPI.saveRetenue(data);
+        if (result.success) {
+            showToast(editingRetenueId ? 'Certificat mis à jour' : 'Certificat créé', 'success');
+            closeRetenueModal();
+            await loadRetenues();
+        } else { showToast(result.error || 'Erreur lors de l\'enregistrement', 'error'); }
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+}
+
+async function saveAndPrintRetenue() {
+    const data = collectRetenueData();
+    if (!data.retenuerName)    { showToast('La raison sociale de l\'entreprise est requise', 'warning'); return; }
+    if (!data.beneficiaireName){ showToast('Le nom du bénéficiaire est requis', 'warning'); return; }
+    if (!data.montantBrut)     { showToast('Le montant brut est requis', 'warning'); return; }
+    try {
+        const result = await window.electronAPI.saveRetenue(data);
+        if (result.success) {
+            closeRetenueModal();
+            await loadRetenues();
+            await downloadRetenuePDF(result.retenue.id);
+        } else { showToast(result.error || 'Erreur', 'error'); }
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+}
+
+async function editRetenue(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    editingRetenueId = id;
+    document.getElementById('rDate').value           = r.date || '';
+    document.getElementById('rMonth').value          = String(r.month || 1);
+    document.getElementById('rRetenuerName').value   = r.retenuerName || '';
+    document.getElementById('rRetenuerMF').value     = r.retenuerMF   || '';
+    document.getElementById('rRetenuerAddress').value = r.retenuerAddress || '';
+    document.getElementById('rRetenuerRep').value    = r.retenuerRep  || '';
+    document.getElementById('rBeneficiaireName').value = r.beneficiaireName || '';
+    document.getElementById('rBeneficiaireMF').value   = r.beneficiaireMF   || '';
+    document.getElementById('rBeneficiaireAddress').value = r.beneficiaireAddress || '';
+    document.getElementById('rBeneficiaireRib').value  = r.beneficiaireRib  || '';
+    document.getElementById('rFactureNumber').value  = r.factureNumber || '';
+    document.getElementById('rFactureDate').value    = r.factureDate   || '';
+    document.getElementById('rMontantBrut').value    = r.montantBrut   || '';
+    document.getElementById('rTaux').value           = String(r.tauxRetenue || 1.5);
+    document.getElementById('rMontantRetenue').value = (r.montantRetenue || 0).toFixed(3);
+    document.getElementById('rNatureRevenu').value   = r.natureRevenu || 'Honoraires et commissions';
+    document.getElementById('rNotes').value          = r.notes || '';
+    document.getElementById('retenueModalTitle').textContent = '✏️ Modifier le Certificat';
+    document.getElementById('retenueModal').classList.add('active');
+}
+
+async function previewRetenue(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    const html = buildRetenueHTMLFromData(r);
+    document.getElementById('previewContent').innerHTML = html.replace(/<html[^>]*>[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*?<\/html>/i, '');
+    document.getElementById('previewModal').classList.add('active');
+}
+
+async function downloadRetenuePDF(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    const html = buildRetenueHTMLFromData(r);
+    const filename = `${r.number}.pdf`;
+    showLoading('Génération du PDF...');
+    try {
+        const result = await window.electronAPI.savePDF({ html, filename });
+        if (result.success) showToast('✅ PDF Retenue enregistré', 'success');
+        else if (!result.canceled) showToast('Erreur PDF', 'error');
+    } catch (e) { showToast('Erreur PDF: ' + e.message, 'error'); }
+    finally { hideLoading(); }
+}
+
+function buildRetenueHTMLFromData(r) {
+    // Use global buildRetenueHTML from retenue-builder.js if available
+    if (typeof buildRetenueHTML === 'function') {
+        return buildRetenueHTML(r, currentDocumentTheme);
+    }
+    // Fallback basic HTML
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Retenue ${r.number}</title></head><body style="font-family:sans-serif;padding:40px">
+        <h1 style="color:#1e3a8a">CERTIFICAT DE RETENUE À LA SOURCE</h1>
+        <h2>${escapeHtml(r.number)}</h2>
+        <p><strong>Date:</strong> ${formatDate(r.date)} | <strong>Période:</strong> ${r.month}/${r.year}</p>
+        <hr>
+        <p><strong>Débiteur:</strong> ${escapeHtml(r.retenuerName)} (MF: ${escapeHtml(r.retenuerMF||'—')})</p>
+        <p><strong>Bénéficiaire:</strong> ${escapeHtml(r.beneficiaireName)} (MF: ${escapeHtml(r.beneficiaireMF||'—')})</p>
+        <hr>
+        <p><strong>Montant Brut:</strong> ${(r.montantBrut||0).toFixed(3)} TND</p>
+        <p><strong>Taux RS:</strong> ${r.tauxRetenue}%</p>
+        <p><strong>Montant Retenu:</strong> ${(r.montantRetenue||0).toFixed(3)} TND</p>
+        <p><strong>Nature:</strong> ${escapeHtml(r.natureRevenu||'')}</p>
+        <p style="font-size:11px;color:#aaa;margin-top:40px">Document généré par TuniInvoice Pro</p>
+    </body></html>`;
+}
+
+function confirmDeleteRetenue(id) {
+    const r = allRetenues.find(x => x.id === id);
+    showConfirm('🗑️ Supprimer', `Supprimer le certificat ${r?.number} ?`, async () => {
+        try {
+            await window.electronAPI.deleteRetenue(id);
+            showToast('Certificat supprimé', 'info');
+            await loadRetenues();
+        } catch { showToast('Erreur suppression', 'error'); }
+    });
+}
+
+async function exportRetenuesToExcel() {
+    try {
+        const result = await window.electronAPI.exportExcelRetenues({ retenues: allRetenues });
+        if (result.success) showToast(`Excel exporté: ${result.path}`, 'success');
+    } catch { showToast('Erreur export Excel', 'error'); }
+}
+
+// ==================== RETENUE: OFFICIAL FIELDS ====================
+function calculateRetenueAmount() {
+    const brut = parseFloat(document.getElementById('rMontantBrut')?.value) || 0;
+    const taux = parseFloat(document.getElementById('rTaux')?.value) || 1.5;
+    const retenu = Math.round(brut * (taux / 100) * 1000) / 1000;
+    const el = document.getElementById('rMontantRetenue');
+    if (el) el.value = retenu.toFixed(3);
+}
+
+// Enhanced collectRetenueData (includes all new fields)
+function collectRetenueData() {
+    const get = id => document.getElementById(id)?.value || '';
+    const brut = parseFloat(get('rMontantBrut')) || 0;
+    const taux = parseFloat(get('rTaux')) || 1.5;
+    const today = new Date();
+    return {
+        id: editingRetenueId || undefined,
+        userId: currentUser.id,
+        date: get('rDate') || today.toISOString().split('T')[0],
+        year: today.getFullYear(),
+        month: parseInt(get('rMonth')) || (today.getMonth() + 1),
+        retenuerName: get('rRetenuerName'),
+        retenuerMF: get('rRetenuerMF'),
+        retenuerAddress: get('rRetenuerAddress'),
+        retenuerRep: get('rRetenuerRep'),
+        retenuerCodeTva: get('rRetenuerCodeTva'),
+        retenuerCodeCat: get('rRetenuerCodeCat'),
+        retenuerNEtab: get('rRetenuerNEtab'),
+        beneficiaireName: get('rBeneficiaireName'),
+        beneficiaireMF: get('rBeneficiaireMF'),
+        beneficiaireAddress: get('rBeneficiaireAddress'),
+        beneficiaireRib: get('rBeneficiaireRib'),
+        beneficiaireCIN: get('rBeneficiaireCIN'),
+        beneficiaireCodeTva: get('rBeneficiaireCodeTva'),
+        beneficiaireCodeCat: get('rBeneficiaireCodeCat'),
+        beneficiaireNEtab: get('rBeneficiaireNEtab'),
+        factureNumber: get('rFactureNumber') || null,
+        factureDate: get('rFactureDate') || null,
+        montantBrut: brut,
+        tauxRetenue: taux,
+        montantRetenue: Math.round(brut * (taux / 100) * 1000) / 1000,
+        natureRevenu: get('rNatureRevenu') || 'Honoraires et commissions',
+        notes: get('rNotes') || null,
+        logoImage: logoImage || null,
+        stampImage: stampImage || null,
+        signatureImage: signatureImage || null,
+        status: 'emis'
+    };
+}
+
+// Override openRetenueModal to clear new fields and prefill company
+const originalOpenRetenue = window.openRetenueModal;
+window.openRetenueModal = async function(prefill) {
+    editingRetenueId = null;
+    const today = new Date();
+    document.getElementById('rDate').value = today.toISOString().split('T')[0];
+    document.getElementById('rMonth').value = String(today.getMonth() + 1);
+    const fields = ['rRetenuerName','rRetenuerMF','rRetenuerAddress','rRetenuerRep',
+        'rRetenuerCodeTva','rRetenuerCodeCat','rRetenuerNEtab',
+        'rBeneficiaireName','rBeneficiaireMF','rBeneficiaireAddress','rBeneficiaireRib',
+        'rBeneficiaireCIN','rBeneficiaireCodeTva','rBeneficiaireCodeCat','rBeneficiaireNEtab',
+        'rFactureNumber','rFactureDate','rMontantBrut','rTaux','rNatureRevenu','rNotes'];
+    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const c = await window.electronAPI.getCompany(currentUser.id) || {};
+    document.getElementById('rRetenuerName').value = c.name || currentUser.company || '';
+    document.getElementById('rRetenuerMF').value = c.mf || currentUser.mf || '';
+    document.getElementById('rRetenuerAddress').value = c.address || '';
+    if (prefill) {
+        if (prefill.beneficiaireName) document.getElementById('rBeneficiaireName').value = prefill.beneficiaireName;
+        if (prefill.beneficiaireMF)   document.getElementById('rBeneficiaireMF').value = prefill.beneficiaireMF;
+        if (prefill.factureNumber)    document.getElementById('rFactureNumber').value = prefill.factureNumber;
+        if (prefill.factureDate)      document.getElementById('rFactureDate').value = prefill.factureDate;
+        if (prefill.montantBrut) { document.getElementById('rMontantBrut').value = prefill.montantBrut; calculateRetenueAmount(); }
+    }
+    document.getElementById('retenueModalTitle').textContent = '➕ Nouveau Certificat de Retenue';
+    document.getElementById('retenueModal').classList.add('active');
+};
+
+// Override editRetenue to load new fields
+const originalEditRetenue = window.editRetenue;
+window.editRetenue = async function(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    editingRetenueId = id;
+    document.getElementById('rDate').value = r.date || '';
+    document.getElementById('rMonth').value = String(r.month || 1);
+    document.getElementById('rRetenuerName').value = r.retenuerName || '';
+    document.getElementById('rRetenuerMF').value = r.retenuerMF || '';
+    document.getElementById('rRetenuerAddress').value = r.retenuerAddress || '';
+    document.getElementById('rRetenuerRep').value = r.retenuerRep || '';
+    document.getElementById('rRetenuerCodeTva').value = r.retenuerCodeTva || '';
+    document.getElementById('rRetenuerCodeCat').value = r.retenuerCodeCat || '';
+    document.getElementById('rRetenuerNEtab').value = r.retenuerNEtab || '';
+    document.getElementById('rBeneficiaireName').value = r.beneficiaireName || '';
+    document.getElementById('rBeneficiaireMF').value = r.beneficiaireMF || '';
+    document.getElementById('rBeneficiaireAddress').value = r.beneficiaireAddress || '';
+    document.getElementById('rBeneficiaireRib').value = r.beneficiaireRib || '';
+    document.getElementById('rBeneficiaireCIN').value = r.beneficiaireCIN || '';
+    document.getElementById('rBeneficiaireCodeTva').value = r.beneficiaireCodeTva || '';
+    document.getElementById('rBeneficiaireCodeCat').value = r.beneficiaireCodeCat || '';
+    document.getElementById('rBeneficiaireNEtab').value = r.beneficiaireNEtab || '';
+    document.getElementById('rFactureNumber').value = r.factureNumber || '';
+    document.getElementById('rFactureDate').value = r.factureDate || '';
+    document.getElementById('rMontantBrut').value = r.montantBrut || '';
+    document.getElementById('rTaux').value = String(r.tauxRetenue || 1.5);
+    document.getElementById('rMontantRetenue').value = (r.montantRetenue || 0).toFixed(3);
+    document.getElementById('rNatureRevenu').value = r.natureRevenu || 'Honoraires et commissions';
+    document.getElementById('rNotes').value = r.notes || '';
+    document.getElementById('retenueModalTitle').textContent = '✏️ Modifier le Certificat';
+    document.getElementById('retenueModal').classList.add('active');
+};
+
+// Override saveRetenue to use new data
+const originalSaveRetenue = window.saveRetenue;
+window.saveRetenue = async function() {
+    const data = collectRetenueData();
+    if (!data.retenuerName) { showToast('Raison sociale du payeur requise', 'warning'); return; }
+    if (!data.beneficiaireName) { showToast('Nom du bénéficiaire requis', 'warning'); return; }
+    if (!data.montantBrut) { showToast('Montant brut requis', 'warning'); return; }
+    try {
+        const result = await window.electronAPI.saveRetenue(data);
+        if (result.success) {
+            showToast(editingRetenueId ? 'Certificat mis à jour' : 'Certificat créé', 'success');
+            closeRetenueModal();
+            await loadRetenues();
+        } else { showToast(result.error || 'Erreur', 'error'); }
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+};
+
+// ==================== TOOLS ====================
+async function openFiscalCalculator() {
+    try {
+        const result = await window.electronAPI.openCalculator();
+        if (!result.success) showToast('Erreur ouverture calculatrice', 'error');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function openRelanceGenerator() {
+    const overdue = await window.electronAPI.getOverdueDocuments(currentUser.id);
+    const select = document.getElementById('relanceDocSelect');
+    if (!select) { showToast('Section relance non trouvée', 'error'); return; }
+    select.innerHTML = '<option value="">-- Choisir une facture impayée --</option>';
+    overdue.forEach(doc => {
+        select.innerHTML += `<option value="${doc.id}">${doc.number} - ${doc.clientName} - ${formatAmount(doc.totalTTC - (doc.paidAmount||0))} TND</option>`;
+    });
+    document.getElementById('relanceFactureSelect').style.display = 'block';
+    document.getElementById('fiscalPeriodSelect').style.display = 'none';
+}
+
+async function generateRelancePDF() {
+    const docId = document.getElementById('relanceDocSelect').value;
+    if (!docId) { showToast('Sélectionnez une facture', 'warning'); return; }
+    showLoading('Génération de la lettre...');
+    try {
+        const result = await window.electronAPI.generateRelanceLetter({ docId, userId: currentUser.id, attempt: 1 });
+        if (result.success && result.html) {
+            const filename = `relance_${docId}_${Date.now()}.pdf`;
+            const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
+            if (pdfResult.success) showToast('Lettre de relance enregistrée', 'success');
+        } else showToast('Erreur génération', 'error');
+    } catch (e) { showToast(e.message, 'error'); }
+    finally { hideLoading(); document.getElementById('relanceFactureSelect').style.display = 'none'; }
+}
+
+async function openFiscalSummary() {
+    const yearSelect = document.getElementById('fiscalYearSelect');
+    const currentYear = new Date().getFullYear();
+    yearSelect.innerHTML = '';
+    for (let y = currentYear - 2; y <= currentYear; y++) {
+        yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+    }
+    yearSelect.value = currentYear;
+    document.getElementById('fiscalPeriodSelect').style.display = 'block';
+    document.getElementById('relanceFactureSelect').style.display = 'none';
+}
+
+async function generateFiscalSummaryPDF() {
+    const year = document.getElementById('fiscalYearSelect').value;
+    const quarter = document.getElementById('fiscalQuarterSelect').value || null;
+    showLoading('Génération du bilan fiscal...');
+    try {
+        const result = await window.electronAPI.generateFiscalSummary({ userId: currentUser.id, year, quarter });
+        if (result.success && result.html) {
+            const filename = `bilan_fiscal_${year}${quarter ? '_T'+quarter : ''}.pdf`;
+            const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
+            if (pdfResult.success) showToast('Bilan fiscal enregistré', 'success');
+        } else showToast('Erreur génération', 'error');
+    } catch (e) { showToast(e.message, 'error'); }
+    finally { hideLoading(); document.getElementById('fiscalPeriodSelect').style.display = 'none'; }
+}
