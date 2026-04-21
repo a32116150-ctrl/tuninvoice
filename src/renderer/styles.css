@@ -496,11 +496,28 @@ tbody tr:hover td { background:var(--gray-50); }
 /* ══════════════════════════════════════════
    QUICK ACTIONS (dashboard)
 ══════════════════════════════════════════ */
-.quick-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-.quick-action-card { background:white; border:1px solid var(--border); border-radius:var(--radius); padding:18px 14px; text-align:center; cursor:pointer; transition:var(--transition); }
-.quick-action-card:hover { border-color:var(--primary); transform:translateY(-2px); box-shadow:var(--shadow); }
-.quick-action-card .qa-icon  { font-size:1.6rem; margin-bottom:6px; }
-.quick-action-card .qa-label { font-size:0.8rem; font-weight:600; color:var(--text-secondary); }
+.quick-actions { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:20px; }
+.quick-action-card { 
+    background:white; border:1px solid var(--border); border-radius:var(--radius); 
+    padding:18px 14px; text-align:center; cursor:pointer; 
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+}
+.quick-action-card:hover { 
+    border-color: var(--primary); 
+    transform: translateY(-4px) scale(1.02); 
+    box-shadow: var(--shadow-xl);
+    background: var(--primary-bg);
+}
+.quick-action-card .qa-icon { 
+    font-size: 1.8rem; 
+    transition: transform 0.2s ease;
+}
+.quick-action-card:hover .qa-icon {
+    transform: scale(1.1);
+}
+.quick-action-card .qa-label { font-size:0.85rem; font-weight:600; color:var(--text-secondary); }
 .quick-action-card:hover .qa-label { color:var(--primary); }
 
 /* ══════════════════════════════════════════

@@ -18,6 +18,7 @@ class AppDatabase {
 
     runMigrations() {
         const tryAlter = (sql) => { try { this.db.exec(sql); } catch {} };
+        tryAlter(`ALTER TABLE users ADD COLUMN master_key_hash TEXT`);
         tryAlter(`ALTER TABLE companies ADD COLUMN website TEXT`);
         tryAlter(`ALTER TABLE companies ADD COLUMN bank TEXT`);
         tryAlter(`ALTER TABLE companies ADD COLUMN rib TEXT`);
@@ -110,7 +111,7 @@ class AppDatabase {
 
     initTables() {
         this.db.exec(`CREATE TABLE IF NOT EXISTS document_themes (user_id TEXT PRIMARY KEY, font_family TEXT DEFAULT "'Segoe UI', sans-serif", font_size TEXT DEFAULT '14px', title_facture_text TEXT DEFAULT 'FACTURE', title_facture_color TEXT DEFAULT '#1e3a8a', title_devis_text TEXT DEFAULT 'DEVIS', title_devis_color TEXT DEFAULT '#92400e', title_bon_text TEXT DEFAULT 'BON DE COMMANDE', title_bon_color TEXT DEFAULT '#065f46')`);
-        this.db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, company TEXT, mf TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+        this.db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, master_key_hash TEXT, company TEXT, mf TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, date TEXT NOT NULL, due_date TEXT, expiry_date TEXT, currency TEXT DEFAULT 'TND', payment_mode TEXT, payment_status TEXT DEFAULT 'unpaid', paid_amount REAL DEFAULT 0, paid_date TEXT, company_name TEXT, company_mf TEXT, company_address TEXT, company_phone TEXT, company_email TEXT, company_rc TEXT, client_id TEXT, client_name TEXT NOT NULL, client_mf TEXT, client_address TEXT, client_phone TEXT, client_email TEXT, items_json TEXT NOT NULL DEFAULT '[]', apply_timbre INTEGER DEFAULT 0, timbre_amount REAL DEFAULT 0, rounding_adjustment REAL DEFAULT 0, discount_percent REAL DEFAULT 0, discount_amount REAL DEFAULT 0, total_ht REAL NOT NULL DEFAULT 0, total_ttc REAL NOT NULL DEFAULT 0, logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE INDEX IF NOT EXISTS idx_docs_user_type ON documents(user_id, type)`);
         this.db.exec(`CREATE INDEX IF NOT EXISTS idx_docs_client ON documents(user_id, client_name)`);
@@ -171,9 +172,14 @@ class AppDatabase {
         if (existing) throw new Error('Email déjà utilisé');
         const id = uuidv4();
         const hash = bcrypt.hashSync(password, 10);
-        this.db.prepare(`INSERT INTO users (id,name,email,password_hash,company,mf) VALUES (?,?,?,?,?,?)`).run(id, name, email, hash, company||null, mf||null);
+        
+        // Generate Master Recovery Key
+        const rawMasterKey = 'FACT-' + uuidv4().split('-')[0].toUpperCase() + '-' + uuidv4().split('-')[1].toUpperCase();
+        const masterKeyHash = bcrypt.hashSync(rawMasterKey, 10);
+        
+        this.db.prepare(`INSERT INTO users (id,name,email,password_hash,master_key_hash,company,mf) VALUES (?,?,?,?,?,?,?)`).run(id, name, email, hash, masterKeyHash, company||null, mf||null);
         this.db.prepare(`INSERT INTO user_settings (user_id,prefix_facture,prefix_devis,prefix_bon,prefix_retenue,prefix_avoir,prefix_contract,decimal_places,rounding_method) VALUES (?,'FAC','DEV','BC','RS','AV','CTR',3,'half_up')`).run(id);
-        return { id, name, email, company, mf };
+        return { id, name, email, company, mf, masterKey: rawMasterKey };
     }
     loginUser(email, password) {
         const user = this.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -200,6 +206,14 @@ class AppDatabase {
         if (!bcrypt.compareSync(oldPassword, user.password_hash)) throw new Error('Mot de passe actuel incorrect');
         if (newPassword.length < 6) throw new Error('Le nouveau mot de passe doit contenir au moins 6 caractères');
         this.db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(bcrypt.hashSync(newPassword, 10), userId);
+    }
+    resetPasswordWithMasterKey(email, masterKey, newPassword) {
+        const user = this.db.prepare('SELECT * FROM users WHERE email=?').get(email);
+        if (!user) throw new Error('Utilisateur introuvable');
+        if (!user.master_key_hash) throw new Error('Clé de récupération non configurée pour ce compte');
+        if (!bcrypt.compareSync(masterKey, user.master_key_hash)) throw new Error('Clé de récupération incorrecte');
+        if (newPassword.length < 6) throw new Error('Le nouveau mot de passe doit contenir au moins 6 caractères');
+        this.db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(bcrypt.hashSync(newPassword, 10), user.id);
     }
 
     // ==================== DOCUMENT NUMBERING ====================
@@ -461,8 +475,9 @@ class AppDatabase {
         const overdueCount = this.db.prepare(`SELECT COUNT(*) as count FROM documents WHERE user_id=? AND type='facture' AND payment_status!='paid' AND due_date IS NOT NULL AND due_date < ?`).get(userId, today).count;
         const totalRetenues = this.db.prepare(`SELECT COALESCE(SUM(montant_retenue),0) as total FROM retenues WHERE user_id=? AND year=strftime('%Y','now')`).get(userId).total;
         const totalExpenses = this.db.prepare(`SELECT COALESCE(SUM(amount_ttc),0) as total FROM expenses WHERE user_id=?`).get(userId).total;
+        const monthlyExpenses = this.db.prepare(`SELECT strftime('%Y-%m',date) as month, COALESCE(SUM(amount_ttc),0) as expense FROM expenses WHERE user_id=? AND date>=date('now','-6 months') GROUP BY month ORDER BY month ASC`).all(userId);
         const netProfit = totalRevenue - totalExpenses;
-        return { totalDocs, totalRevenue, totalClients, thisMonth, unpaidCount, unpaidTotal, totalExpenses, netProfit, monthlyRevenue, typeBreakdown, topClients, recentActivity, overdueCount, totalRetenues };
+        return { totalDocs, totalRevenue, totalClients, thisMonth, unpaidCount, unpaidTotal, totalExpenses, netProfit, monthlyRevenue, monthlyExpenses, typeBreakdown, topClients, recentActivity, overdueCount, totalRetenues };
     }
 
     // ==================== SERVICES ====================

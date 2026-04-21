@@ -125,6 +125,7 @@ ipcMain.handle('pdf:generateBuffer', async (_, { html }) => {
 ipcMain.handle('auth:register',       async (_, d) => { try { return { success: true, user: db.registerUser(d) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('auth:login',          async (_, d) => { try { return { success: true, user: db.loginUser(d.email, d.password) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('auth:changePassword', async (_, { userId, oldPassword, newPassword }) => { try { db.changePassword(userId, oldPassword, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('auth:resetPasswordMasterKey', async (_, { email, masterKey, newPassword }) => { try { db.resetPasswordWithMasterKey(email, masterKey, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== DOCUMENTS ====================
 ipcMain.handle('docs:getAll',        async (_, userId) => db.getDocuments(userId));
@@ -247,6 +248,14 @@ ipcMain.handle('reminders:save',     async (_, data) => { try { return { success
 ipcMain.handle('reminders:delete',   async (_, id) => { try { db.deleteReminder(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('reminders:markDone', async (_, id) => { try { db.markReminderDone(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
+// ==================== HR (EMPLOYEES & PAYSLIPS) ====================
+ipcMain.handle('hr:getEmployees',    async (_, userId) => db.getEmployees(userId));
+ipcMain.handle('hr:saveEmployee',    async (_, data) => { try { return { success: true, employee: db.saveEmployee(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('hr:deleteEmployee',  async (_, id) => { try { db.deleteEmployee(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('hr:getPayslips',     async (_, userId) => db.getPayslips(userId));
+ipcMain.handle('hr:savePayslip',     async (_, data) => { try { return { success: true, payslip: db.savePayslip(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('hr:deletePayslip',   async (_, id) => { try { db.deletePayslip(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+
 setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     try {
@@ -321,6 +330,14 @@ ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
         const retenue = db.getRetenueById(retenueId);
         if (!retenue) throw new Error('Retenue introuvable');
         const html = buildRetenueHTML(retenue, theme || null);
+        return { success: true, html };
+    } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) => {
+    try {
+        const { buildPayslipHTML } = require('./renderer/retenue-builder');
+        const html = buildPayslipHTML(payslip, employee, company);
         return { success: true, html };
     } catch (e) { return { success: false, error: e.message }; }
 });

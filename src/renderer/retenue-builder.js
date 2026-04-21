@@ -485,6 +485,133 @@ function buildFiscalSummaryHTML(summary, company) {
 </html>`;
 }
 
+function buildPayslipHTML(payslip, employee, company) {
+    const today = new Date().toLocaleDateString('fr-FR');
+    const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const period = `${months[payslip.period_month-1]} ${payslip.period_year}`;
+
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Fiche de Paie — ${esc(employee.name)} — ${period}</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #333; line-height: 1.5; font-size: 13px; }
+  .header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
+  .title { text-align: center; margin-bottom: 30px; }
+  .title h1 { margin: 0; font-size: 24px; color: #1e3a8a; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+  .info-box { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9fafb; }
+  .info-box h3 { margin-top: 0; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; color: #1e3a8a; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+  th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+  th { background: #f3f4f6; font-weight: 600; }
+  .num { text-align: right; }
+  .total-section { display: flex; justify-content: flex-end; }
+  .total-box { width: 300px; border: 2px solid #1e3a8a; padding: 15px; border-radius: 8px; background: #eff6ff; }
+  .total-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+  .total-row.final { border-top: 1px solid #1e3a8a; padding-top: 10px; margin-top: 10px; font-weight: bold; font-size: 18px; color: #1e3a8a; }
+  .footer { margin-top: 50px; font-size: 11px; color: #666; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <strong>${esc(company.name)}</strong><br>
+      ${esc(company.address)}<br>
+      MF: ${esc(company.mf)}
+    </div>
+    <div style="text-align:right">
+      <strong>Bulletin de Paie</strong><br>
+      Période : ${period}<br>
+      Date d'édition : ${today}
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-box">
+      <h3>EMPLOYÉ</h3>
+      <strong>${esc(employee.name)}</strong><br>
+      ${esc(employee.role || 'Salarié')}<br>
+      CIN: ${esc(employee.cin || '—')}<br>
+      CNSS: ${esc(employee.cnss || '—')}
+    </div>
+    <div class="info-box">
+      <h3>DÉTAILS PÉRIODE</h3>
+      Mois: ${months[payslip.period_month-1]}<br>
+      Année: ${payslip.period_year}<br>
+      Date de paiement: ${fmtDate(payslip.date)}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Désignation</th>
+        <th class="num">Base / Taux</th>
+        <th class="num">Gains (TND)</th>
+        <th class="num">Retenues (TND)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Salaire de base</td>
+        <td class="num">—</td>
+        <td class="num">${fmt3(payslip.base_salary)}</td>
+        <td class="num">—</td>
+      </tr>
+      <tr>
+        <td>Indemnité de transport</td>
+        <td class="num">—</td>
+        <td class="num">${fmt3(payslip.transport_allowance)}</td>
+        <td class="num">—</td>
+      </tr>
+      <tr>
+        <td>Autres indemnités</td>
+        <td class="num">—</td>
+        <td class="num">${fmt3(payslip.other_allowances)}</td>
+        <td class="num">—</td>
+      </tr>
+      <tr>
+        <td>Cotisation CNSS</td>
+        <td class="num">9.18%</td>
+        <td class="num">—</td>
+        <td class="num">${fmt3(payslip.cnss_deduction)}</td>
+      </tr>
+      <tr>
+        <td>IRPP</td>
+        <td class="num">Barème</td>
+        <td class="num">—</td>
+        <td class="num">${fmt3(payslip.irpp_deduction)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="total-section">
+    <div class="total-box">
+      <div class="total-row">
+        <span>TOTAL BRUT</span>
+        <span>${fmt3(payslip.gross_salary)}</span>
+      </div>
+      <div class="total-row">
+        <span>TOTAL RETENUES</span>
+        <span>${fmt3(payslip.cnss_deduction + payslip.irpp_deduction)}</span>
+      </div>
+      <div class="total-row final">
+        <span>NET À PAYER</span>
+        <span>${fmt3(payslip.net_salary)} TND</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Bulletin de paie généré par Factarlou — Document non contractuel
+  </div>
+</body>
+</html>`;
+}
+
+
 // Constants
 const TAUX_RETENUE = [
     { value: 1.5, label: '1.5% — Honoraires & commissions (personnes morales résidentes)' },
@@ -515,12 +642,14 @@ if (typeof window !== 'undefined') {
     window.buildRetenueHTML = buildRetenueHTML;
     window.buildRelanceHTML = buildRelanceHTML;
     window.buildFiscalSummaryHTML = buildFiscalSummaryHTML;
+    window.buildPayslipHTML = buildPayslipHTML;
 }
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         buildRetenueHTML,
         buildRelanceHTML,
         buildFiscalSummaryHTML,
+        buildPayslipHTML,
         parseMF,
         TAUX_RETENUE,
         NATURES_REVENU,

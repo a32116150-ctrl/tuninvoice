@@ -117,8 +117,13 @@ function closeConfirm() { document.getElementById('confirmModal').classList.remo
 function switchAuthTab(tab, btn) {
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(tab === 'login' ? 'loginForm' : 'registerForm').classList.add('active');
+    if (btn) btn.classList.add('active');
+    
+    if (tab === 'forgot') {
+        document.getElementById('forgotForm').classList.add('active');
+    } else {
+        document.getElementById(tab === 'login' ? 'loginForm' : 'registerForm').classList.add('active');
+    }
     hideError();
 }
 function hideError() { document.getElementById('authError').classList.add('hidden'); }
@@ -142,6 +147,33 @@ async function handleLogin(e) {
     finally { btn.disabled = false; btn.textContent = '🔐 Se connecter'; }
 }
 
+async function handleForgotPassword(e) {
+    e.preventDefault(); hideError();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const email = document.getElementById('forgotEmail').value.trim();
+    const masterKey = document.getElementById('forgotMasterKey').value.trim();
+    const newPassword = document.getElementById('forgotNewPassword').value;
+    
+    if (newPassword.length < 6) return showError('Minimum 6 caractères');
+    
+    btn.disabled = true; btn.textContent = '⏳ Réinitialisation...';
+    try {
+        const result = await window.electronAPI.authResetPasswordMasterKey({ email, masterKey, newPassword });
+        if (result.success) {
+            showToast('Mot de passe réinitialisé !', 'success', 5000);
+            document.getElementById('forgotForm').reset();
+            switchAuthTab('login', document.querySelector('.auth-tab'));
+            document.getElementById('loginEmail').value = email;
+        } else {
+            showError(result.error || 'Clé ou email incorrect');
+        }
+    } catch (err) {
+        showError('Erreur lors de la réinitialisation.');
+    } finally {
+        btn.disabled = false; btn.textContent = '🔑 Réinitialiser le mot de passe';
+    }
+}
+
 async function handleRegister(e) {
     e.preventDefault(); hideError();
     const password = document.getElementById('regPassword').value;
@@ -152,7 +184,25 @@ async function handleRegister(e) {
     btn.disabled = true; btn.textContent = '⏳ Création...';
     try {
         const result = await window.electronAPI.authRegister({ name: document.getElementById('regName').value.trim(), email: document.getElementById('regEmail').value.trim(), company: document.getElementById('regCompany').value.trim(), mf: document.getElementById('regMF').value.trim(), password });
-        if (result.success) { showToast('Compte créé ! Veuillez vous connecter.', 'success', 5000); switchAuthTab('login', document.querySelector('.auth-tab')); document.getElementById('loginEmail').value = document.getElementById('regEmail').value; }
+        if (result.success) { 
+            const mKey = result.user.masterKey;
+            showConfirm(
+                '🔑 ATTENTION: Clé de Récupération', 
+                `<div style="text-align:left;font-size:0.9rem">
+                    <p style="margin-bottom:10px;color:#ef4444;font-weight:bold">Veuillez sauvegarder cette clé immédiatement !</p>
+                    <p style="margin-bottom:10px">Factarlou est 100% hors-ligne. Si vous oubliez votre mot de passe, <b>CETTE CLÉ EST LE SEUL MOYEN</b> de récupérer votre compte.</p>
+                    <div style="background:#f3f4f6;padding:12px;border-radius:6px;font-family:monospace;font-size:1.2rem;text-align:center;font-weight:bold;letter-spacing:2px;color:#1e3a8a;user-select:all;margin-bottom:10px">${mKey}</div>
+                    <p style="font-size:0.8rem;color:#6b7280">Copiez cette clé et gardez-la dans un endroit sûr (ex: gestionnaire de mots de passe, ou imprimée).</p>
+                </div>`, 
+                () => {
+                    showToast('Compte créé ! Veuillez vous connecter.', 'success', 5000); 
+                    switchAuthTab('login', document.querySelector('.auth-tab.active')); 
+                    document.getElementById('loginEmail').value = document.getElementById('regEmail').value; 
+                },
+                "J'ai bien sauvegardé ma clé", 
+                "btn-primary"
+            );
+        }
         else { showError(result.error || 'Erreur lors de la création'); }
     } catch { showError('Erreur serveur.'); }
     finally { btn.disabled = false; btn.textContent = '📝 Créer mon compte'; }
@@ -221,7 +271,9 @@ function navigateTo(page) {
     if (page === 'company')     loadCompanyPage();
     if (page === 'contracts')   loadContracts();
     if (page === 'achat')       loadAchats();
+    if (page === 'hr')          loadHR();
     if (page === 'retenues')    loadRetenues();
+    if (page === 'outils')      { document.getElementById('relanceFactureSelect').style.display = 'none'; document.getElementById('fiscalPeriodSelect').style.display = 'none'; }
     if (page === 'notes')       loadNotes();
     if (page === 'reminders')   loadReminders();
     if (page === 'annual')      loadAnnualReport();
@@ -292,65 +344,124 @@ function renderPaymentBadge(doc) {
     return `<span class="badge ${cls[status]||'badge-unpaid'}" onclick="openPaymentModal('${doc.id}')" style="cursor:pointer" title="Gérer paiement">${map[status]||status}</span>`;
 }
 
+let lastDashboardStats = null;
+
 function renderDashboardCharts(stats) {
+    lastDashboardStats = stats;
     renderRevenueChart(stats.monthlyRevenue || []);
+    renderExpenseChart(stats.monthlyExpenses || []);
     renderTypeDonutChart(stats.typeBreakdown || []);
 }
+
+function resizeCanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+    }
+}
+
 
 function renderRevenueChart(monthlyData) {
     const canvas = document.getElementById('revenueChart');
     if (!canvas) return;
+    resizeCanvas(canvas);
     const ctx = canvas.getContext('2d');
+    const ratio = window.devicePixelRatio || 1;
+    ctx.scale(ratio, ratio);
+    const W = canvas.width / ratio, H = canvas.height / ratio;
+    
     const months = [], values = [];
     for (let i = 5; i >= 0; i--) {
         const d = new Date(); d.setMonth(d.getMonth()-i);
         const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        months.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));
+        months.push(d.toLocaleDateString('fr-FR',{month:'short'}));
         const found = monthlyData.find(m => m.month === key);
         values.push(found ? parseFloat(found.revenue) : 0);
     }
-    const max = Math.max(...values, 1);
-    const W = canvas.width, H = canvas.height;
-    const pad = { top:24, right:16, bottom:44, left:64 };
-    const cW = W-pad.left-pad.right, cH = H-pad.top-pad.bottom;
+    drawBarChart(ctx, W, H, months, values, currentDocumentTheme?.colors?.primary || '#3b82f6');
+}
+
+function renderExpenseChart(monthlyData) {
+    const canvas = document.getElementById('expenseChart');
+    if (!canvas) return;
+    resizeCanvas(canvas);
+    const ctx = canvas.getContext('2d');
+    const ratio = window.devicePixelRatio || 1;
+    ctx.scale(ratio, ratio);
+    const W = canvas.width / ratio, H = canvas.height / ratio;
+    
+    const months = [], values = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(); d.setMonth(d.getMonth()-i);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        months.push(d.toLocaleDateString('fr-FR',{month:'short'}));
+        const found = monthlyData.find(m => m.month === key);
+        values.push(found ? parseFloat(found.expense) : 0);
+    }
+    drawBarChart(ctx, W, H, months, values, '#ef4444');
+}
+
+function drawBarChart(ctx, W, H, labels, values, color) {
+    const pad = { top:30, right:20, bottom:40, left:60 };
+    const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+    const max = Math.max(...values, 1) * 1.1;
+    
     ctx.clearRect(0,0,W,H);
-    // Grid
-    for (let i=0;i<=4;i++) {
-        const y = pad.top+(cH/4)*i;
-        ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1;
-        ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cW,y); ctx.stroke();
-        const val = max-(max/4)*i;
-        ctx.fillStyle='#9ca3af'; ctx.font='10px sans-serif'; ctx.textAlign='right';
-        ctx.fillText(val>=1000?(val/1000).toFixed(1)+'k':val.toFixed(0), pad.left-6, y+4);
+    // Grid & Y-Axis
+    ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#9ca3af'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.top + (cH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+        const val = max - (max / 4) * i;
+        ctx.fillText(val >= 1000 ? (val / 1000).toFixed(1) + 'k' : Math.round(val), pad.left - 10, y + 4);
     }
     // Bars
-    const barW = cW/months.length*0.55, gap = cW/months.length;
-    const primaryColor = currentDocumentTheme?.colors?.primary || '#3b82f6';
-    values.forEach((v,i) => {
-        const x = pad.left+gap*i+(gap-barW)/2;
-        const bH = (v/max)*cH, y = pad.top+cH-bH;
-        const grad = ctx.createLinearGradient(0,y,0,y+bH);
-        grad.addColorStop(0, primaryColor); grad.addColorStop(1, primaryColor+'88');
+    const gap = cW / labels.length;
+    const barW = gap * 0.6;
+    values.forEach((v, i) => {
+        const x = pad.left + gap * i + (gap - barW) / 2;
+        const bH = (v / max) * cH;
+        const y = pad.top + cH - bH;
+        
+        const grad = ctx.createLinearGradient(0, y, 0, y + bH);
+        grad.addColorStop(0, color); grad.addColorStop(1, color + '99');
         ctx.fillStyle = grad;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x,y,barW,bH,4); else ctx.rect(x,y,barW,bH);
-        ctx.fill();
-        ctx.fillStyle='#374151'; ctx.font='10px sans-serif'; ctx.textAlign='center';
-        ctx.fillText(months[i], x+barW/2, pad.top+cH+16);
-        if (v>0) { ctx.fillStyle=primaryColor; ctx.font='bold 10px sans-serif'; ctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':formatAmount(v), x+barW/2, y-5); }
+        
+        if (ctx.roundRect) {
+            ctx.beginPath(); ctx.roundRect(x, y, barW, bH, [4, 4, 0, 0]); ctx.fill();
+        } else {
+            ctx.fillRect(x, y, barW, bH);
+        }
+        
+        // Labels
+        ctx.fillStyle = '#4b5563'; ctx.textAlign = 'center'; ctx.font = '11px sans-serif';
+        ctx.fillText(labels[i], x + barW / 2, pad.top + cH + 20);
+        if (v > 0) {
+            ctx.fillStyle = color; ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v), x + barW / 2, y - 8);
+        }
     });
 }
+
 
 function renderTypeDonutChart(breakdown) {
     const canvas = document.getElementById('typeDonutChart');
     if (!canvas) return;
+    resizeCanvas(canvas);
     const ctx = canvas.getContext('2d');
+    const ratio = window.devicePixelRatio || 1;
+    ctx.scale(ratio, ratio);
+    const W = canvas.width / ratio, H = canvas.height / ratio;
+    
     const colors = { facture:'#3b82f6', devis:'#f59e0b', bon:'#10b981' };
     const labels = { facture:'Factures', devis:'Devis', bon:'Bons' };
     const total = breakdown.reduce((s,b) => s+b.count, 0);
-    const W=canvas.width, H=canvas.height, cx=W/2, cy=H/2-10, r=Math.min(W,H)*0.35;
+    const cx = W / 2, cy = H / 2 - 20, r = Math.min(W, H) * 0.35;
+    
     ctx.clearRect(0,0,W,H);
-    if (total===0) {
+    if (total === 0) {
         ctx.fillStyle='#d1d5db'; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx,cy,r*0.6,0,Math.PI*2); ctx.fill();
         ctx.fillStyle='#9ca3af'; ctx.font='12px sans-serif'; ctx.textAlign='center'; ctx.fillText('Aucun document',cx,cy+4); return;
@@ -3042,3 +3153,297 @@ window.closeScannerModal = closeScannerModal;
 window.processScannedImage = processScannedImage;
 window.confirmScannerResult = confirmScannerResult;
 window.confirmDeleteExpense = confirmDeleteExpense;
+
+// ==================== HR LOGIC ====================
+let allEmployees = [];
+let allPayslips = [];
+let editingEmployeeId = null;
+let editingPayslipId = null;
+
+async function loadHR() {
+    if (!currentUser) return;
+    try {
+        allEmployees = await window.electronAPI.getEmployees(currentUser.id) || [];
+        allPayslips = await window.electronAPI.getPayslips(currentUser.id) || [];
+        renderEmployeesTable();
+        renderPayslipsTable();
+    } catch (e) {
+        showToast('Erreur chargement RH', 'error');
+    }
+}
+
+function switchHRTab(tab, btn) {
+    document.querySelectorAll('#page-hr .auth-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('hrEmployeesSection').classList.toggle('hidden', tab !== 'employees');
+    document.getElementById('hrPayslipsSection').classList.toggle('hidden', tab !== 'payslips');
+}
+
+function renderEmployeesTable() {
+    const container = document.getElementById('employeesTable');
+    if (!allEmployees.length) { container.innerHTML = '<div class="empty-state"><p>Aucun employé.</p></div>'; return; }
+    container.innerHTML = `<table><thead><tr><th>Nom Complet</th><th>Poste</th><th>CIN</th><th>CNSS</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+        ${allEmployees.map(e => `<tr>
+            <td style="font-weight:600">${escapeHtml(e.name)}</td>
+            <td>${escapeHtml(e.role||'—')}</td>
+            <td>${escapeHtml(e.cin||'—')}</td>
+            <td>${escapeHtml(e.cnss||'—')}</td>
+            <td><span class="badge ${e.active ? 'badge-paid' : 'badge-unpaid'}">${e.active ? 'Actif' : 'Inactif'}</span></td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-edit" onclick="openEmployeeModal('${e.id}')" title="Modifier">✏️</button>
+                <button class="btn-icon btn-delete" onclick="confirmDeleteEmployee('${e.id}')" title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderPayslipsTable() {
+    const container = document.getElementById('payslipsTable');
+    if (!allPayslips.length) { container.innerHTML = '<div class="empty-state"><p>Aucune fiche de paie.</p></div>'; return; }
+    const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    container.innerHTML = `<table><thead><tr><th>Employé</th><th>Période</th><th>Date</th><th>Brut</th><th>Net</th><th>Actions</th></tr></thead><tbody>
+        ${allPayslips.map(p => `<tr>
+            <td style="font-weight:600">${escapeHtml(p.employee_name)}</td>
+            <td>${months[p.period_month-1]} ${p.period_year}</td>
+            <td>${formatDate(p.date)}</td>
+            <td>${formatAmount(p.gross_salary)} TND</td>
+            <td style="font-weight:700;color:#166534">${formatAmount(p.net_salary)} TND</td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-view" onclick="previewPayslip('${p.id}')" title="Aperçu">👁️</button>
+                <button class="btn-icon btn-download" onclick="savePayslipPDF('${p.id}')" title="Enregistrer PDF">💾</button>
+                <button class="btn-icon btn-edit" onclick="printPayslip('${p.id}')" title="Imprimer">🖨️</button>
+                <button class="btn-icon btn-delete" onclick="confirmDeletePayslip('${p.id}')" title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function openEmployeeModal(id = null) {
+    editingEmployeeId = id;
+    if (id) {
+        const emp = allEmployees.find(e => e.id === id);
+        if (emp) {
+            document.getElementById('employeeModalTitle').textContent = '✏️ Modifier Employé';
+            document.getElementById('empName').value = emp.name||'';
+            document.getElementById('empRole').value = emp.role||'';
+            document.getElementById('empDept').value = emp.department||'';
+            document.getElementById('empHireDate').value = emp.hire_date||'';
+            document.getElementById('empCin').value = emp.cin||'';
+            document.getElementById('empCnss').value = emp.cnss||'';
+            document.getElementById('empBaseSalary').value = emp.base_salary||0;
+            document.getElementById('empTransport').value = emp.transport_allowance||0;
+            document.getElementById('empOther').value = emp.other_allowances||0;
+            document.getElementById('empActive').checked = !!emp.active;
+        }
+    } else {
+        document.getElementById('employeeModalTitle').textContent = '➕ Ajouter un Employé';
+        document.getElementById('empName').value = '';
+        document.getElementById('empRole').value = '';
+        document.getElementById('empDept').value = '';
+        document.getElementById('empHireDate').valueAsDate = new Date();
+        document.getElementById('empCin').value = '';
+        document.getElementById('empCnss').value = '';
+        document.getElementById('empBaseSalary').value = 0;
+        document.getElementById('empTransport').value = 0;
+        document.getElementById('empOther').value = 0;
+        document.getElementById('empActive').checked = true;
+    }
+    document.getElementById('employeeModal').classList.add('active');
+}
+
+function closeEmployeeModal() { document.getElementById('employeeModal').classList.remove('active'); }
+
+async function saveEmployee() {
+    const name = document.getElementById('empName').value.trim();
+    if (!name) return showToast('Nom requis', 'warning');
+    const data = {
+        id: editingEmployeeId,
+        userId: currentUser.id,
+        name,
+        role: document.getElementById('empRole').value.trim(),
+        department: document.getElementById('empDept').value.trim(),
+        hire_date: document.getElementById('empHireDate').value,
+        cin: document.getElementById('empCin').value.trim(),
+        cnss: document.getElementById('empCnss').value.trim(),
+        base_salary: parseFloat(document.getElementById('empBaseSalary').value)||0,
+        transport_allowance: parseFloat(document.getElementById('empTransport').value)||0,
+        other_allowances: parseFloat(document.getElementById('empOther').value)||0,
+        active: document.getElementById('empActive').checked ? 1 : 0
+    };
+    try {
+        await window.electronAPI.saveEmployee(data);
+        showToast('Employé enregistré', 'success');
+        closeEmployeeModal();
+        loadHR();
+    } catch (e) { showToast('Erreur', 'error'); }
+}
+
+function confirmDeleteEmployee(id) {
+    showConfirm('Supprimer Employé', 'Supprimer cet employé ?', async () => {
+        try {
+            await window.electronAPI.deleteEmployee(id);
+            showToast('Employé supprimé', 'info');
+            loadHR();
+        } catch { showToast('Erreur', 'error'); }
+    });
+}
+
+function openPayslipModal() {
+    const sel = document.getElementById('psEmployee');
+    sel.innerHTML = '<option value="">— Sélectionner —</option>' + 
+        allEmployees.filter(e => e.active).map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
+    document.getElementById('psDate').valueAsDate = new Date();
+    document.getElementById('psMonth').value = new Date().getMonth() + 1;
+    document.getElementById('psYear').value = new Date().getFullYear();
+    document.getElementById('psBaseSalary').value = 0;
+    document.getElementById('psTransport').value = 0;
+    document.getElementById('psOther').value = 0;
+    document.getElementById('psGrossSalary').value = '0.000';
+    document.getElementById('psCnss').value = 0;
+    document.getElementById('psIrpp').value = 0;
+    document.getElementById('psNetSalary').value = '0.000';
+    document.getElementById('payslipModal').classList.add('active');
+}
+
+function closePayslipModal() { document.getElementById('payslipModal').classList.remove('active'); }
+
+function loadEmployeeDefaultsForPayslip() {
+    const id = document.getElementById('psEmployee').value;
+    const emp = allEmployees.find(e => e.id === id);
+    if (!emp) return;
+    document.getElementById('psBaseSalary').value = emp.base_salary||0;
+    document.getElementById('psTransport').value = emp.transport_allowance||0;
+    document.getElementById('psOther').value = emp.other_allowances||0;
+    calculatePayslipTotals();
+}
+
+function calculatePayslipTotals() {
+    const base = parseFloat(document.getElementById('psBaseSalary').value)||0;
+    const transport = parseFloat(document.getElementById('psTransport').value)||0;
+    const other = parseFloat(document.getElementById('psOther').value)||0;
+    const gross = base + transport + other;
+    document.getElementById('psGrossSalary').value = gross.toFixed(3);
+    updatePayslipNet();
+}
+
+function autoCalculateCNSS() {
+    const base = parseFloat(document.getElementById('psBaseSalary').value)||0;
+    const other = parseFloat(document.getElementById('psOther').value)||0;
+    const grossSubjectToCnss = base + other;
+    const cnss = grossSubjectToCnss * 0.0918;
+    document.getElementById('psCnss').value = cnss.toFixed(3);
+    updatePayslipNet();
+}
+
+function updatePayslipNet() {
+    const gross = parseFloat(document.getElementById('psGrossSalary').value)||0;
+    const cnss = parseFloat(document.getElementById('psCnss').value)||0;
+    const irpp = parseFloat(document.getElementById('psIrpp').value)||0;
+    const net = gross - cnss - irpp;
+    document.getElementById('psNetSalary').value = Math.max(0, net).toFixed(3);
+}
+
+async function savePayslip() {
+    const empId = document.getElementById('psEmployee').value;
+    if (!empId) return showToast('Sélectionnez un employé', 'warning');
+    const data = {
+        userId: currentUser.id,
+        employee_id: empId,
+        period_month: parseInt(document.getElementById('psMonth').value),
+        period_year: parseInt(document.getElementById('psYear').value),
+        date: document.getElementById('psDate').value,
+        base_salary: parseFloat(document.getElementById('psBaseSalary').value)||0,
+        transport_allowance: parseFloat(document.getElementById('psTransport').value)||0,
+        other_allowances: parseFloat(document.getElementById('psOther').value)||0,
+        gross_salary: parseFloat(document.getElementById('psGrossSalary').value)||0,
+        cnss_deduction: parseFloat(document.getElementById('psCnss').value)||0,
+        irpp_deduction: parseFloat(document.getElementById('psIrpp').value)||0,
+        net_salary: parseFloat(document.getElementById('psNetSalary').value)||0,
+        status: 'unpaid'
+    };
+    try {
+        await window.electronAPI.savePayslip(data);
+        showToast('Fiche de paie générée', 'success');
+        closePayslipModal();
+        loadHR();
+    } catch { showToast('Erreur', 'error'); }
+}
+
+function confirmDeletePayslip(id) {
+    showConfirm('Supprimer', 'Supprimer cette fiche de paie ?', async () => {
+        try {
+            await window.electronAPI.deletePayslip(id);
+            showToast('Fiche supprimée', 'info');
+            loadHR();
+        } catch { showToast('Erreur', 'error'); }
+    });
+}
+
+async function printPayslip(id) {
+    const payslip = allEmployees.length && allPayslips.find(p => p.id === id);
+    if (!payslip) return;
+    const employee = allEmployees.find(e => e.id === payslip.employee_id);
+    const company = await window.electronAPI.getCompany(currentUser.id);
+    
+    try {
+        const res = await window.electronAPI.buildPayslipHTML({ payslip, employee, company });
+        if (res.success) {
+            window.electronAPI.printPDF({ html: res.html });
+        }
+    } catch { showToast('Erreur impression', 'error'); }
+}
+
+async function previewPayslip(id) {
+    const payslip = allPayslips.find(p => p.id === id);
+    if (!payslip) return;
+    const employee = allEmployees.find(e => e.id === payslip.employee_id);
+    const company = await window.electronAPI.getCompany(currentUser.id);
+    try {
+        const res = await window.electronAPI.buildPayslipHTML({ payslip, employee, company });
+        if (res.success) {
+            document.getElementById('previewContent').innerHTML = res.html.replace(/<!DOCTYPE html>|<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>/gi, '');
+            document.getElementById('previewModal').classList.add('active');
+        }
+    } catch { showToast('Erreur aperçu', 'error'); }
+}
+
+async function savePayslipPDF(id) {
+    const payslip = allPayslips.find(p => p.id === id);
+    if (!payslip) return;
+    const employee = allEmployees.find(e => e.id === payslip.employee_id);
+    const company = await window.electronAPI.getCompany(currentUser.id);
+    const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const filename = `Fiche_de_paie_${employee.name.replace(/\s+/g,'_')}_${months[payslip.period_month-1]}_${payslip.period_year}.pdf`;
+    try {
+        const res = await window.electronAPI.buildPayslipHTML({ payslip, employee, company });
+        if (res.success) {
+            await window.electronAPI.savePDF({ html: res.html, filename });
+        }
+    } catch { showToast('Erreur enregistrement PDF', 'error'); }
+}
+
+window.switchHRTab = switchHRTab;
+window.openEmployeeModal = openEmployeeModal;
+window.closeEmployeeModal = closeEmployeeModal;
+window.saveEmployee = saveEmployee;
+window.confirmDeleteEmployee = confirmDeleteEmployee;
+window.openPayslipModal = openPayslipModal;
+window.closePayslipModal = closePayslipModal;
+window.loadEmployeeDefaultsForPayslip = loadEmployeeDefaultsForPayslip;
+window.calculatePayslipTotals = calculatePayslipTotals;
+window.autoCalculateCNSS = autoCalculateCNSS;
+window.updatePayslipNet = updatePayslipNet;
+window.savePayslip = savePayslip;
+window.confirmDeletePayslip = confirmDeletePayslip;
+window.printPayslip = printPayslip;
+window.previewPayslip = previewPayslip;
+window.savePayslipPDF = savePayslipPDF;
+
+window.addEventListener('resize', () => {
+    if (document.getElementById('page-dashboard').classList.contains('active') && lastDashboardStats) {
+        renderDashboardCharts(lastDashboardStats);
+    }
+});
+
+
+

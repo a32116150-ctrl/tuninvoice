@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     authRegister:    (d)    => invoke('auth:register', d),
     authLogin:       (d)    => invoke('auth:login', d),
     changePassword:  (d)    => invoke('auth:changePassword', d),
+    authResetPasswordMasterKey: (d) => invoke('auth:resetPasswordMasterKey', d),
 
     // ── DOCUMENTS ────────────────────────────────────────────────────
     getDocuments:        (userId)  => invoke('docs:getAll', userId),
@@ -137,6 +138,15 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     deleteReminder:  (id)     => invoke('reminders:delete', id),
     markReminderDone:(id)     => invoke('reminders:markDone', id),
     onReminderDue:   (cb)     => ipcRenderer.on('reminder:due', (_, r) => cb(r)),
+
+    // ── HR (EMPLOYEES & PAYSLIPS) ────────────────────────────────────
+    getEmployees:    (userId) => invoke('hr:getEmployees', userId),
+    saveEmployee:    (data)   => invoke('hr:saveEmployee', data),
+    deleteEmployee:  (id)     => invoke('hr:deleteEmployee', id),
+    getPayslips:     (userId) => invoke('hr:getPayslips', userId),
+    savePayslip:     (data)   => invoke('hr:savePayslip', data),
+    deletePayslip:   (id)     => invoke('hr:deletePayslip', id),
+    buildPayslipHTML:(p)      => invoke('hr:buildPayslipHTML', p),
 
     // ── TOOLS ────────────────────────────────────────────────────────
     openCalculator:         ()     => invoke('tools:openCalculator'),
