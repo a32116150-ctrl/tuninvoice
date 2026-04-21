@@ -35,9 +35,13 @@ Welcome to the official documentation for **Factarlou**, the premier intelligent
 - **CRM Lite**: Manage a complete database of clients with history and contact details.
 - **Smart Preview**: Instant detailed view of client profiles.
 - **Contract Builder**: Generate various Tunisian labor and service contracts (CDI, CDD, Freelance, etc.) using professional templates.
+- **HR Management**: 
+  - Manage a database of **Employees** with contract details and job titles.
+  - Automated **Payslip (Bulletin de Paie)** generation with built-in CNSS calculations (@ 9.18%).
+  - PDF Preview and Download functionality for all HR documents.
 
 ### 📊 Real-Time Analytics
-- **Dashboard**: Interactive charts showing revenue vs. expenses.
+- **Dashboard**: High-resolution, responsive charts showing revenue vs. expenses with automatic scaling on window resize.
 - **Status Tracking**: Visual indicators for Unpaid, Partially Paid, and Paid documents.
 - **Top Metrics**: Identify your most valuable clients and highest spending categories.
 

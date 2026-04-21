@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.6.0-blue?style=for-the-badge" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-2.5.0-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -40,6 +40,7 @@ Pour un guide complet des fonctionnalités, consultez le fichier [FEATURES_GUIDE
 - **One-click quote-to-invoice conversion** with a complete audit trail.
 - Generate **Retenue à la Source** certificates.
 - Generate professional **Contracts** from within the app.
+- **Human Resources (HR)**: Manage employee records and generate professional **Payslips (Bulletins de Paie)** with automated CNSS calculations.
 
 ### 📊 Data Export
 - Export financial data to **CSV** or **Excel (.xlsx)** for accounting or archival purposes.
@@ -48,6 +49,7 @@ Pour un guide complet des fonctionnalités, consultez le fichier [FEATURES_GUIDE
 ### 🎨 Theming & UX
 - Multiple UI **themes** supported via `Themes.js`.
 - Clean, modern interface built with vanilla **CSS3**, including print media support.
+- **Responsive Analytics**: High-resolution, responsive charts for tracking Revenue and Expenses with automatic window resizing.
 - **Auto-updates** delivered seamlessly through GitHub Releases.
 
 ### 🔒 Privacy & Security
