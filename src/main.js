@@ -78,12 +78,25 @@ autoUpdater.on('update-downloaded', (info) => {
         detail: 'Redémarrez maintenant pour appliquer la mise à jour, ou elle s\'installera automatiquement au prochain démarrage.',
         buttons: ['🔄 Redémarrer maintenant', '⏰ Plus tard'],
         defaultId: 0, cancelId: 1
-    }).then(r => { if (r.response === 0) autoUpdater.quitAndInstall(false, true); });
+    }).then(r => { 
+        if (r.response === 0) {
+            // Use setImmediate to ensure the dialog is fully closed before quitting
+            setImmediate(() => {
+                app.removeAllListeners("window-all-closed");
+                autoUpdater.quitAndInstall(false, true);
+            });
+        }
+    });
 });
 autoUpdater.on('error', (err) => { sendUpdate('error', { message: err.message }); console.error('[updater]', err); });
 
 ipcMain.handle('updater:check',   async () => { try { const r = await autoUpdater.checkForUpdates(); return { success: true, version: r?.updateInfo?.version }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('updater:install', ()       => autoUpdater.quitAndInstall(false, true));
+ipcMain.handle('updater:install', () => {
+    setImmediate(() => {
+        app.removeAllListeners("window-all-closed");
+        autoUpdater.quitAndInstall(false, true);
+    });
+});
 ipcMain.handle('app:version',     ()       => app.getVersion());
 
 // ==================== PDF ====================
