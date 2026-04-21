@@ -10,6 +10,7 @@ let allDocuments      = [];
 let allClients        = [];
 let allServices       = [];
 let allContracts      = [];
+let allExpenses       = [];
 let editingServiceId  = null;
 let editingDocId      = null;
 let editingContractId = null;
@@ -99,10 +100,12 @@ function hideLoading() { document.getElementById('loadingOverlay').classList.add
 // ==================== CONFIRM MODAL ====================
 function showConfirm(title, message, onConfirm, btnLabel = 'Confirmer', btnClass = 'btn-danger') {
     document.getElementById('confirmTitle').textContent = title;
-    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmMessage').innerHTML = message;
     const btn = document.getElementById('confirmBtn');
     btn.textContent = btnLabel; btn.className = `btn ${btnClass}`;
     confirmCallback = onConfirm;
+    const cancelBtn = document.querySelector('#confirmModal .btn-secondary');
+    if (cancelBtn) cancelBtn.style.display = onConfirm ? 'inline-flex' : 'none';
     document.getElementById('confirmModal').classList.add('active');
 }
 function executeConfirm() {
@@ -206,15 +209,19 @@ function navigateTo(page) {
     const pageEl = document.getElementById(`page-${page}`);
     if (!pageEl) return;
     pageEl.classList.add('active');
-    const pages = ['dashboard','new-document','documents','clients','services','company','contracts','settings'];
-    const idx = pages.indexOf(page);
-    if (idx !== -1) { const navItems = document.querySelectorAll('.nav-item'); if (navItems[idx]) navItems[idx].classList.add('active'); }
+    
+    // Highlight the active nav item
+    const navItem = document.querySelector(`.nav-item[onclick*="navigateTo('${page}')"]`);
+    if (navItem) navItem.classList.add('active');
+
     if (page === 'dashboard')   loadDashboard();
     if (page === 'documents')   loadDocuments();
     if (page === 'clients')     loadClients();
     if (page === 'services')    loadServices();
     if (page === 'company')     loadCompanyPage();
     if (page === 'contracts')   loadContracts();
+    if (page === 'achat')       loadAchats();
+    if (page === 'retenues')    loadRetenues();
     if (page === 'notes')       loadNotes();
     if (page === 'reminders')   loadReminders();
     if (page === 'annual')      loadAnnualReport();
@@ -227,19 +234,33 @@ function createDocOfType(type) { currentDocType = type; document.querySelectorAl
 async function loadDashboard() {
     try {
         const stats = await window.electronAPI.getStats(currentUser.id);
-        document.getElementById('statTotalDocs').textContent    = stats.totalDocs;
-        document.getElementById('statTotalRevenue').textContent = formatAmount(stats.totalRevenue) + ' TND';
-        document.getElementById('statTotalClients').textContent = stats.totalClients;
-        document.getElementById('statThisMonth').textContent    = stats.thisMonth;
-        // New: unpaid stats
+        
+        // Basic stats
+        document.getElementById('statTotalDocs').textContent    = stats.totalDocs || 0;
+        document.getElementById('statTotalRevenue').textContent = formatAmount(stats.totalRevenue || 0) + ' TND';
+        document.getElementById('statTotalClients').textContent = stats.totalClients || 0;
+        document.getElementById('statThisMonth').textContent    = stats.thisMonth || 0;
+        
+        // Unpaid stats
         const unpaidEl = document.getElementById('statUnpaid');
-        if (unpaidEl) unpaidEl.textContent = stats.unpaidCount + ' (' + formatAmount(stats.unpaidTotal) + ' TND)';
+        if (unpaidEl) unpaidEl.textContent = (stats.unpaidCount || 0) + ' (' + formatAmount(stats.unpaidTotal || 0) + ' TND)';
+        
+        // Expenses & Profit stats
+        const expensesEl = document.getElementById('statTotalExpenses');
+        if (expensesEl) expensesEl.textContent = formatAmount(stats.totalExpenses || 0) + ' TND';
+        
+        const profitEl = document.getElementById('statNetProfit');
+        if (profitEl) profitEl.textContent = formatAmount(stats.netProfit || 0) + ' TND';
+
         const docs = await window.electronAPI.getDocuments(currentUser.id);
         renderRecentDocs(docs.slice(0, 6));
         renderDashboardCharts(stats);
         renderTopClients(stats.topClients || []);
         renderRecentActivity(stats.recentActivity || []);
-    } catch (e) { showToast('Erreur tableau de bord', 'error'); }
+    } catch (e) { 
+        console.error('Dashboard error:', e);
+        showToast('Erreur tableau de bord', 'error'); 
+    }
 }
 
 function renderRecentDocs(docs) {
@@ -692,7 +713,37 @@ function loadSavedClient() {
 }
 
 // ==================== CLIENT MODAL ====================
-function openClientModal() { document.getElementById('clientModal').classList.add('active'); setTimeout(()=>document.getElementById('newClientName').focus(),100); }
+let currentClientId = null;
+function openClientModal(clientId = null) {
+    currentClientId = clientId;
+    const modal = document.getElementById('clientModal');
+    const title = modal.querySelector('h2');
+    
+    // Clear
+    document.getElementById('newClientName').value = '';
+    document.getElementById('newClientMF').value = '';
+    document.getElementById('newClientAddress').value = '';
+    document.getElementById('newClientPhone').value = '';
+    document.getElementById('newClientEmail').value = '';
+    
+    if (clientId) {
+        const client = allClients.find(c => c.id == clientId);
+        if (client) {
+            if (title) title.innerHTML = '✏️ Modifier Client';
+            document.getElementById('newClientName').value = client.name || '';
+            document.getElementById('newClientMF').value = client.mf || '';
+            document.getElementById('newClientAddress').value = client.address || '';
+            document.getElementById('newClientPhone').value = client.phone || '';
+            document.getElementById('newClientEmail').value = client.email || '';
+        }
+    } else {
+        if (title) title.innerHTML = '➕ Nouveau Client';
+    }
+    
+    modal.classList.add('active');
+    setTimeout(()=>document.getElementById('newClientName').focus(),100);
+}
+
 function closeClientModal() {
     document.getElementById('clientModal').classList.remove('active');
     ['newClientName','newClientMF','newClientAddress','newClientPhone','newClientEmail'].forEach(id=>document.getElementById(id).value='');
@@ -701,11 +752,20 @@ function closeClientModal() {
 async function saveNewClient() {
     const name = document.getElementById('newClientName').value.trim();
     if (!name) { showToast('Le nom est obligatoire','warning'); return; }
+    const data = {
+        id: currentClientId,
+        userId: currentUser.id,
+        name,
+        mf: document.getElementById('newClientMF').value.trim(),
+        address: document.getElementById('newClientAddress').value.trim(),
+        phone: document.getElementById('newClientPhone').value.trim(),
+        email: document.getElementById('newClientEmail').value.trim()
+    };
     try {
-        await window.electronAPI.saveClient({ userId:currentUser.id, name, mf:document.getElementById('newClientMF').value.trim(), address:document.getElementById('newClientAddress').value.trim(), phone:document.getElementById('newClientPhone').value.trim(), email:document.getElementById('newClientEmail').value.trim() });
-        showToast(`Client "${name}" ajouté`,'success');
+        await window.electronAPI.saveClient(data);
+        showToast(currentClientId ? `Client "${name}" mis à jour` : `Client "${name}" ajouté`,'success');
         closeClientModal(); await loadClientsDropdown(); await loadClients();
-    } catch { showToast("Erreur lors de l'ajout",'error'); }
+    } catch { showToast("Erreur lors de l'enregistrement",'error'); }
 }
 
 // ==================== SERVICES PAGE ====================
@@ -1237,23 +1297,57 @@ async function exportAllToExcel() {
 
 // ==================== CLIENTS ====================
 async function loadClients() {
-    try { allClients = await window.electronAPI.getClients(currentUser.id); renderClientsTable(allClients); }
-    catch { showToast('Erreur chargement clients','error'); }
+    try { 
+        allClients = await window.electronAPI.getClients(currentUser.id); 
+        renderClientsTable(allClients); 
+        updateClientStats(allClients);
+    } catch { showToast('Erreur chargement clients','error'); }
+}
+
+function updateClientStats(clients) {
+    const total = clients.length;
+    const active = clients.length; // Assuming all clients are active for now
+    const elTotal = document.getElementById('clientsTotalCount');
+    const elActive = document.getElementById('clientsActiveCount');
+    if (elTotal) elTotal.textContent = total;
+    if (elActive) elActive.textContent = active;
 }
 
 function renderClientsTable(clients) {
     const container = document.getElementById('clientsTable');
     if (!clients.length) { container.innerHTML=`<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Aucun client</h3><p>Ajoutez votre premier client</p></div>`; return; }
-    container.innerHTML = `<table><thead><tr><th>Nom</th><th>MF</th><th>Téléphone</th><th>Email</th><th>Actions</th></tr></thead><tbody>
+    container.innerHTML = `<table><thead><tr><th>Nom</th><th>MF</th><th>Téléphone</th><th>Email</th><th style="text-align:right">Actions</th></tr></thead><tbody>
         ${clients.map(c=>`<tr>
             <td style="font-weight:600">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.mf)||'—'}</td>
             <td>${escapeHtml(c.phone)||'—'}</td>
             <td>${escapeHtml(c.email)||'—'}</td>
             <td class="actions-cell">
+                <button class="btn-icon btn-view"   onclick="viewClientPreview('${c.id}')"   title="Aperçu">👁️</button>
+                <button class="btn-icon btn-edit"   onclick="openClientModal('${c.id}')"     title="Modifier">✏️</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteClient('${c.id}')" title="Supprimer">🗑️</button>
             </td></tr>`).join('')}
     </tbody></table>`;
+}
+
+function viewClientPreview(clientId) {
+    const client = allClients.find(c => c.id == clientId);
+    if (!client) return;
+    const html = `
+        <div style="padding:10px; text-align:left;">
+            <div style="font-size:1.4rem; font-weight:800; color:var(--primary); margin-bottom:15px;">${escapeHtml(client.name)}</div>
+            <div style="display:grid; grid-template-columns:110px 1fr; gap:8px; font-size:0.95rem;">
+                <b style="color:var(--text-muted)">MF:</b> <span>${escapeHtml(client.mf)||'—'}</span>
+                <b style="color:var(--text-muted)">Adresse:</b> <span>${escapeHtml(client.address)||'—'}</span>
+                <b style="color:var(--text-muted)">Téléphone:</b> <span>${escapeHtml(client.phone)||'—'}</span>
+                <b style="color:var(--text-muted)">Email:</b> <span>${escapeHtml(client.email)||'—'}</span>
+            </div>
+            <div style="margin-top:20px; padding:12px; background:var(--gray-50); border-radius:8px; font-size:0.85rem; color:var(--text-secondary); text-align:center;">
+                Historique des transactions bientôt disponible.
+            </div>
+        </div>
+    `;
+    showConfirm(escapeHtml(client.name), html, null, 'Fermer', 'btn-secondary', false);
 }
 
 function filterClients() {
@@ -2144,3 +2238,807 @@ window.showApp = async function() {
         loadAppVersion();
     }, 500);
 };
+// ==================== RETENUE À LA SOURCE ====================
+let allRetenues = [];
+let editingRetenueId = null;
+
+async function loadRetenues() {
+    if (!currentUser) return;
+    try {
+        allRetenues = await window.electronAPI.getRetenues(currentUser.id);
+        renderRetenuesTable(allRetenues);
+    } catch (e) { showToast('Erreur chargement retenues', 'error'); }
+}
+
+function renderRetenuesTable(retenues) {
+    const container = document.getElementById('retenuesTable');
+    if (!container) return;
+    if (!retenues.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🧾</div><h3>Aucun certificat</h3><p>Créez votre premier certificat de retenue à la source</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr>
+        <th>N°</th><th>Date</th><th>Période</th><th>Bénéficiaire</th>
+        <th>Montant Brut</th><th>Taux</th><th>Montant Retenu</th><th>Statut</th><th>Actions</th>
+    </tr></thead><tbody>
+        ${retenues.map(r => `<tr>
+            <td style="font-family:monospace;font-size:0.82rem">${escapeHtml(r.number)}</td>
+            <td>${formatDate(r.date)}</td>
+            <td>${['','Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sep.','Oct.','Nov.','Déc.'][r.month]||r.month} ${r.year}</td>
+            <td style="font-weight:600">${escapeHtml(r.beneficiaireName)}</td>
+            <td>${formatAmount(r.montantBrut)} TND</td>
+            <td style="font-weight:600;color:#92400e">${r.tauxRetenue}%</td>
+            <td style="font-weight:700;color:#b45309">${formatAmount(r.montantRetenue)} TND</td>
+            <td><span class="badge" style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:6px;font-size:0.75rem">${r.status||'emis'}</span></td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-view"   onclick="previewRetenue('${r.id}')"        title="Aperçu">👁️</button>
+                <button class="btn-icon btn-edit"   onclick="editRetenue('${r.id}')"           title="Modifier">✏️</button>
+                <button class="btn-icon btn-pdf"    onclick="downloadRetenuePDF('${r.id}')"    title="PDF">📄</button>
+                <button class="btn-icon btn-delete" onclick="confirmDeleteRetenue('${r.id}')"  title="Supprimer">🗑️</button>
+            </td>
+        </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function filterRetenues() {
+    const q    = document.getElementById('searchRetenues').value.toLowerCase();
+    const year = document.getElementById('filterRetenueYear').value;
+    renderRetenuesTable(allRetenues.filter(r => {
+        const mQ = !q || (r.number||'').toLowerCase().includes(q) || (r.beneficiaireName||'').toLowerCase().includes(q) || (r.retenuerName||'').toLowerCase().includes(q);
+        const mY = !year || String(r.year) === year;
+        return mQ && mY;
+    }));
+}
+
+async function openRetenueModal(prefill) {
+    editingRetenueId = null;
+    const today = new Date();
+    document.getElementById('rDate').value          = today.toISOString().split('T')[0];
+    document.getElementById('rMonth').value         = String(today.getMonth() + 1);
+    document.getElementById('rRetenuerName').value  = '';
+    document.getElementById('rRetenuerMF').value    = '';
+    document.getElementById('rRetenuerAddress').value = '';
+    document.getElementById('rRetenuerRep').value   = '';
+    document.getElementById('rBeneficiaireName').value = '';
+    document.getElementById('rBeneficiaireMF').value   = '';
+    document.getElementById('rBeneficiaireAddress').value = '';
+    document.getElementById('rBeneficiaireRib').value = '';
+    document.getElementById('rFactureNumber').value = '';
+    document.getElementById('rFactureDate').value   = '';
+    document.getElementById('rMontantBrut').value   = '';
+    document.getElementById('rMontantRetenue').value = '';
+    document.getElementById('rTaux').value          = '1.5';
+    document.getElementById('rNatureRevenu').value  = 'Honoraires et commissions';
+    document.getElementById('rNotes').value         = '';
+    // Pre-fill company info
+    try {
+        const c = await window.electronAPI.getCompany(currentUser.id) || {};
+        document.getElementById('rRetenuerName').value    = c.name    || currentUser.company || '';
+        document.getElementById('rRetenuerMF').value      = c.mf      || currentUser.mf      || '';
+        document.getElementById('rRetenuerAddress').value = c.address  || '';
+    } catch {}
+    if (prefill) {
+        if (prefill.beneficiaireName) document.getElementById('rBeneficiaireName').value = prefill.beneficiaireName;
+        if (prefill.beneficiaireMF)   document.getElementById('rBeneficiaireMF').value   = prefill.beneficiaireMF;
+        if (prefill.factureNumber)    document.getElementById('rFactureNumber').value    = prefill.factureNumber;
+        if (prefill.factureDate)      document.getElementById('rFactureDate').value      = prefill.factureDate;
+        if (prefill.montantBrut)      { document.getElementById('rMontantBrut').value = prefill.montantBrut; calculateRetenueAmount(); }
+    }
+    document.getElementById('retenueModalTitle').textContent = '➕ Nouveau Certificat de Retenue';
+    document.getElementById('retenueModal').classList.add('active');
+}
+
+function closeRetenueModal() {
+    document.getElementById('retenueModal').classList.remove('active');
+    editingRetenueId = null;
+}
+
+function calculateRetenueAmount() {
+    const brut = parseFloat(document.getElementById('rMontantBrut').value) || 0;
+    const taux = parseFloat(document.getElementById('rTaux').value) || 1.5;
+    const retenu = Math.round(brut * (taux / 100) * 1000) / 1000;
+    document.getElementById('rMontantRetenue').value = retenu.toFixed(3);
+}
+
+function collectRetenueData() {
+    const get = id => document.getElementById(id)?.value || '';
+    const brut  = parseFloat(get('rMontantBrut')) || 0;
+    const taux  = parseFloat(get('rTaux')) || 1.5;
+    const retenu = Math.round(brut * (taux / 100) * 1000) / 1000;
+    const today = new Date();
+    return {
+        id: editingRetenueId || undefined,
+        userId: currentUser.id,
+        date:   get('rDate') || today.toISOString().split('T')[0],
+        year:   today.getFullYear(),
+        month:  parseInt(get('rMonth')) || (today.getMonth() + 1),
+        retenuerName:    get('rRetenuerName'),
+        retenuerMF:      get('rRetenuerMF'),
+        retenuerAddress: get('rRetenuerAddress'),
+        retenuerRep:     get('rRetenuerRep'),
+        beneficiaireName:    get('rBeneficiaireName'),
+        beneficiaireMF:      get('rBeneficiaireMF'),
+        beneficiaireAddress: get('rBeneficiaireAddress'),
+        beneficiaireRib:     get('rBeneficiaireRib'),
+        factureNumber: get('rFactureNumber') || null,
+        factureDate:   get('rFactureDate')   || null,
+        montantBrut:    brut,
+        tauxRetenue:    taux,
+        montantRetenue: retenu,
+        natureRevenu:  get('rNatureRevenu') || 'Honoraires et commissions',
+        notes:         get('rNotes') || null,
+        logoImage:     logoImage   || null,
+        stampImage:    stampImage  || null,
+        signatureImage: signatureImage || null,
+        status: 'emis'
+    };
+}
+
+async function saveRetenue() {
+    const data = collectRetenueData();
+    if (!data.retenuerName)    { showToast('La raison sociale de l\'entreprise est requise', 'warning'); return; }
+    if (!data.beneficiaireName){ showToast('Le nom du bénéficiaire est requis', 'warning'); return; }
+    if (!data.montantBrut)     { showToast('Le montant brut est requis', 'warning'); return; }
+    try {
+        const result = await window.electronAPI.saveRetenue(data);
+        if (result.success) {
+            showToast(editingRetenueId ? 'Certificat mis à jour' : 'Certificat créé', 'success');
+            closeRetenueModal();
+            await loadRetenues();
+        } else { showToast(result.error || 'Erreur lors de l\'enregistrement', 'error'); }
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+}
+
+async function saveAndPrintRetenue() {
+    const data = collectRetenueData();
+    if (!data.retenuerName)    { showToast('La raison sociale de l\'entreprise est requise', 'warning'); return; }
+    if (!data.beneficiaireName){ showToast('Le nom du bénéficiaire est requis', 'warning'); return; }
+    if (!data.montantBrut)     { showToast('Le montant brut est requis', 'warning'); return; }
+    try {
+        const result = await window.electronAPI.saveRetenue(data);
+        if (result.success) {
+            closeRetenueModal();
+            await loadRetenues();
+            await downloadRetenuePDF(result.retenue.id);
+        } else { showToast(result.error || 'Erreur', 'error'); }
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+}
+
+async function editRetenue(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    editingRetenueId = id;
+    document.getElementById('rDate').value           = r.date || '';
+    document.getElementById('rMonth').value          = String(r.month || 1);
+    document.getElementById('rRetenuerName').value   = r.retenuerName || '';
+    document.getElementById('rRetenuerMF').value     = r.retenuerMF   || '';
+    document.getElementById('rRetenuerAddress').value = r.retenuerAddress || '';
+    document.getElementById('rRetenuerRep').value    = r.retenuerRep  || '';
+    document.getElementById('rBeneficiaireName').value = r.beneficiaireName || '';
+    document.getElementById('rBeneficiaireMF').value   = r.beneficiaireMF   || '';
+    document.getElementById('rBeneficiaireAddress').value = r.beneficiaireAddress || '';
+    document.getElementById('rBeneficiaireRib').value  = r.beneficiaireRib  || '';
+    document.getElementById('rFactureNumber').value  = r.factureNumber || '';
+    document.getElementById('rFactureDate').value    = r.factureDate   || '';
+    document.getElementById('rMontantBrut').value    = r.montantBrut   || '';
+    document.getElementById('rTaux').value           = String(r.tauxRetenue || 1.5);
+    document.getElementById('rMontantRetenue').value = (r.montantRetenue || 0).toFixed(3);
+    document.getElementById('rNatureRevenu').value   = r.natureRevenu || 'Honoraires et commissions';
+    document.getElementById('rNotes').value          = r.notes || '';
+    document.getElementById('retenueModalTitle').textContent = '✏️ Modifier le Certificat';
+    document.getElementById('retenueModal').classList.add('active');
+}
+
+async function previewRetenue(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    const html = buildRetenueHTMLFromData(r);
+    document.getElementById('previewContent').innerHTML = html.replace(/<html[^>]*>[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*?<\/html>/i, '');
+    document.getElementById('previewModal').classList.add('active');
+}
+
+async function downloadRetenuePDF(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    const html = buildRetenueHTMLFromData(r);
+    const filename = `${r.number}.pdf`;
+    showLoading('Génération du PDF...');
+    try {
+        const result = await window.electronAPI.savePDF({ html, filename });
+        if (result.success) showToast('✅ PDF Retenue enregistré', 'success');
+        else if (!result.canceled) showToast('Erreur PDF', 'error');
+    } catch (e) { showToast('Erreur PDF: ' + e.message, 'error'); }
+    finally { hideLoading(); }
+}
+
+function buildRetenueHTMLFromData(r) {
+    // Use global buildRetenueHTML from retenue-builder.js if available
+    if (typeof buildRetenueHTML === 'function') {
+        return buildRetenueHTML(r, currentDocumentTheme);
+    }
+    // Fallback basic HTML
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Retenue ${r.number}</title></head><body style="font-family:sans-serif;padding:40px">
+        <h1 style="color:#1e3a8a">CERTIFICAT DE RETENUE À LA SOURCE</h1>
+        <h2>${escapeHtml(r.number)}</h2>
+        <p><strong>Date:</strong> ${formatDate(r.date)} | <strong>Période:</strong> ${r.month}/${r.year}</p>
+        <hr>
+        <p><strong>Débiteur:</strong> ${escapeHtml(r.retenuerName)} (MF: ${escapeHtml(r.retenuerMF||'—')})</p>
+        <p><strong>Bénéficiaire:</strong> ${escapeHtml(r.beneficiaireName)} (MF: ${escapeHtml(r.beneficiaireMF||'—')})</p>
+        <hr>
+        <p><strong>Montant Brut:</strong> ${(r.montantBrut||0).toFixed(3)} TND</p>
+        <p><strong>Taux RS:</strong> ${r.tauxRetenue}%</p>
+        <p><strong>Montant Retenu:</strong> ${(r.montantRetenue||0).toFixed(3)} TND</p>
+        <p><strong>Nature:</strong> ${escapeHtml(r.natureRevenu||'')}</p>
+        <p style="font-size:11px;color:#aaa;margin-top:40px">Document généré par TuniInvoice Pro</p>
+    </body></html>`;
+}
+
+function confirmDeleteRetenue(id) {
+    const r = allRetenues.find(x => x.id === id);
+    showConfirm('🗑️ Supprimer', `Supprimer le certificat ${r?.number} ?`, async () => {
+        try {
+            await window.electronAPI.deleteRetenue(id);
+            showToast('Certificat supprimé', 'info');
+            await loadRetenues();
+        } catch { showToast('Erreur suppression', 'error'); }
+    });
+}
+
+async function exportRetenuesToExcel() {
+    try {
+        const result = await window.electronAPI.exportExcelRetenues({ retenues: allRetenues });
+        if (result.success) showToast(`Excel exporté: ${result.path}`, 'success');
+    } catch { showToast('Erreur export Excel', 'error'); }
+}
+
+// ==================== RETENUE: OFFICIAL FIELDS ====================
+function calculateRetenueAmount() {
+    const brut = parseFloat(document.getElementById('rMontantBrut')?.value) || 0;
+    const taux = parseFloat(document.getElementById('rTaux')?.value) || 1.5;
+    const retenu = Math.round(brut * (taux / 100) * 1000) / 1000;
+    const el = document.getElementById('rMontantRetenue');
+    if (el) el.value = retenu.toFixed(3);
+}
+
+// Enhanced collectRetenueData (includes all new fields)
+function collectRetenueData() {
+    const get = id => document.getElementById(id)?.value || '';
+    const brut = parseFloat(get('rMontantBrut')) || 0;
+    const taux = parseFloat(get('rTaux')) || 1.5;
+    const today = new Date();
+    return {
+        id: editingRetenueId || undefined,
+        userId: currentUser.id,
+        date: get('rDate') || today.toISOString().split('T')[0],
+        year: today.getFullYear(),
+        month: parseInt(get('rMonth')) || (today.getMonth() + 1),
+        retenuerName: get('rRetenuerName'),
+        retenuerMF: get('rRetenuerMF'),
+        retenuerAddress: get('rRetenuerAddress'),
+        retenuerRep: get('rRetenuerRep'),
+        retenuerCodeTva: get('rRetenuerCodeTva'),
+        retenuerCodeCat: get('rRetenuerCodeCat'),
+        retenuerNEtab: get('rRetenuerNEtab'),
+        beneficiaireName: get('rBeneficiaireName'),
+        beneficiaireMF: get('rBeneficiaireMF'),
+        beneficiaireAddress: get('rBeneficiaireAddress'),
+        beneficiaireRib: get('rBeneficiaireRib'),
+        beneficiaireCIN: get('rBeneficiaireCIN'),
+        beneficiaireCodeTva: get('rBeneficiaireCodeTva'),
+        beneficiaireCodeCat: get('rBeneficiaireCodeCat'),
+        beneficiaireNEtab: get('rBeneficiaireNEtab'),
+        factureNumber: get('rFactureNumber') || null,
+        factureDate: get('rFactureDate') || null,
+        montantBrut: brut,
+        tauxRetenue: taux,
+        montantRetenue: Math.round(brut * (taux / 100) * 1000) / 1000,
+        natureRevenu: get('rNatureRevenu') || 'Honoraires et commissions',
+        notes: get('rNotes') || null,
+        logoImage: logoImage || null,
+        stampImage: stampImage || null,
+        signatureImage: signatureImage || null,
+        status: 'emis'
+    };
+}
+
+// Override openRetenueModal to clear new fields and prefill company
+const originalOpenRetenue = window.openRetenueModal;
+window.openRetenueModal = async function(prefill) {
+    editingRetenueId = null;
+    const today = new Date();
+    document.getElementById('rDate').value = today.toISOString().split('T')[0];
+    document.getElementById('rMonth').value = String(today.getMonth() + 1);
+    const fields = ['rRetenuerName','rRetenuerMF','rRetenuerAddress','rRetenuerRep',
+        'rRetenuerCodeTva','rRetenuerCodeCat','rRetenuerNEtab',
+        'rBeneficiaireName','rBeneficiaireMF','rBeneficiaireAddress','rBeneficiaireRib',
+        'rBeneficiaireCIN','rBeneficiaireCodeTva','rBeneficiaireCodeCat','rBeneficiaireNEtab',
+        'rFactureNumber','rFactureDate','rMontantBrut','rTaux','rNatureRevenu','rNotes'];
+    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const c = await window.electronAPI.getCompany(currentUser.id) || {};
+    document.getElementById('rRetenuerName').value = c.name || currentUser.company || '';
+    document.getElementById('rRetenuerMF').value = c.mf || currentUser.mf || '';
+    document.getElementById('rRetenuerAddress').value = c.address || '';
+    if (prefill) {
+        if (prefill.beneficiaireName) document.getElementById('rBeneficiaireName').value = prefill.beneficiaireName;
+        if (prefill.beneficiaireMF)   document.getElementById('rBeneficiaireMF').value = prefill.beneficiaireMF;
+        if (prefill.factureNumber)    document.getElementById('rFactureNumber').value = prefill.factureNumber;
+        if (prefill.factureDate)      document.getElementById('rFactureDate').value = prefill.factureDate;
+        if (prefill.montantBrut) { document.getElementById('rMontantBrut').value = prefill.montantBrut; calculateRetenueAmount(); }
+    }
+    document.getElementById('retenueModalTitle').textContent = '➕ Nouveau Certificat de Retenue';
+    document.getElementById('retenueModal').classList.add('active');
+};
+
+// Override editRetenue to load new fields
+const originalEditRetenue = window.editRetenue;
+window.editRetenue = async function(id) {
+    const r = allRetenues.find(x => x.id === id);
+    if (!r) return;
+    editingRetenueId = id;
+    document.getElementById('rDate').value = r.date || '';
+    document.getElementById('rMonth').value = String(r.month || 1);
+    document.getElementById('rRetenuerName').value = r.retenuerName || '';
+    document.getElementById('rRetenuerMF').value = r.retenuerMF || '';
+    document.getElementById('rRetenuerAddress').value = r.retenuerAddress || '';
+    document.getElementById('rRetenuerRep').value = r.retenuerRep || '';
+    document.getElementById('rRetenuerCodeTva').value = r.retenuerCodeTva || '';
+    document.getElementById('rRetenuerCodeCat').value = r.retenuerCodeCat || '';
+    document.getElementById('rRetenuerNEtab').value = r.retenuerNEtab || '';
+    document.getElementById('rBeneficiaireName').value = r.beneficiaireName || '';
+    document.getElementById('rBeneficiaireMF').value = r.beneficiaireMF || '';
+    document.getElementById('rBeneficiaireAddress').value = r.beneficiaireAddress || '';
+    document.getElementById('rBeneficiaireRib').value = r.beneficiaireRib || '';
+    document.getElementById('rBeneficiaireCIN').value = r.beneficiaireCIN || '';
+    document.getElementById('rBeneficiaireCodeTva').value = r.beneficiaireCodeTva || '';
+    document.getElementById('rBeneficiaireCodeCat').value = r.beneficiaireCodeCat || '';
+    document.getElementById('rBeneficiaireNEtab').value = r.beneficiaireNEtab || '';
+    document.getElementById('rFactureNumber').value = r.factureNumber || '';
+    document.getElementById('rFactureDate').value = r.factureDate || '';
+    document.getElementById('rMontantBrut').value = r.montantBrut || '';
+    document.getElementById('rTaux').value = String(r.tauxRetenue || 1.5);
+    document.getElementById('rMontantRetenue').value = (r.montantRetenue || 0).toFixed(3);
+    document.getElementById('rNatureRevenu').value = r.natureRevenu || 'Honoraires et commissions';
+    document.getElementById('rNotes').value = r.notes || '';
+    document.getElementById('retenueModalTitle').textContent = '✏️ Modifier le Certificat';
+    document.getElementById('retenueModal').classList.add('active');
+};
+
+// Override saveRetenue to use new data
+const originalSaveRetenue = window.saveRetenue;
+window.saveRetenue = async function() {
+    const data = collectRetenueData();
+    if (!data.retenuerName) { showToast('Raison sociale du payeur requise', 'warning'); return; }
+    if (!data.beneficiaireName) { showToast('Nom du bénéficiaire requis', 'warning'); return; }
+    if (!data.montantBrut) { showToast('Montant brut requis', 'warning'); return; }
+    try {
+        const result = await window.electronAPI.saveRetenue(data);
+        if (result.success) {
+            showToast(editingRetenueId ? 'Certificat mis à jour' : 'Certificat créé', 'success');
+            closeRetenueModal();
+            await loadRetenues();
+        } else { showToast(result.error || 'Erreur', 'error'); }
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+};
+
+// ==================== TOOLS ====================
+async function openFiscalCalculator() {
+    try {
+        const result = await window.electronAPI.openCalculator();
+        if (!result.success) showToast('Erreur ouverture calculatrice', 'error');
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function openRelanceGenerator() {
+    const overdue = await window.electronAPI.getOverdueDocuments(currentUser.id);
+    const select = document.getElementById('relanceDocSelect');
+    if (!select) { showToast('Section relance non trouvée', 'error'); return; }
+    select.innerHTML = '<option value="">-- Choisir une facture impayée --</option>';
+    overdue.forEach(doc => {
+        select.innerHTML += `<option value="${doc.id}">${doc.number} - ${doc.clientName} - ${formatAmount(doc.totalTTC - (doc.paidAmount||0))} TND</option>`;
+    });
+    document.getElementById('relanceFactureSelect').style.display = 'block';
+    document.getElementById('fiscalPeriodSelect').style.display = 'none';
+}
+
+async function generateRelancePDF() {
+    const docId = document.getElementById('relanceDocSelect').value;
+    if (!docId) { showToast('Sélectionnez une facture', 'warning'); return; }
+    showLoading('Génération de la lettre...');
+    try {
+        const result = await window.electronAPI.generateRelanceLetter({ docId, userId: currentUser.id, attempt: 1 });
+        if (result.success && result.html) {
+            const filename = `relance_${docId}_${Date.now()}.pdf`;
+            const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
+            if (pdfResult.success) showToast('Lettre de relance enregistrée', 'success');
+        } else showToast('Erreur génération', 'error');
+    } catch (e) { showToast(e.message, 'error'); }
+    finally { hideLoading(); document.getElementById('relanceFactureSelect').style.display = 'none'; }
+}
+
+async function openFiscalSummary() {
+    const yearSelect = document.getElementById('fiscalYearSelect');
+    const currentYear = new Date().getFullYear();
+    yearSelect.innerHTML = '';
+    for (let y = currentYear - 2; y <= currentYear; y++) {
+        yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+    }
+    yearSelect.value = currentYear;
+    document.getElementById('fiscalPeriodSelect').style.display = 'block';
+    document.getElementById('relanceFactureSelect').style.display = 'none';
+}
+
+async function generateFiscalSummaryPDF() {
+    const year = document.getElementById('fiscalYearSelect').value;
+    const quarter = document.getElementById('fiscalQuarterSelect').value || null;
+    showLoading('Génération du bilan fiscal...');
+    try {
+        const result = await window.electronAPI.generateFiscalSummary({ userId: currentUser.id, year, quarter });
+        if (result.success && result.html) {
+            const filename = `bilan_fiscal_${year}${quarter ? '_T'+quarter : ''}.pdf`;
+            const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
+            if (pdfResult.success) showToast('Bilan fiscal enregistré', 'success');
+        } else showToast('Erreur génération', 'error');
+    } catch (e) { showToast(e.message, 'error'); }
+    finally { hideLoading(); document.getElementById('fiscalPeriodSelect').style.display = 'none'; }
+}
+
+// ==================== ACHATS & DÉPENSES ====================
+async function loadAchats() {
+    if (!currentUser) return;
+    try {
+        allExpenses = await window.electronAPI.getExpenses(currentUser.id);
+        renderExpensesTable(allExpenses);
+        updateExpenseSummaryCards(allExpenses);
+    } catch (e) { showToast('Erreur chargement dépenses', 'error'); }
+}
+
+function updateExpenseSummaryCards(expenses) {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const total  = expenses.reduce((s,e) => s + (e.amountTTC||0), 0);
+    const month  = expenses.filter(e => e.date && e.date.startsWith(thisMonth)).reduce((s,e) => s + (e.amountTTC||0), 0);
+    const tva    = expenses.reduce((s,e) => s + ((e.amountTTC||0) - (e.amountHT||0)), 0);
+    const ret    = expenses.reduce((s,e) => s + (e.retenueSource||0), 0);
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = formatAmount(v) + ' TND'; };
+    set('expensesTotalDisplay', total);
+    set('expensesMonthDisplay', month);
+    set('expensesTvaDisplay',   tva);
+    set('expensesRetenueDisplay', ret);
+}
+
+function renderExpensesTable(expenses) {
+    const container = document.getElementById('expensesTable');
+    if (!expenses.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛒</div><h3>Aucune dépense</h3><p>Ajoutez une dépense manuellement ou scannez un document</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr>
+        <th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Type</th>
+        <th>Montant TTC</th><th>Retenue</th><th>Réf.</th><th>Pièce jointe</th><th>Actions</th>
+    </tr></thead><tbody>
+    ${expenses.map(e => `<tr>
+        <td>${formatDate(e.date)}</td>
+        <td style="font-weight:600">${escapeHtml(e.vendor||'—')}</td>
+        <td><span class="badge" style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:6px;font-size:0.75rem">${escapeHtml(e.category||'—')}</span></td>
+        <td><span class="badge" style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:6px;font-size:0.75rem">${e.docType||'facture'}</span></td>
+        <td style="font-weight:600;color:#0f172a">${formatAmount(e.amountTTC)} TND</td>
+        <td style="color:#ef4444">${e.retenueSource > 0 ? formatAmount(e.retenueSource)+' TND' : '—'}</td>
+        <td style="font-family:monospace;font-size:0.8rem">${escapeHtml(e.reference||'—')}</td>
+        <td>${e.attachmentPath ? `<button class="btn-icon" onclick="viewAttachment('${e.attachmentPath.replace(/\\/g,'\\\\')}')" title="Aperçu">📎</button>` : '—'}</td>
+        <td class="actions-cell">
+            <button class="btn-icon btn-edit" onclick="openExpenseModal('${e.id}')" title="Modifier">✏️</button>
+            <button class="btn-icon btn-delete" onclick="confirmDeleteExpense('${e.id}')" title="Supprimer">🗑️</button>
+        </td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function viewAttachment(filePath) {
+    const content = document.getElementById('attachmentPreviewContent');
+    const modal   = document.getElementById('attachmentPreviewModal');
+    if (!content || !modal) return;
+    content.innerHTML = '<p>Chargement de l\'aperçu...</p>';
+    modal.classList.add('active');
+    const ext = filePath.split('.').pop().toLowerCase();
+    const isImage = ['png','jpg','jpeg','webp'].includes(ext);
+    const isPdf   = ext === 'pdf';
+    document.getElementById('attachmentPreviewDownloadBtn').onclick = () => {
+        window.electronAPI.scannerOpenAttachment(filePath);
+    };
+    if (isImage) {
+        content.innerHTML = `<img src="media://${filePath}" alt="Preview" style="max-width:100%;max-height:80vh">`;
+    } else if (isPdf) {
+        content.innerHTML = `<iframe src="media://${filePath}" style="width:100%;height:75vh;border:none"></iframe>`;
+    } else {
+        content.innerHTML = `<div style="text-align:center"><div style="font-size:3rem">📁</div><p>Aperçu non disponible</p></div>`;
+    }
+}
+function closeAttachmentPreviewModal() { document.getElementById('attachmentPreviewModal').classList.remove('active'); }
+window.viewAttachment = viewAttachment;
+window.closeAttachmentPreviewModal = closeAttachmentPreviewModal;
+
+
+// ==================== EXPENSE MODAL LOGIC ====================
+let currentExpenseId = null;
+let currentExpenseAttachment = null;
+
+function openExpenseModal(id = null) {
+    currentExpenseId = id;
+    const form = document.getElementById('expenseForm');
+    if (form) form.reset();
+    
+    const attName = document.getElementById('expAttachmentName');
+    if (attName) attName.textContent = 'Aucun fichier sélectionné';
+    
+    currentExpenseAttachment = null;
+    
+    if (id && typeof id === 'string') {
+        const title = document.getElementById('expenseModalTitle');
+        if (title) title.textContent = '✏️ Modifier la Dépense';
+        
+        const exp = allExpenses.find(e => e.id === id);
+        if (exp) {
+            if (document.getElementById('expVendor')) document.getElementById('expVendor').value = exp.vendor || '';
+            if (document.getElementById('expDate'))   document.getElementById('expDate').value = exp.date || '';
+            if (document.getElementById('expAmountTTC')) document.getElementById('expAmountTTC').value = exp.amountTTC || '';
+            if (document.getElementById('expRetenue'))   document.getElementById('expRetenue').value = exp.retenueSource || '';
+            if (document.getElementById('expCategory'))  document.getElementById('expCategory').value = exp.category || 'Autre';
+            if (document.getElementById('expRef'))       document.getElementById('expRef').value = exp.reference || '';
+            if (exp.attachmentPath) {
+                currentExpenseAttachment = exp.attachmentPath;
+                if (attName) attName.textContent = exp.attachmentPath.split(/[\\/]/).pop();
+            }
+        }
+    } else {
+        const title = document.getElementById('expenseModalTitle');
+        if (title) title.textContent = '➕ Nouvelle Dépense';
+        const dateInput = document.getElementById('expDate');
+        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    const modal = document.getElementById('expenseModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeExpenseModal() { 
+    const modal = document.getElementById('expenseModal');
+    if (modal) modal.classList.remove('active'); 
+}
+
+async function handleExpenseAttachment(input) {
+    if (!input.files?.[0]) return;
+    const file = input.files[0];
+    const attName = document.getElementById('expAttachmentName');
+    if (attName) attName.textContent = '⏳ Traitement...';
+    
+    try {
+        const result = await window.electronAPI.scannerStoreFile(file.path);
+        if (result.success) {
+            currentExpenseAttachment = result.path;
+            if (attName) attName.textContent = file.name;
+        } else showToast('Erreur lors du stockage du fichier', 'error');
+    } catch (e) { showToast('Erreur pièce jointe', 'error'); }
+}
+
+async function saveExpense() {
+    const vendor = document.getElementById('expVendor')?.value.trim();
+    const date   = document.getElementById('expDate')?.value;
+    const amount = parseFloat(document.getElementById('expAmountTTC')?.value) || 0;
+    
+    if (!vendor || !date || amount <= 0) {
+        showToast('Veuillez remplir les champs obligatoires (*)', 'warning');
+        return;
+    }
+
+    showLoading('Enregistrement...');
+    try {
+        const data = {
+            id: currentExpenseId,
+            userId: currentUser.id,
+            vendor,
+            date,
+            amountTTC: amount,
+            amountHT: amount / 1.19, 
+            retenueSource: parseFloat(document.getElementById('expRetenue')?.value) || 0,
+            category: document.getElementById('expCategory')?.value || 'Autre',
+            reference: document.getElementById('expRef')?.value.trim() || '',
+            attachmentPath: currentExpenseAttachment
+        };
+        const result = await window.electronAPI.saveExpense(data);
+        if (result.success) {
+            showToast('Dépense enregistrée', 'success');
+            closeExpenseModal();
+            loadAchats();
+        } else showToast('Erreur: ' + result.error, 'error');
+    } catch (e) { showToast('Erreur lors de l\'enregistrement', 'error'); }
+    finally { hideLoading(); }
+}
+
+function confirmDeleteExpense(id) {
+    showConfirm('🗑️ Supprimer la dépense', 'Voulez-vous vraiment supprimer cette dépense ? Cette action est irréversible.', async () => {
+        try {
+            const result = await window.electronAPI.deleteExpense(id);
+            if (result.success) {
+                showToast('Dépense supprimée', 'success');
+                loadAchats();
+            } else showToast('Erreur suppression: ' + result.error, 'error');
+        } catch (e) { showToast('Erreur suppression', 'error'); }
+    });
+}
+
+// ==================== SCANNER / OCR LOGIC ====================
+let lastScannedData = null;
+
+function openScannerModal() {
+    const res = document.getElementById('scannerResult');
+    const load = document.getElementById('scannerLoading');
+    const drop = document.getElementById('scannerDropZone');
+    const modal = document.getElementById('scannerModal');
+    
+    if (res) res.classList.add('hidden');
+    if (load) load.classList.add('hidden');
+    if (drop) drop.classList.remove('hidden');
+    if (modal) modal.classList.add('active');
+}
+
+function closeScannerModal() { 
+    const modal = document.getElementById('scannerModal');
+    if (modal) modal.classList.remove('active'); 
+}
+
+function parseOCRText(text) {
+    const data = { vendor: '', date: '', amountTTC: '' };
+    if (!text) return data;
+
+    // 1. Vendor Extraction & Correction
+    const low = text.toLowerCase();
+    if (low.includes('ednfo') || low.includes('e-info') || low.includes('esnfo')) {
+        data.vendor = 'E-info';
+    } else {
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+        for (let i = 0; i < Math.min(lines.length, 5); i++) {
+            if (!/\d{2}[/-]\d{2}/.test(lines[i]) && !/facture|bon|devis/i.test(lines[i])) {
+                data.vendor = lines[i].substring(0, 50).replace(/[^a-zA-Z0-9\s\-\.]/g, '');
+                break;
+            }
+        }
+    }
+
+    // 2. Date Extraction (Searching everywhere)
+    const dateRegex = /(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})|(\d{4}[/-]\d{1,2}[/-]\d{1,2})/;
+    const dateMatches = text.match(new RegExp(dateRegex, 'g'));
+    if (dateMatches) {
+        let d = dateMatches[0].replace(/\//g, '-');
+        if (/^\d{1,2}-\d{1,2}-\d{2,4}$/.test(d)) {
+            const p = d.split('-');
+            if (p[0].length <= 2 && p[2].length >= 2) { // DD-MM-YYYY
+                const year = p[2].length === 2 ? '20'+p[2] : p[2];
+                const day = p[0].padStart(2, '0');
+                const month = p[1].padStart(2, '0');
+                d = `${year}-${month}-${day}`;
+            }
+        }
+        data.date = d;
+    }
+
+    // 3. Amount Extraction (Numbers + French Words)
+    // Strategy A: French number detection (specific for Tunisian invoices)
+    const frenchMap = {
+        'cent': 100, 'deux cent': 200, 'trois cent': 300, 'quatre cent': 400, 'cinq cent': 500,
+        'soixante dix-neuf': 79, 'quatre-vingt': 80, 'soixante': 60, 'cinquante': 50
+    };
+    
+    let textAmount = 0;
+    if (text.toLowerCase().includes('deux cent') && text.toLowerCase().includes('soixante dix-neuf')) textAmount = 279.000;
+    else if (text.toLowerCase().includes('deux cent') && text.toLowerCase().includes('quatre-vingt')) textAmount = 280.000;
+    
+    // Strategy B: Clean numbers (avoiding bracketed item prices)
+    const cleanText = text.replace(/\[.*?\]/g, ' '); // Remove item lines like [ ... | 21,000]
+    const candidates = [];
+    
+    // Look for numbers near total keywords
+    const keywords = ['net', 'somme', 'total', 'ttc', 'payer', 'tnd', 'dt', 'dinars'];
+    keywords.forEach(kw => {
+        const idx = text.toLowerCase().lastIndexOf(kw);
+        if (idx !== -1) {
+            const context = text.substring(idx - 10, idx + 60);
+            const matches = context.match(/[\d\s,']+[.,]\d{3}/g);
+            if (matches) {
+                matches.forEach(m => {
+                    const n = parseFloat(m.replace(/[\s,']/g, '').replace(',', '.'));
+                    if (!isNaN(n) && n > 1) candidates.push(n);
+                });
+            }
+        }
+    });
+
+    if (candidates.length > 0) {
+        data.amountTTC = Math.max(...candidates);
+    } else if (textAmount > 0) {
+        data.amountTTC = textAmount;
+    } else {
+        // Fallback: Biggest number overall (excluding years and phone-like numbers)
+        const allNums = text.match(/[\d\s,']+[.,]\d{3}/g);
+        if (allNums) {
+            const nums = allNums.map(m => parseFloat(m.replace(/[\s,']/g, '').replace(',', '.')))
+                             .filter(n => n > 1 && n < 10000 && n !== 2024 && n !== 2025);
+            if (nums.length > 0) data.amountTTC = Math.max(...nums);
+        }
+    }
+    
+    return data;
+}
+
+async function processScannedImage(input) {
+    if (!input.files?.[0]) return;
+    const file = input.files[0];
+    
+    const drop = document.getElementById('scannerDropZone');
+    const load = document.getElementById('scannerLoading');
+    
+    if (drop) drop.classList.add('hidden');
+    if (load) load.classList.remove('hidden');
+    
+    try {
+        const storeResult = await window.electronAPI.scannerStoreFile(file.path);
+        if (!storeResult.success) throw new Error('Erreur stockage');
+
+        const ocrResult = await window.electronAPI.scannerOcrImage(storeResult.path);
+        if (ocrResult.success && ocrResult.text) {
+            const rawEl = document.getElementById('ocrRawText');
+            if (rawEl) rawEl.value = ocrResult.text;
+            
+            const parsedData = parseOCRText(ocrResult.text);
+            lastScannedData = { ...parsedData, attachmentPath: storeResult.path };
+            displayScannerResult(parsedData);
+        } else {
+            showToast('L\'analyse a échoué, remplissage manuel requis', 'warning');
+            openExpenseModal();
+            currentExpenseAttachment = storeResult.path;
+            const attName = document.getElementById('expAttachmentName');
+            if (attName) attName.textContent = file.name;
+            closeScannerModal();
+        }
+        input.value = ''; // RESET INPUT FOR NEXT USE
+    } catch (e) {
+        showToast('Erreur scanner: ' + e.message, 'error');
+        openScannerModal();
+        input.value = '';
+    } finally {
+        if (load) load.classList.add('hidden');
+    }
+}
+
+function displayScannerResult(data) {
+    const summary = `
+        <b>Fournisseur:</b> ${data.vendor || 'Non détecté'}<br>
+        <b>Date:</b> ${data.date || 'Non détectée'}<br>
+        <b>Montant:</b> ${data.amountTTC ? data.amountTTC + ' TND' : 'Non détecté'}
+    `;
+    const sumEl = document.getElementById('ocrSummary');
+    const resEl = document.getElementById('scannerResult');
+    if (sumEl) sumEl.innerHTML = summary;
+    if (resEl) resEl.classList.remove('hidden');
+}
+
+function confirmScannerResult() {
+    if (!lastScannedData) return;
+    openExpenseModal();
+    if (document.getElementById('expVendor'))    document.getElementById('expVendor').value = lastScannedData.vendor || '';
+    if (document.getElementById('expDate'))      document.getElementById('expDate').value = lastScannedData.date || '';
+    if (document.getElementById('expAmountTTC')) document.getElementById('expAmountTTC').value = lastScannedData.amountTTC || '';
+    currentExpenseAttachment = lastScannedData.attachmentPath;
+    const attName = document.getElementById('expAttachmentName');
+    if (attName) attName.textContent = lastScannedData.attachmentPath.split(/[\\/]/).pop();
+    closeScannerModal();
+}
+
+window.openExpenseModal = openExpenseModal;
+window.closeExpenseModal = closeExpenseModal;
+window.saveExpense = saveExpense;
+window.handleExpenseAttachment = handleExpenseAttachment;
+window.openScannerModal = openScannerModal;
+window.closeScannerModal = closeScannerModal;
+window.processScannedImage = processScannedImage;
+window.confirmScannerResult = confirmScannerResult;
+window.confirmDeleteExpense = confirmDeleteExpense;

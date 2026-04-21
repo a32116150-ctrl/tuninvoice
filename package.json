@@ -1,6 +1,6 @@
 {
   "name": "tuniinvoice-pro",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "description": "Tunisian Invoice Generator - Desktop Edition",
   "main": "src/main.js",
   "scripts": {
@@ -12,11 +12,15 @@
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
-    "archiver": "^6.0.1",
+    "archiver": "^6.0.2",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.4.3",
     "electron-updater": "^6.1.7",
+    "extract-zip": "^2.0.1",
     "node-cron": "^3.0.3",
+    "nodemailer": "^8.0.5",
+    "pdf-parse": "^2.4.5",
+    "tesseract.js": "^7.0.0",
     "uuid": "^9.0.1",
     "xlsx": "^0.18.5"
   },
@@ -33,7 +37,7 @@
         "repo": "tuninvoice"
       }
     ],
-    "productName": "TuniInvoice Pro",
+    "productName": "Factarlou",
     "directories": {
       "output": "dist"
     },
@@ -43,24 +47,37 @@
       "node_modules/**/*"
     ],
     "mac": {
+      "icon": "assets/iconblack2.png",
       "category": "public.app-category.finance",
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "nsis": {
       "oneClick": false,

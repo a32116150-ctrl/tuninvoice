@@ -6,7 +6,7 @@ class ExcelExporter {
 
         // Info sheet
         const infoData = [
-            ['TuniInvoice Pro - Export'],
+            ['Factarlou - Export'],
             [],
             ['Type', document.type.toUpperCase()],
             ['Numéro', document.number],

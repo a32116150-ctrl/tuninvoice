@@ -23,7 +23,7 @@ class BackupScheduler {
             frequency: 'daily',
             time: '02:00',
             keepCount: 10,
-            backupPath: path.join(app.getPath('documents'), 'TuniInvoice Backups')
+            backupPath: path.join(app.getPath('documents'), 'Factarlou Backups')
         };
     }
 
