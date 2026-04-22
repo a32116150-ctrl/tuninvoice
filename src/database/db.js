@@ -14,6 +14,7 @@ class AppDatabase {
         this.db.pragma('foreign_keys = ON');
         this.initTables();
         this.runMigrations();
+        this.initIndexes();
     }
 
     runMigrations() {
@@ -113,10 +114,7 @@ class AppDatabase {
         this.db.exec(`CREATE TABLE IF NOT EXISTS document_themes (user_id TEXT PRIMARY KEY, font_family TEXT DEFAULT "'Segoe UI', sans-serif", font_size TEXT DEFAULT '14px', title_facture_text TEXT DEFAULT 'FACTURE', title_facture_color TEXT DEFAULT '#1e3a8a', title_devis_text TEXT DEFAULT 'DEVIS', title_devis_color TEXT DEFAULT '#92400e', title_bon_text TEXT DEFAULT 'BON DE COMMANDE', title_bon_color TEXT DEFAULT '#065f46')`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, master_key_hash TEXT, company TEXT, mf TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, date TEXT NOT NULL, due_date TEXT, expiry_date TEXT, currency TEXT DEFAULT 'TND', payment_mode TEXT, payment_status TEXT DEFAULT 'unpaid', paid_amount REAL DEFAULT 0, paid_date TEXT, company_name TEXT, company_mf TEXT, company_address TEXT, company_phone TEXT, company_email TEXT, company_rc TEXT, client_id TEXT, client_name TEXT NOT NULL, client_mf TEXT, client_address TEXT, client_phone TEXT, client_email TEXT, items_json TEXT NOT NULL DEFAULT '[]', apply_timbre INTEGER DEFAULT 0, timbre_amount REAL DEFAULT 0, rounding_adjustment REAL DEFAULT 0, discount_percent REAL DEFAULT 0, discount_amount REAL DEFAULT 0, total_ht REAL NOT NULL DEFAULT 0, total_ttc REAL NOT NULL DEFAULT 0, logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_docs_user_type ON documents(user_id, type)`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_docs_client ON documents(user_id, client_name)`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_docs_date ON documents(date)`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_docs_status ON documents(payment_status)`);
+        
         this.db.exec(`CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, mf TEXT, address TEXT, phone TEXT, email TEXT, notes TEXT, tags TEXT, credit_limit REAL DEFAULT 0, category TEXT DEFAULT 'standard', rib TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS companies (user_id TEXT PRIMARY KEY, name TEXT, mf TEXT, address TEXT, phone TEXT, email TEXT, rc TEXT, website TEXT, bank TEXT, rib TEXT, logo_image TEXT, stamp_image TEXT, signature_image TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS doc_counters (user_id TEXT NOT NULL, type TEXT NOT NULL, year INTEGER NOT NULL, last_number INTEGER DEFAULT 0, PRIMARY KEY (user_id, type, year))`);
@@ -129,13 +127,12 @@ class AppDatabase {
         try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN smtp_secure INTEGER DEFAULT 0`); } catch(e){}
         this.db.exec(`CREATE TABLE IF NOT EXISTS contracts (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, title TEXT, employer_name TEXT, employer_mf TEXT, employer_address TEXT, employer_rep TEXT, employer_rep_role TEXT, employee_name TEXT, employee_cin TEXT, employee_address TEXT, employee_role TEXT, employee_department TEXT, start_date TEXT, end_date TEXT, salary REAL, salary_type TEXT DEFAULT 'mensuel', work_hours REAL DEFAULT 40, work_location TEXT, trial_period INTEGER DEFAULT 0, trial_duration TEXT, notice_period TEXT, extra_clauses TEXT, status TEXT DEFAULT 'brouillon', notes TEXT, signed_at TEXT, pdf_path TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, document_id TEXT NOT NULL, amount REAL NOT NULL, method TEXT, reference TEXT, date TEXT NOT NULL, notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_payments_doc ON payments(document_id)`);
+        
         this.db.exec(`CREATE TABLE IF NOT EXISTS activity_log (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, action TEXT NOT NULL, entity_type TEXT, entity_id TEXT, entity_label TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT, content TEXT, color TEXT DEFAULT '#fef9c3', pinned INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT, due_date TEXT NOT NULL, due_time TEXT DEFAULT '09:00', entity_type TEXT, entity_id TEXT, done INTEGER DEFAULT 0, notified INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS retenues (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, number TEXT NOT NULL, year INTEGER NOT NULL, month INTEGER NOT NULL, date TEXT NOT NULL, retenuer_name TEXT NOT NULL, retenuer_mf TEXT, retenuer_address TEXT, retenuer_rc TEXT, retenuer_rep TEXT, retenuer_code_tva TEXT, retenuer_code_cat TEXT, retenuer_n_etab TEXT, beneficiaire_name TEXT NOT NULL, beneficiaire_mf TEXT, beneficiaire_address TEXT, beneficiaire_rib TEXT, beneficiaire_cin TEXT, beneficiaire_code_tva TEXT, beneficiaire_code_cat TEXT, beneficiaire_n_etab TEXT, facture_id TEXT, facture_number TEXT, facture_date TEXT, montant_brut REAL NOT NULL, taux_retenue REAL NOT NULL DEFAULT 1.5, montant_retenue REAL NOT NULL, nature_revenu TEXT DEFAULT 'Honoraires et commissions', base_legale TEXT DEFAULT "Art. 52 du Code de l'IRPP et de l'IS", logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, status TEXT DEFAULT 'emis', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_retenues_user ON retenues(user_id)`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_retenues_facture ON retenues(facture_id)`);
+        
         this.db.exec(`CREATE TABLE IF NOT EXISTS expenses (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -155,12 +152,24 @@ class AppDatabase {
             notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
-        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id, date)`);
+        
         this.db.exec(`CREATE TABLE IF NOT EXISTS service_categories (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, color TEXT DEFAULT '#3b82f6', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS document_tags (document_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (document_id, tag))`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS employees (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, cin TEXT, cnss TEXT, role TEXT, department TEXT, hire_date TEXT, base_salary REAL DEFAULT 0, transport_allowance REAL DEFAULT 0, other_allowances REAL DEFAULT 0, active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS payslips (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, employee_id TEXT NOT NULL, period_month INTEGER NOT NULL, period_year INTEGER NOT NULL, date TEXT NOT NULL, base_salary REAL DEFAULT 0, transport_allowance REAL DEFAULT 0, other_allowances REAL DEFAULT 0, gross_salary REAL DEFAULT 0, cnss_deduction REAL DEFAULT 0, irpp_deduction REAL DEFAULT 0, net_salary REAL DEFAULT 0, status TEXT DEFAULT 'unpaid', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (employee_id) REFERENCES employees(id))`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS recurring_invoices (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, template_id TEXT NOT NULL, frequency TEXT NOT NULL, last_run TEXT, next_run TEXT NOT NULL, active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (template_id) REFERENCES documents(id))`);
+    }
+
+    initIndexes() {
+        const tryExec = (sql) => { try { this.db.exec(sql); } catch (e) {} };
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_docs_user_type ON documents(user_id, type)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_docs_client ON documents(user_id, client_name)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_docs_date ON documents(date)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_docs_status ON documents(payment_status)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_payments_doc ON payments(document_id)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_retenues_user ON retenues(user_id)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_retenues_facture ON retenues(facture_id)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id, date)`);
     }
 
     getDatabasePath() { return this.dbPath; }
