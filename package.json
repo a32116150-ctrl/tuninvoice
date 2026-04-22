@@ -1,6 +1,6 @@
 {
   "name": "tuniinvoice-pro",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "Tunisian Invoice Generator - Desktop Edition",
   "main": "src/main.js",
   "scripts": {
