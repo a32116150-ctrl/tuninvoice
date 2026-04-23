@@ -153,6 +153,10 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     generateRelanceLetter:  (params) => invoke('tools:relanceLetter', params),
     generateFiscalSummary:  (params) => invoke('tools:fiscalSummary', params),
 
+    // ── TEJ EXPORT ───────────────────────────────────────────────────
+    getTEJData: (params) => invoke('export:tej:getData', params),
+    exportTEJ: (params) => invoke('export:tej:generate', params),
+
     // ── FILE SYSTEM ──────────────────────────────────────────────────
     openFolder:   (path) => invoke('fs:openFolder', path),
     selectFolder: ()     => invoke('fs:selectFolder'),

@@ -125,6 +125,13 @@
             <div class="nav-item" onclick="navigateTo('hr')"><span class="nav-icon">🧑‍💼</span> Ressources Humaines</div>
             <div class="nav-item" onclick="navigateTo('achat')"><span class="nav-icon">🛒</span> Achats &amp; Dépenses</div>
             <div class="nav-item" onclick="navigateTo('retenues')"><span class="nav-icon">🧾</span> Retenue à la Source</div>
+            <div class="nav-item" id="nav-export-tej" onclick="navigateTo('export-tej')">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    </svg>
+                </span> TEJ Export
+            </div>
             <div class="nav-item" onclick="navigateTo('outils')"><span class="nav-icon">🧰</span> Outils</div>
             <div class="nav-section-label">Système</div>
             <div class="nav-item" onclick="navigateTo('settings')"><span class="nav-icon">⚙️</span> Paramètres</div>
@@ -511,7 +518,36 @@
                 </div>
             </div>
 
-            <!-- Card 2: Business Info -->
+            <!-- Card 2: Display Options (Logo, Stamp, Signature, etc.) -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="form-section">
+                    <div class="section-title">✅ Éléments à afficher</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px;">
+                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
+                            <input type="checkbox" id="compShowLogo" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                            <span>Logo</span>
+                        </label>
+                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
+                            <input type="checkbox" id="compShowStamp" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                            <span>Cachet</span>
+                        </label>
+                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
+                            <input type="checkbox" id="compShowSignature" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                            <span>Signature</span>
+                        </label>
+                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
+                            <input type="checkbox" id="compShowQR" style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                            <span>QR Code</span>
+                        </label>
+                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
+                            <input type="checkbox" id="compShowAccent" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                            <span>Barre d'accent</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Business Info -->
             <div class="card">
                 <div class="form-section">
                     <div class="section-title">🏢 Informations Générales</div>
@@ -596,6 +632,31 @@
                     </div>
                 </div>
                 <div style="padding:0"><div id="retenuesTable" class="table-container"></div></div>
+            </div>
+        </div>
+
+        <!-- ══════════ TEJ EXPORT ══════════ -->
+        <div id="page-export-tej" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>TEJ Export (XML)</h1>
+                    <p>Exportez vos données pour le portail TEJ (Retenues &amp; Factures)</p>
+                </div>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px;">
+                <div class="card export-tej-card" onclick="openTEJExportModal('RS')" style="text-align:center; padding: 40px; cursor:pointer; transition: all 0.2s ease;">
+                    <div style="font-size: 3.5rem; margin-bottom: 20px;">🧾</div>
+                    <h2 style="font-size: 1.5rem; margin-bottom: 12px;">Export XML Retenue (RS)</h2>
+                    <p style="color:var(--text-secondary); margin-bottom: 24px;">Générez le fichier XML pour les déclarations de Retenue à la Source (Fichier DGF).</p>
+                    <button class="btn btn-primary" style="width:100%; justify-content:center">Générer RS</button>
+                </div>
+                <div class="card export-tej-card" onclick="openTEJExportModal('TEIF')" style="text-align:center; padding: 40px; cursor:pointer; transition: all 0.2s ease;">
+                    <div style="font-size: 3.5rem; margin-bottom: 20px;">📄</div>
+                    <h2 style="font-size: 1.5rem; margin-bottom: 12px;">Export XML Factures (TEIF)</h2>
+                    <p style="color:var(--text-secondary); margin-bottom: 24px;">Générez le fichier XML pour la liste des factures émises (Portail Finance).</p>
+                    <button class="btn btn-primary" style="width:100%; justify-content:center">Générer TEIF</button>
+                </div>
             </div>
         </div>
 
@@ -859,36 +920,198 @@
             </div>
         </div>
 
+        <!-- TEJ EXPORT MODAL -->
+        <div id="tejExportModal" class="modal-overlay">
+            <div class="modal" style="max-width:400px;width:95%">
+                <div class="modal-header">
+                    <h3 id="tejExportModalTitle">Export XML</h3>
+                    <button class="modal-close" onclick="closeTEJExportModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="tejExportType">
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label>Année *</label>
+                        <input type="number" id="tejYear" value="2026">
+                    </div>
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label>Mois *</label>
+                        <select id="tejMonth">
+                            <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+                            <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+                            <option value="7">Juillet</option><option value="8">Août</option><option value="9">Septembre</option>
+                            <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label>Code Acte *</label>
+                        <select id="tejCodeActe">
+                            <option value="0">0: Initial</option>
+                            <option value="1">1: Rectificative</option>
+                        </select>
+                    </div>
+
+                    <div id="tejDocumentSelection" style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <label style="font-weight:600">Sélectionnez les documents *</label>
+                            <button class="btn btn-small btn-secondary" onclick="toggleAllTEJSelection()">Tout cocher</button>
+                        </div>
+                        <div id="tejDocList" style="max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; background:#f9fafb; padding:5px;">
+                            <p style="text-align:center; color:var(--text-secondary); padding:20px; font-size:0.85rem">Choisissez une période pour charger les documents...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeTEJExportModal()">Annuler</button>
+                    <button class="btn btn-primary" onclick="processTEJExport()">🚀 Exporter XML</button>
+                </div>
+            </div>
+        </div>
+
         <!-- ══════════ OUTILS ══════════ -->
         <div id="page-outils" class="page">
             <div class="page-header">
                 <div class="page-header-left"><h1>Outils Fiscaux et Juridiques</h1><p>Assistants de gestion, calculatrices et génération de bilans</p></div>
             </div>
             <div class="card">
-                <div class="form-section">
-                    <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:16px">
-                        <button class="btn btn-primary" onclick="openFiscalCalculator()">🧮 Calculatrice Fiscale</button>
-                        <button class="btn btn-secondary" onclick="openRelanceGenerator()">📨 Lettre de Relance</button>
-                        <button class="btn btn-secondary" onclick="openFiscalSummary()">📊 Bilan Fiscal</button>
-                    </div>
-                    <div id="relanceFactureSelect" style="display:none;margin-top:12px">
-                        <label>Sélectionner une facture impayée :</label>
-                        <select id="relanceDocSelect" style="width:100%;margin-top:5px"></select>
-                        <button class="btn btn-primary" style="margin-top:10px" onclick="generateRelancePDF()">Générer la lettre</button>
-                    </div>
-                    <div id="fiscalPeriodSelect" style="display:none;margin-top:12px">
-                        <label>Période :</label>
-                        <div style="display:flex;gap:10px;margin-top:5px">
-                            <select id="fiscalYearSelect" style="flex:1"></select>
-                            <select id="fiscalQuarterSelect" style="flex:1">
-                                <option value="">Année complète</option>
-                                <option value="1">T1 (Jan–Mar)</option>
-                                <option value="2">T2 (Avr–Jun)</option>
-                                <option value="3">T3 (Jul–Sep)</option>
-                                <option value="4">T4 (Oct–Dec)</option>
-                            </select>
+                <div class="card-body">
+                    <div class="tools-grid">
+                        <div class="tool-card" onclick="openFiscalCalculator()">
+                            <div class="tool-icon">🧮</div>
+                            <h3>Calculatrice Fiscale</h3>
+                            <p>Outils de calcul système</p>
                         </div>
-                        <button class="btn btn-primary" style="margin-top:10px" onclick="generateFiscalSummaryPDF()">Générer le bilan</button>
+                        <div class="tool-card" onclick="openRelanceGenerator()">
+                            <div class="tool-icon">📨</div>
+                            <h3>Lettre de Relance</h3>
+                            <p>Mise en demeure impayés</p>
+                        </div>
+                        <div class="tool-card" onclick="openFiscalSummary()">
+                            <div class="tool-icon">📊</div>
+                            <h3>Bilan Fiscal</h3>
+                            <p>Récapitulatif des recettes</p>
+                        </div>
+                        <div class="tool-card" onclick="openMFValidator()">
+                            <div class="tool-icon">🆔</div>
+                            <h3>Vérificateur MF</h3>
+                            <p>Validation Matricule Fiscal</p>
+                        </div>
+                        <div class="tool-card" onclick="openIRPPProjector()">
+                            <div class="tool-icon">📉</div>
+                            <h3>Simulateur IRPP</h3>
+                            <p>Calcul de l'impôt/revenu</p>
+                        </div>
+                        <div class="tool-card" onclick="openFiscalCalendar()">
+                            <div class="tool-icon">📅</div>
+                            <h3>Calendrier Fiscal</h3>
+                            <p>Échéances et déclarations</p>
+                        </div>
+                        <div class="tool-card" onclick="openPenaltyCalculator()">
+                            <div class="tool-icon">⚖️</div>
+                            <h3>Pénalités de Retard</h3>
+                            <p>Calcul des intérêts fiscaux</p>
+                        </div>
+                        <div class="tool-card" onclick="openTVASummary()">
+                            <div class="tool-icon">💰</div>
+                            <h3>TVA Déductible</h3>
+                            <p>Recapitulatif des achats</p>
+                        </div>
+                        <div class="tool-card" onclick="openPVGenerator()">
+                            <div class="tool-icon">📝</div>
+                            <h3>PV d'Assemblée</h3>
+                            <p>Modèles de procès-verbaux</p>
+                        </div>
+                        <div class="tool-card" onclick="openFinanceDirectory()">
+                            <div class="tool-icon">🏛️</div>
+                            <h3>Annuaire Recettes</h3>
+                            <p>Contacts services fiscaux</p>
+                        </div>
+                    </div>
+
+                    <!-- Hidden sections for tool interactions -->
+                    <div id="relanceFactureSelect" style="display:none;margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                        <div class="section-title">📨 Générer une lettre de relance</div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Sélectionner une facture impayée :</label>
+                                <select id="relanceDocSelect"></select>
+                            </div>
+                            <div class="form-group" style="display:flex;align-items:flex-end">
+                                <button class="btn btn-primary" onclick="generateRelancePDF()">📄 Générer le PDF</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="fiscalPeriodSelect" style="display:none;margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
+                        <div class="section-title">📊 Générer un bilan fiscal</div>
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label>Année :</label>
+                                <select id="fiscalYearSelect"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Période :</label>
+                                <select id="fiscalQuarterSelect">
+                                    <option value="">Année complète</option>
+                                    <option value="1">T1 (Jan–Mar)</option>
+                                    <option value="2">T2 (Avr–Jun)</option>
+                                    <option value="3">T3 (Jul–Sep)</option>
+                                    <option value="4">T4 (Oct–Dec)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="display:flex;align-items:flex-end">
+                                <button class="btn btn-primary" onclick="generateFiscalSummaryPDF()">📄 Générer le bilan</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADDITIONAL TOOL MODALS -->
+        <div id="mfValidatorModal" class="modal-overlay">
+            <div class="modal" style="max-width:440px">
+                <div class="modal-header"><h2>🆔 Vérificateur de Matricule Fiscal</h2><button class="modal-close" onclick="closeModal('mfValidatorModal')">✕</button></div>
+                <div class="modal-body">
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px">Vérifiez la validité d'un matricule fiscal tunisien (Format: XXXXXXX/X/X/XXX).</p>
+                    <div class="form-group">
+                        <label>Matricule Fiscal</label>
+                        <input type="text" id="mfToVerify" placeholder="1234567/A/M/000" oninput="validateMFInput(this.value)">
+                    </div>
+                    <div id="mfVerifyResult" style="margin-top:20px;padding:16px;border-radius:8px;display:none"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="irppModal" class="modal-overlay">
+            <div class="modal" style="max-width:480px">
+                <div class="modal-header"><h2>📉 Simulateur IRPP (Impôt sur le Revenu)</h2><button class="modal-close" onclick="closeModal('irppModal')">✕</button></div>
+                <div class="modal-body">
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label>Revenu Annuel Net Imposable (TND)</label>
+                        <input type="number" id="irppRevenu" placeholder="24000.000" oninput="calculateIRPPSimulation()">
+                    </div>
+                    <div id="irppResult" style="padding:16px;background:var(--gray-50);border-radius:8px;border:1px solid var(--border)">
+                        <div class="total-row"><span>Impôt Annuel estimé :</span><span id="irppTaxAmount" style="font-weight:800;color:var(--danger)">0.000 TND</span></div>
+                        <div class="total-row"><span>Taux effectif :</span><span id="irppRate">0%</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="calendarModal" class="modal-overlay">
+            <div class="modal" style="max-width:600px">
+                <div class="modal-header"><h2>📅 Calendrier Fiscal 2026</h2><button class="modal-close" onclick="closeModal('calendarModal')">✕</button></div>
+                <div class="modal-body">
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Échéance</th><th>Déclaration</th><th>Public concerné</th></tr></thead>
+                            <tbody>
+                                <tr><td><b>15 de chaque mois</b></td><td>Déclaration mensuelle</td><td>Personnes Physiques</td></tr>
+                                <tr><td><b>28 de chaque mois</b></td><td>Déclaration mensuelle</td><td>Personnes Morales</td></tr>
+                                <tr><td><b>25 Mars</b></td><td>Déclaration Employeur</td><td>Tous les employeurs</td></tr>
+                                <tr><td><b>25 Mai</b></td><td>Impôt sur le Revenu</td><td>Commerçants / Libéraux</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -963,14 +1186,6 @@
                             <div class="form-group"><label>Alignement de l'en-tête</label><select id="themeHeaderStyle" onchange="updateDocumentThemePreview()"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
                             <div class="form-group"><label>Style du tableau</label><select id="themeTableStyle" onchange="updateDocumentThemePreview()"><option value="bordered">Bordé</option><option value="striped">Rayé</option><option value="minimal">Minimal</option></select></div>
                             <div class="form-group"><label>Mise en page du pied</label><select id="themeFooterLayout" onchange="updateDocumentThemePreview()"><option value="simple">Simple</option><option value="two-columns">Deux colonnes</option><option value="with-bank">Avec coordonnées bancaires</option></select></div>
-                            <h4 style="font-size:0.85rem;font-weight:600;margin:16px 0 12px">✅ Éléments à afficher</h4>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                                <label class="checkbox-group"><input type="checkbox" id="themeShowLogo" checked onchange="updateDocumentThemePreview()"><span>Logo</span></label>
-                                <label class="checkbox-group"><input type="checkbox" id="themeShowStamp" onchange="updateDocumentThemePreview()"><span>Cachet</span></label>
-                                <label class="checkbox-group"><input type="checkbox" id="themeShowSignature" checked onchange="updateDocumentThemePreview()"><span>Signature</span></label>
-                                <label class="checkbox-group"><input type="checkbox" id="themeShowQrCode" onchange="updateDocumentThemePreview()"><span>QR Code</span></label>
-                                <label class="checkbox-group" style="grid-column:1/-1"><input type="checkbox" id="themeAccentLine" checked onchange="updateDocumentThemePreview()"><span>Barre d'accent</span></label>
-                            </div>
                         </div>
                     </div>
                     <div style="margin-top:24px"><h4 style="font-size:0.875rem;font-weight:600;margin-bottom:12px">👁️ Aperçu en direct</h4><div id="docThemePreview"></div></div>
@@ -1315,3 +1530,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+        <!-- NEW TOOLS MODALS -->
+        <div id="penaltyModal" class="modal-overlay">
+            <div class="modal" style="max-width:480px">
+                <div class="modal-header"><h2>⚖️ Calcul des Pénalités de Retard</h2><button class="modal-close" onclick="closeModal('penaltyModal')">✕</button></div>
+                <div class="modal-body">
+                    <div class="form-group" style="margin-bottom:12px"><label>Montant en principal (TND)</label><input type="number" id="penaltyBase" step="0.001" oninput="calculatePenalties()"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Nombre de mois de retard</label><input type="number" id="penaltyMonths" min="0" oninput="calculatePenalties()"></div>
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label>Type de déclaration</label>
+                        <select id="penaltyType" onchange="calculatePenalties()">
+                            <option value="0.0075">Spontanée (0.75% / mois)</option>
+                            <option value="0.0125">Rectificative / Taxation d'office (1.25% / mois)</option>
+                        </select>
+                    </div>
+                    <div id="penaltyResult" style="padding:16px;background:var(--gray-50);border-radius:8px;border:1px solid var(--border)">
+                        <div class="total-row"><span>Pénalités de retard :</span><span id="penaltyAmount" style="font-weight:800;color:var(--danger)">0.000 TND</span></div>
+                        <div class="total-row" style="font-size:0.8rem;margin-top:4px"><span>Total à payer :</span><span id="penaltyTotal" style="font-weight:600">0.000 TND</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tvaSummaryModal" class="modal-overlay">
+            <div class="modal" style="max-width:550px">
+                <div class="modal-header"><h2>💰 Recapitulatif TVA Déductible</h2><button class="modal-close" onclick="closeModal('tvaSummaryModal')">✕</button></div>
+                <div class="modal-body">
+                    <div class="grid-2" style="margin-bottom:20px">
+                        <div class="form-group"><label>Année</label><input type="number" id="tvaSumYear" value="2026"></div>
+                        <div class="form-group">
+                            <label>Mois</label>
+                            <select id="tvaSumMonth">
+                                <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+                                <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+                                <option value="7">Juillet</option><option value="8">Août</option><option value="9">Septembre</option>
+                                <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%;margin-bottom:20px" onclick="calculateTVASummary()">📊 Calculer la TVA déductible</button>
+                    <div id="tvaSumResult" class="table-container" style="display:none">
+                        <table>
+                            <thead><tr><th>Taux TVA</th><th>Base HT</th><th>Montant TVA</th></tr></thead>
+                            <tbody id="tvaSumTableBody"></tbody>
+                            <tfoot><tr style="font-weight:800;background:var(--gray-50)"><td>TOTAL</td><td id="tvaSumTotalHT">0.000</td><td id="tvaSumTotalTVA" style="color:var(--success)">0.000</td></tr></tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pvGeneratorModal" class="modal-overlay">
+            <div class="modal" style="max-width:500px">
+                <div class="modal-header"><h2>📝 Générateur de PV d'Assemblée</h2><button class="modal-close" onclick="closeModal('pvGeneratorModal')">✕</button></div>
+                <div class="modal-body">
+                    <div class="form-group" style="margin-bottom:12px"><label>Date de l'assemblée</label><input type="date" id="pvDate"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Exercice concerné (Année)</label><input type="number" id="pvYear" value="2025"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Bénéfice/Perte net (TND)</label><input type="number" id="pvAmount" step="0.001"></div>
+                    <div class="form-group" style="margin-bottom:16px"><label>Décision d'affectation</label><input type="text" id="pvDecision" placeholder="Ex: Report à nouveau / Dividendes"></div>
+                    <button class="btn btn-success" style="width:100%" onclick="generatePVDocument()">📄 Générer le PV (PDF)</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="financeDirectoryModal" class="modal-overlay">
+            <div class="modal" style="max-width:650px">
+                <div class="modal-header"><h2>🏛️ Annuaire des Recettes des Finances</h2><button class="modal-close" onclick="closeModal('financeDirectoryModal')">✕</button></div>
+                <div class="modal-body">
+                    <div class="search-box" style="margin-bottom:16px"><input type="text" placeholder="Rechercher une recette (ex: Tunis, Sfax...)" style="width:100%" onkeyup="filterFinanceDirectory(this.value)"></div>
+                    <div class="table-container" style="max-height:400px;overflow-y:auto">
+                        <table id="financeTable">
+                            <thead><tr><th>Ville / Bureau</th><th>Contact</th></tr></thead>
+                            <tbody>
+                                <tr><td><b>Recette Tunis (Ville)</b></td><td>Tél: 71 340 000 - Av. de Paris</td></tr>
+                                <tr><td><b>Recette Sousse (Port)</b></td><td>Tél: 73 221 500 - Zone Portuaire</td></tr>
+                                <tr><td><b>Recette Sfax (Centre)</b></td><td>Tél: 74 225 100 - Av. Habib Bourguiba</td></tr>
+                                <tr><td><b>Recette Bizerte</b></td><td>Tél: 72 431 200 - Quai Tarak Ibn Zied</td></tr>
+                                <tr><td><b>Recette Nabeul</b></td><td>Tél: 72 285 400 - Av. Hedi Nouira</td></tr>
+                                <tr><td><b>Recette Ariana</b></td><td>Tél: 71 700 800 - Rue de l'Indépendance</td></tr>
+                                <tr><td><b>Recette Gabès</b></td><td>Tél: 75 270 300 - Av. Farhat Hached</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>

@@ -1047,13 +1047,21 @@ function generatePreviewHTML() {
     const typeLabel = getDocTypeLabel(currentDocType);
 
     const themedHTML = buildThemedInvoicePreview({
-        theme, typeLabel,
+        theme: {
+            ...theme,
+            showLogo: currentCompanySettings?.show_logo !== 0,
+            showStamp: currentCompanySettings?.show_stamp !== 0,
+            showSignature: currentCompanySettings?.show_signature !== 0,
+            showQrCode: currentCompanySettings?.show_qr !== 0,
+            accentLine: currentCompanySettings?.show_accent !== 0
+        }, 
+        typeLabel,
         companyName, companyMF, companyAddress, companyPhone, companyEmail, companyRC,
         clientName, clientMF, clientAddress, clientPhone, clientEmail,
         docNumber, docDate, docDueDate, currency, paymentMode, notes,
-        logoImage: theme.showLogo ? logoImage : null,
-        stampImage: theme.showStamp ? stampImage : null,
-        signatureImage: theme.showSignature ? signatureImage : null,
+        logoImage: (currentCompanySettings?.show_logo !== 0) ? logoImage : null,
+        stampImage: (currentCompanySettings?.show_stamp !== 0) ? stampImage : null,
+        signatureImage: (currentCompanySettings?.show_signature !== 0) ? signatureImage : null,
         items, totalHT: totalHTRaw, tva19, tva13, tva7,
         totalTTC: totalTTCRounded, timbreAmount, roundingAdjustment,
         formatAmount
@@ -1480,6 +1488,8 @@ async function exportClientsToExcel() {
 }
 
 // ==================== COMPANY ====================
+let currentCompanySettings = null;
+
 async function loadCompanyPage() {
     try {
         const c = await window.electronAPI.getCompany(currentUser.id)||{};
@@ -1487,6 +1497,14 @@ async function loadCompanyPage() {
         Object.entries(fields).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.value=val; });
         document.getElementById('companyProfileName').textContent = c.name||currentUser.company||'Votre Entreprise';
         document.getElementById('companyProfileMF').textContent   = (c.mf||currentUser.mf)?`Matricule Fiscal: ${c.mf||currentUser.mf}`:'Matricule Fiscal: —';
+        
+        // Display Toggles
+        const setToggle = (id, val) => { const el = document.getElementById(id); if(el) el.checked = (val !== 0); };
+        setToggle('compShowLogo',      c.show_logo);
+        setToggle('compShowStamp',     c.show_stamp);
+        setToggle('compShowSignature', c.show_signature);
+        setToggle('compShowQR',        c.show_qr);
+        setToggle('compShowAccent',    c.show_accent);
         const loadImg = (data,prevId,phId,boxId) => {
             const pv=document.getElementById(prevId), ph=document.getElementById(phId), bx=document.getElementById(boxId);
             if (data&&pv) { pv.src=data; pv.classList.remove('hidden'); if(ph)ph.classList.add('hidden'); if(bx)bx.classList.add('has-image'); }
@@ -1498,12 +1516,20 @@ async function loadCompanyPage() {
         if (c.logo_image)      logoImage      = c.logo_image;
         if (c.stamp_image)     stampImage     = c.stamp_image;
         if (c.signature_image) signatureImage = c.signature_image;
+        currentCompanySettings = c;
     } catch (e) { console.error('Error loading company:',e); }
 }
 
 async function saveCompanySettings() {
     const get = id => document.getElementById(id).value.trim();
-    const settings = { userId:currentUser.id, name:get('companyName'), mf:get('companyMF'), address:get('companyAddress'), phone:get('companyPhone'), email:get('companyEmail'), rc:get('companyRC'), website:get('companyWebsite'), bank:get('companyBank'), logoImage, stampImage, signatureImage };
+    const isChecked = id => document.getElementById(id).checked ? 1 : 0;
+    const settings = { 
+        userId:currentUser.id, name:get('companyName'), mf:get('companyMF'), address:get('companyAddress'), 
+        phone:get('companyPhone'), email:get('companyEmail'), rc:get('companyRC'), website:get('companyWebsite'), 
+        bank:get('companyBank'), logoImage, stampImage, signatureImage,
+        show_logo: isChecked('compShowLogo'), show_stamp: isChecked('compShowStamp'), 
+        show_signature: isChecked('compShowSignature'), show_qr: isChecked('compShowQR'), show_accent: isChecked('compShowAccent')
+    };
     try { await window.electronAPI.saveCompany(settings); showToast('Informations entreprise enregistrées','success'); await loadCompanyPage(); }
     catch { showToast("Erreur d'enregistrement",'error'); }
 }
@@ -1672,7 +1698,7 @@ function updateDocumentThemePreview() {
     const bFont     = document.getElementById('themeBodyFont')?.value       || 'sans-serif';
     const hStyle    = document.getElementById('themeHeaderStyle')?.value    || 'left';
     const tableStyle= document.getElementById('themeTableStyle')?.value     || 'bordered';
-    const accent    = document.getElementById('themeAccentLine')?.checked;
+    const accent    = currentCompanySettings?.show_accent !== 0;
 
     previewEl.innerHTML = `
         <div style="font-family:${bFont};color:${secondary};background:${bg};padding:20px;border:1px solid ${border};border-radius:6px;font-size:12px">
@@ -1715,11 +1741,11 @@ async function saveDocumentTheme() {
         headerStyle:  getVal('themeHeaderStyle'),
         tableStyle:   getVal('themeTableStyle'),
         footerLayout: getVal('themeFooterLayout'),
-        showLogo:      getChk('themeShowLogo'),
-        showStamp:     getChk('themeShowStamp'),
-        showSignature: getChk('themeShowSignature'),
-        showQrCode:    getChk('themeShowQrCode'),
-        accentLine:    getChk('themeAccentLine'),
+        showLogo:      currentCompanySettings?.show_logo !== 0,
+        showStamp:     currentCompanySettings?.show_stamp !== 0,
+        showSignature: currentCompanySettings?.show_signature !== 0,
+        showQrCode:    currentCompanySettings?.show_qr !== 0,
+        accentLine:    currentCompanySettings?.show_accent !== 0,
         borderRadius: '4px'
     };
     try {
@@ -3447,3 +3473,310 @@ window.addEventListener('resize', () => {
 
 
 
+// ==================== TEJ EXPORT ====================
+let tejAvailableDocs = [];
+
+function openTEJExportModal(type) {
+    document.getElementById('tejExportType').value = type;
+    document.getElementById('tejExportModalTitle').textContent = `Export XML ${type === 'RS' ? 'Retenue' : 'Factures'}`;
+    const now = new Date();
+    document.getElementById('tejYear').value = now.getFullYear();
+    document.getElementById('tejMonth').value = now.getMonth() + 1;
+    
+    // Add listeners for automatic reload
+    document.getElementById('tejYear').onchange = loadTEJDocuments;
+    document.getElementById('tejMonth').onchange = loadTEJDocuments;
+    
+    loadTEJDocuments();
+    document.getElementById('tejExportModal').classList.add('active');
+}
+
+async function loadTEJDocuments() {
+    const type = document.getElementById('tejExportType').value;
+    const year = parseInt(document.getElementById('tejYear').value);
+    const month = parseInt(document.getElementById('tejMonth').value);
+    const container = document.getElementById('tejDocList');
+    
+    container.innerHTML = '<p style="text-align:center; padding:10px; font-size:0.8rem">Chargement...</p>';
+    
+    try {
+        const data = await window.electronAPI.getTEJData({ type, month, year, userId: currentUser.id });
+        tejAvailableDocs = data || [];
+        
+        if (tejAvailableDocs.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color:var(--text-secondary); padding:20px; font-size:0.85rem">Aucun ${type === 'RS' ? 'certificat' : 'facture'} trouvé pour cette période.</p>`;
+            return;
+        }
+        
+        container.innerHTML = tejAvailableDocs.map(doc => `
+            <label style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #eee; cursor:pointer; font-size:0.85rem">
+                <input type="checkbox" class="tej-doc-checkbox" value="${doc.id}" checked style="width:16px; height:16px">
+                <div style="flex:1">
+                    <div style="font-weight:600">${doc.number || doc.id.slice(0,8)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-secondary)">${doc.client_name || doc.beneficiaire_name || 'Sans nom'} - ${doc.date}</div>
+                </div>
+                <div style="font-weight:700">${formatAmount(doc.total_ttc || doc.montant_retenue || 0)}</div>
+            </label>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = `<p style="text-align:center; color:var(--text-danger); padding:10px; font-size:0.8rem">Erreur: ${e.message}</p>`;
+    }
+}
+
+function toggleAllTEJSelection() {
+    const checkboxes = document.querySelectorAll('.tej-doc-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+}
+
+function closeTEJExportModal() {
+    document.getElementById('tejExportModal').classList.remove('active');
+}
+
+async function processTEJExport() {
+    const type = document.getElementById('tejExportType').value;
+    const year = parseInt(document.getElementById('tejYear').value);
+    const month = parseInt(document.getElementById('tejMonth').value);
+    const codeActe = parseInt(document.getElementById('tejCodeActe').value);
+    
+    const selectedIds = Array.from(document.querySelectorAll('.tej-doc-checkbox:checked')).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showToast('Veuillez sélectionner au moins un document à exporter', 'warning');
+        return;
+    }
+    
+    const selectedData = tejAvailableDocs.filter(d => selectedIds.includes(d.id));
+    
+    showLoading(`Génération du fichier XML ${type}...`);
+    try {
+        const company = await window.electronAPI.getCompany(currentUser.id);
+        if (!company || !company.mf) {
+            hideLoading();
+            showToast('Veuillez configurer votre Matricule Fiscal dans Mon Entreprise', 'error');
+            return;
+        }
+        
+        const result = await window.electronAPI.exportTEJ({ 
+            type, month, year, codeActe, company, data: selectedData 
+        });
+        
+        hideLoading();
+        if (result.success) {
+            showToast(`Export XML réussi : ${result.path}`, 'success');
+            closeTEJExportModal();
+        } else if (result.canceled) {
+            // User canceled
+        } else {
+            showToast(`Erreur export: ${result.error}`, 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast(`Erreur système: ${e.message}`, 'error');
+    }
+}
+
+// ==================== ADDITIONAL TOOLS ====================
+
+function openMFValidator() {
+    document.getElementById('mfValidatorModal').classList.add('active');
+    document.getElementById('mfToVerify').value = '';
+    document.getElementById('mfVerifyResult').style.display = 'none';
+}
+
+function validateMFInput(val) {
+    const resultEl = document.getElementById('mfVerifyResult');
+    if (!val) { resultEl.style.display = 'none'; return; }
+    
+    // Pattern: XXXXXXX/X/X/XXX
+    const mfPattern = /^[0-9]{7}\/[A-P]\/[A-P]\/[0-9]{3}$/;
+    const isValid = mfPattern.test(val.toUpperCase());
+    
+    resultEl.style.display = 'block';
+    if (isValid) {
+        resultEl.style.background = '#d1fae5';
+        resultEl.style.border = '1px solid #10b981';
+        resultEl.style.color = '#065f46';
+        resultEl.innerHTML = '✅ <b>Format Valide</b><br>Ce matricule respecte la structure réglementaire tunisienne.';
+    } else {
+        resultEl.style.background = '#fee2e2';
+        resultEl.style.border = '1px solid #ef4444';
+        resultEl.style.color = '#991b1b';
+        resultEl.innerHTML = '❌ <b>Format Invalide</b><br>Le format attendu est : 7 chiffres / 1 lettre / 1 lettre / 3 chiffres.<br><i>Exemple: 1234567/A/M/000</i>';
+    }
+}
+
+function openIRPPProjector() {
+    document.getElementById('irppModal').classList.add('active');
+    document.getElementById('irppRevenu').value = '';
+    calculateIRPPSimulation();
+}
+
+function calculateIRPPSimulation() {
+    const revenu = parseFloat(document.getElementById('irppRevenu').value) || 0;
+    let impôt = 0;
+    
+    // Tunisian IRPP Brackets 2024+
+    // 0 - 5000: 0%
+    // 5000 - 20000: 26%
+    // 20000 - 30000: 28%
+    // 30000 - 50000: 32%
+    // > 50000: 35%
+    
+    if (revenu <= 5000) {
+        impôt = 0;
+    } else if (revenu <= 20000) {
+        impôt = (revenu - 5000) * 0.26;
+    } else if (revenu <= 30000) {
+        impôt = (15000 * 0.26) + (revenu - 20000) * 0.28;
+    } else if (revenu <= 50000) {
+        impôt = (15000 * 0.26) + (10000 * 0.28) + (revenu - 30000) * 0.32;
+    } else {
+        impôt = (15000 * 0.26) + (10000 * 0.28) + (20000 * 0.32) + (revenu - 50000) * 0.35;
+    }
+    
+    document.getElementById('irppTaxAmount').textContent = formatAmount(impôt) + ' TND';
+    const rate = revenu > 0 ? ((impôt / revenu) * 100).toFixed(1) : 0;
+    document.getElementById('irppRate').textContent = rate + '%';
+}
+
+function openFiscalCalendar() {
+    document.getElementById('calendarModal').classList.add('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// ==================== EXTENDED TOOLS LOGIC ====================
+
+function openPenaltyCalculator() {
+    document.getElementById('penaltyModal').classList.add('active');
+    document.getElementById('penaltyBase').value = '';
+    document.getElementById('penaltyMonths').value = '';
+    calculatePenalties();
+}
+
+function calculatePenalties() {
+    const base = parseFloat(document.getElementById('penaltyBase').value) || 0;
+    const months = parseInt(document.getElementById('penaltyMonths').value) || 0;
+    const rate = parseFloat(document.getElementById('penaltyType').value);
+    
+    const penalty = base * rate * months;
+    const minPenalty = (months > 0) ? 5 : 0; // Simplified min penalty rule
+    const finalPenalty = Math.max(penalty, minPenalty);
+    
+    document.getElementById('penaltyAmount').textContent = formatAmount(finalPenalty) + ' TND';
+    document.getElementById('penaltyTotal').textContent = formatAmount(base + finalPenalty) + ' TND';
+}
+
+function openTVASummary() {
+    document.getElementById('tvaSummaryModal').classList.add('active');
+    document.getElementById('tvaSumResult').style.display = 'none';
+}
+
+async function calculateTVASummary() {
+    const year = parseInt(document.getElementById('tvaSumYear').value);
+    const month = parseInt(document.getElementById('tvaSumMonth').value);
+    
+    showLoading('Calcul de la TVA...');
+    try {
+        const expenses = await window.electronAPI.getExpenses(currentUser.id);
+        // Filter by period
+        const periodExpenses = expenses.filter(e => {
+            const d = new Date(e.date);
+            return d.getFullYear() === year && (d.getMonth() + 1) === month;
+        });
+        
+        const summary = {
+            7: { ht: 0, tva: 0 },
+            13: { ht: 0, tva: 0 },
+            19: { ht: 0, tva: 0 }
+        };
+        
+        let totalHT = 0;
+        let totalTVA = 0;
+        
+        periodExpenses.forEach(e => {
+            const rate = parseInt(e.tva_rate) || 0;
+            if (summary[rate]) {
+                summary[rate].ht += (e.amount_ht || 0);
+                summary[rate].tva += (e.amount_tva || 0);
+            } else {
+                // Handle custom rates if any
+                summary[rate] = { ht: (e.amount_ht || 0), tva: (e.amount_tva || 0) };
+            }
+            totalHT += (e.amount_ht || 0);
+            totalTVA += (e.amount_tva || 0);
+        });
+        
+        const tbody = document.getElementById('tvaSumTableBody');
+        tbody.innerHTML = '';
+        Object.keys(summary).sort((a,b)=>a-b).forEach(rate => {
+            if (summary[rate].ht > 0) {
+                tbody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(summary[rate].ht)}</td><td>${formatAmount(summary[rate].tva)}</td></tr>`;
+            }
+        });
+        
+        document.getElementById('tvaSumTotalHT').textContent = formatAmount(totalHT);
+        document.getElementById('tvaSumTotalTVA').textContent = formatAmount(totalTVA);
+        document.getElementById('tvaSumResult').style.display = 'block';
+        
+    } catch (e) { showToast('Erreur calcul TVA','error'); }
+    finally { hideLoading(); }
+}
+
+function openPVGenerator() {
+    document.getElementById('pvGeneratorModal').classList.add('active');
+    document.getElementById('pvDate').valueAsDate = new Date();
+}
+
+async function generatePVDocument() {
+    const date = document.getElementById('pvDate').value;
+    const year = document.getElementById('pvYear').value;
+    const amount = document.getElementById('pvAmount').value;
+    const decision = document.getElementById('pvDecision').value;
+    
+    if (!date || !amount) { showToast('Remplissez les champs obligatoires','warning'); return; }
+    
+    showLoading('Génération du PV...');
+    try {
+        const html = `
+            <div style="font-family:'Times New Roman',serif; padding:50px; line-height:1.6; color:#000;">
+                <h2 style="text-align:center; text-decoration:underline; text-transform:uppercase;">Procès-Verbal de l'Assemblée Générale Ordinaire</h2>
+                <div style="margin-top:40px;">
+                    <p><b>Société :</b> ${currentCompanySettings?.name || 'Ma Société'}</p>
+                    <p><b>Siège Social :</b> ${currentCompanySettings?.address || '—'}</p>
+                    <p><b>Matricule Fiscal :</b> ${currentCompanySettings?.mf || '—'}</p>
+                </div>
+                <p style="margin-top:30px;">
+                    L'an deux mille vingt-six, le ${new Date(date).toLocaleDateString('fr-FR')}, s'est réunie l'Assemblée Générale Ordinaire des associés au siège social.
+                </p>
+                <p><b>Ordre du jour :</b> Approbation des comptes de l'exercice clos au 31/12/${year}.</p>
+                <p>L'assemblée, après lecture du rapport de gestion, constate un résultat net de <b>${formatAmount(amount)} TND</b>.</p>
+                <p><b>Résolution :</b> L'assemblée décide d'affecter le résultat comme suit : ${decision || 'Report à nouveau'}.</p>
+                <div style="margin-top:60px; display:flex; justify-content:space-between;">
+                    <div>Le Gérant</div>
+                    <div>Signature & Cachet</div>
+                </div>
+            </div>
+        `;
+        
+        const result = await window.electronAPI.savePDF({ html, filename: `PV_Assemblee_${year}.pdf` });
+        if (result.success) showToast('PV généré avec succès','success');
+    } catch (e) { showToast('Erreur génération PV','error'); }
+    finally { hideLoading(); closeModal('pvGeneratorModal'); }
+}
+
+function openFinanceDirectory() {
+    document.getElementById('financeDirectoryModal').classList.add('active');
+}
+
+function filterFinanceDirectory(q) {
+    const query = q.toLowerCase();
+    const rows = document.querySelectorAll('#financeTable tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}

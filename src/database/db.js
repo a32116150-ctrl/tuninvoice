@@ -26,6 +26,11 @@ class AppDatabase {
         tryAlter(`ALTER TABLE companies ADD COLUMN logo_image TEXT`);
         tryAlter(`ALTER TABLE companies ADD COLUMN stamp_image TEXT`);
         tryAlter(`ALTER TABLE companies ADD COLUMN signature_image TEXT`);
+        tryAlter(`ALTER TABLE companies ADD COLUMN show_logo INTEGER DEFAULT 1`);
+        tryAlter(`ALTER TABLE companies ADD COLUMN show_stamp INTEGER DEFAULT 1`);
+        tryAlter(`ALTER TABLE companies ADD COLUMN show_signature INTEGER DEFAULT 1`);
+        tryAlter(`ALTER TABLE companies ADD COLUMN show_qr INTEGER DEFAULT 0`);
+        tryAlter(`ALTER TABLE companies ADD COLUMN show_accent INTEGER DEFAULT 1`);
         tryAlter(`ALTER TABLE user_settings ADD COLUMN decimal_places INTEGER DEFAULT 3`);
         tryAlter(`ALTER TABLE user_settings ADD COLUMN rounding_method TEXT DEFAULT 'half_up'`);
         tryAlter(`ALTER TABLE user_settings ADD COLUMN document_theme TEXT DEFAULT NULL`);
@@ -408,6 +413,32 @@ class AppDatabase {
         return { year: y, quarter, totalHT, totalTVC: totalTVA, totalTVA, totalTTC, totalTimbre, totalRetenuesSubi, tvaByRate, monthly, docCount: factures.length };
     }
 
+    // ==================== TEJ EXPORT DATA ====================
+    getTEJData(params) {
+        const { type, month, year, userId } = params;
+        const monthStr = String(month).padStart(2, '0');
+        const periodPattern = `${year}-${monthStr}-%`;
+        
+        if (type === 'RS') {
+            // RS: Queries retenues table (Issued Certificates)
+            return this.db.prepare(`
+                SELECT * FROM retenues 
+                WHERE user_id = ? AND year = ? AND month = ?
+                ORDER BY date ASC
+            `).all(userId, year, month);
+        } else if (type === 'TEIF') {
+            // TEIF: Queries documents where type = 'Facture' for that period.
+            return this.db.prepare(`
+                SELECT d.*, c.mf as client_mf, c.name as client_name, c.address as client_address
+                FROM documents d
+                LEFT JOIN clients c ON d.client_id = c.id
+                WHERE d.user_id = ? AND d.date LIKE ? AND d.type = 'facture'
+                ORDER BY d.date ASC
+            `).all(userId, periodPattern);
+        }
+        return [];
+    }
+
     // ==================== PAYMENTS ====================
     addPayment(data) {
         const id = uuidv4();
@@ -456,7 +487,11 @@ class AppDatabase {
 
     // ==================== COMPANY ====================
     saveCompanySettings(settings) {
-        this.db.prepare(`INSERT INTO companies (user_id,name,mf,address,phone,email,rc,website,bank,rib,logo_image,stamp_image,signature_image) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=?,mf=?,address=?,phone=?,email=?,rc=?,website=?,bank=?,rib=?,logo_image=COALESCE(?,logo_image),stamp_image=COALESCE(?,stamp_image),signature_image=COALESCE(?,signature_image),updated_at=CURRENT_TIMESTAMP`).run(settings.userId, settings.name, settings.mf, settings.address, settings.phone, settings.email, settings.rc, settings.website||null, settings.bank||null, settings.rib||null, settings.logoImage||null, settings.stampImage||null, settings.signatureImage||null, settings.name, settings.mf, settings.address, settings.phone, settings.email, settings.rc, settings.website||null, settings.bank||null, settings.rib||null, settings.logoImage||null, settings.stampImage||null, settings.signatureImage||null);
+        const vals = [
+            settings.userId, settings.name, settings.mf, settings.address, settings.phone, settings.email, settings.rc, settings.website||null, settings.bank||null, settings.rib||null, settings.logoImage||null, settings.stampImage||null, settings.signatureImage||null, settings.show_logo??1, settings.show_stamp??1, settings.show_signature??1, settings.show_qr??0, settings.show_accent??1,
+            settings.name, settings.mf, settings.address, settings.phone, settings.email, settings.rc, settings.website||null, settings.bank||null, settings.rib||null, settings.logoImage||null, settings.stampImage||null, settings.signatureImage||null, settings.show_logo??1, settings.show_stamp??1, settings.show_signature??1, settings.show_qr??0, settings.show_accent??1
+        ];
+        this.db.prepare(`INSERT INTO companies (user_id,name,mf,address,phone,email,rc,website,bank,rib,logo_image,stamp_image,signature_image,show_logo,show_stamp,show_signature,show_qr,show_accent) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=?,mf=?,address=?,phone=?,email=?,rc=?,website=?,bank=?,rib=?,logo_image=COALESCE(?,logo_image),stamp_image=COALESCE(?,stamp_image),signature_image=COALESCE(?,signature_image),show_logo=?,show_stamp=?,show_signature=?,show_qr=?,show_accent=?,updated_at=CURRENT_TIMESTAMP`).run(...vals);
         return settings;
     }
     saveCompanyImages(userId, { logoImage, stampImage, signatureImage }) {

@@ -610,3 +610,44 @@ tbody tr:hover td { background:var(--gray-50); }
     .preview-toolbar, .no-print { display:none !important; }
     .document-sheet { box-shadow: none; max-width:100%; padding:0; }
 }
+/* ══════════════════════════════════════════
+   TOOLS PAGE
+══════════════════════════════════════════ */
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+.tool-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 24px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow-sm);
+}
+.tool-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+    background: var(--primary-bg);
+}
+.tool-card .tool-icon {
+    font-size: 2.2rem;
+    margin-bottom: 4px;
+}
+.tool-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.tool-card p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}

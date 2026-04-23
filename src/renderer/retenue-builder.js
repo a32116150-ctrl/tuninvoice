@@ -75,8 +75,9 @@ function buildRetenueHTML(data, _theme) {
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     };
 
-    const stampHtml = data.stampImage ? `<img src="${data.stampImage}" style="max-height:70px;opacity:0.9">` : '';
-    const sigHtml = data.signatureImage ? `<img src="${data.signatureImage}" style="max-height:55px">` : '';
+    const logoHtml = (data.logoImage && data.show_logo !== 0) ? `<img src="${data.logoImage}" style="max-height:80px;display:block;margin-bottom:10px">` : '';
+    const stampHtml = (data.stampImage && data.show_stamp !== 0) ? `<img src="${data.stampImage}" style="max-height:70px;opacity:0.9">` : '';
+    const sigHtml = (data.signatureImage && data.show_signature !== 0) ? `<img src="${data.signatureImage}" style="max-height:55px">` : '';
 
     return `<!DOCTYPE html>
 <html lang="fr">
@@ -227,6 +228,7 @@ function buildRetenueHTML(data, _theme) {
 <body>
 <div class="certificate">
   <div class="header">
+    ${logoHtml}
     <div class="republic">REPUBLIQUE TUNISIENNE</div>
     <div class="ministere">MINISTERE DU PLAN ET DES FINANCES<br>DIRECTION GENERALE<br>DU CONTRÔLE FISCAL</div>
   </div>

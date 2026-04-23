@@ -1,6 +1,6 @@
 {
   "name": "tuniinvoice-pro",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "Tunisian Invoice Generator - Desktop Edition",
   "main": "src/main.js",
   "scripts": {
@@ -22,7 +22,8 @@
     "pdf-parse": "^2.4.5",
     "tesseract.js": "^7.0.0",
     "uuid": "^9.0.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "xmlbuilder2": "^4.0.3"
   },
   "devDependencies": {
     "electron": "^28.0.0",

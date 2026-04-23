@@ -10,6 +10,7 @@ const Database        = require('./database/db');
 const BackupScheduler = require('./backup-scheduler');
 const ExcelExporter   = require('./exporters/excel-exporter');
 const { buildRetenueHTML, buildRelanceHTML, buildFiscalSummaryHTML } = require('./renderer/retenue-builder');
+const { create } = require('xmlbuilder2');
 
 const db            = new Database();
 const excelExporter = new ExcelExporter();
@@ -100,36 +101,72 @@ ipcMain.handle('updater:install', () => {
 ipcMain.handle('app:version',     ()       => app.getVersion());
 
 // ==================== PDF ====================
+async function handlePDFGeneration(html, callback) {
+    const win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } });
+    const tempPath = path.join(app.getPath('temp'), `print-${uuidv4()}.html`);
+    try {
+        fs.writeFileSync(tempPath, html, 'utf8');
+        await win.loadFile(tempPath);
+        
+        // Wait for all images to load
+        await win.webContents.executeJavaScript(`
+            Promise.all(Array.from(document.images).map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => { img.onload = img.onerror = resolve; });
+            }))
+        `);
+        
+        // Additional small delay for rendering stability
+        await new Promise(r => setTimeout(r, 250));
+        
+        const data = await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true, marginsType: 0 });
+        return data;
+    } finally {
+        win.close();
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    }
+}
+
 ipcMain.handle('pdf:save', async (_, { html, filename }) => {
     try {
         const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, { defaultPath: filename || 'document.pdf', filters: [{ name: 'PDF', extensions: ['pdf'] }] });
         if (canceled || !filePath) return { success: false, canceled: true };
-        const win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } });
-        await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-        await new Promise(r => setTimeout(r, 400));
-        const data = await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true, marginsType: 0 });
-        win.close();
+        
+        const data = await handlePDFGeneration(html);
         fs.writeFileSync(filePath, data);
         shell.showItemInFolder(filePath);
         return { success: true, path: filePath };
     } catch (e) { return { success: false, error: e.message }; }
 });
+
 ipcMain.handle('pdf:print', async (_, { html }) => {
+    const win = new BrowserWindow({ show: false, webPreferences: { offscreen: false } });
+    const tempPath = path.join(app.getPath('temp'), `print-${uuidv4()}.html`);
     try {
-        const win = new BrowserWindow({ show: false, webPreferences: { offscreen: false } });
-        await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-        await new Promise(r => setTimeout(r, 400));
-        await new Promise((res, rej) => win.webContents.print({ silent: false, printBackground: true }, (ok, err) => { if (ok || err === 'cancelled') res(); else rej(new Error(err)); }));
+        fs.writeFileSync(tempPath, html, 'utf8');
+        await win.loadFile(tempPath);
+        
+        await win.webContents.executeJavaScript(`
+            Promise.all(Array.from(document.images).map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => { img.onload = img.onerror = resolve; });
+            }))
+        `);
+        
+        await new Promise((res, rej) => win.webContents.print({ silent: false, printBackground: true }, (ok, err) => { 
+            if (ok || err === 'cancelled') res(); else rej(new Error(err)); 
+        }));
+        return { success: true };
     } catch (e) { return { success: false, error: e.message }; }
+    finally {
+        win.close();
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    }
 });
 
 ipcMain.handle('pdf:generateBuffer', async (_, { html }) => {
     try {
-        const win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } });
-        await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-        await new Promise(r => setTimeout(r, 600)); 
-        const data = await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true, marginsType: 0 });
-        win.close();
+        const data = await handlePDFGeneration(html);
         return { success: true, data: data }; 
     } catch (e) { return { success: false, error: e.message }; }
 });
@@ -342,7 +379,8 @@ ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
     try {
         const retenue = db.getRetenueById(retenueId);
         if (!retenue) throw new Error('Retenue introuvable');
-        const html = buildRetenueHTML(retenue, theme || null);
+        const company = db.getCompanySettings(retenue.user_id);
+        const html = buildRetenueHTML({ ...retenue, ...company }, theme || null);
         return { success: true, html };
     } catch (e) { return { success: false, error: e.message }; }
 });
@@ -484,3 +522,93 @@ ipcMain.handle('tools:fiscalSummary', async (_, { userId, year, quarter }) => {
 // ==================== FS HELPERS ====================
 ipcMain.handle('fs:openFolder',   async (_, p) => { try { shell.openPath(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('fs:selectFolder', async () => { const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; });
+
+// ── TEJ EXPORT HANDLERS ──────────────────────────────────────────
+ipcMain.handle('export:tej:getData', async (_, params) => {
+    try { return db.getTEJData(params); } catch (e) { console.error(e); return []; }
+});
+
+ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeActe, company, data }) => {
+    try {
+        const monthStr = String(month).padStart(2, '0');
+        const mfClean = (company.mf || '0000000').replace(/[^a-zA-Z0-9]/g, '');
+        const defaultFilename = `${mfClean}-${year}-${monthStr}-${codeActe}.xml`;
+        
+        const { filePath, canceled } = await dialog.showSaveDialog({
+            title: `Enregistrer l'export XML ${type}`,
+            defaultPath: defaultFilename,
+            filters: [{ name: 'Fichiers XML', extensions: ['xml'] }]
+        });
+        
+        if (canceled) return { success: false, canceled: true };
+        
+        let xmlString = '';
+        
+        if (type === 'RS') {
+            // Schema: DeclarationsRS
+            const root = create({ version: '1.0', encoding: 'UTF-8' })
+                .ele('DeclarationsRS')
+                    .ele('Declarant')
+                        .ele('Identifiant').txt(company.mf || '').up()
+                        .ele('RaisonSociale').txt(company.name || '').up()
+                    .up()
+                    .ele('ReferenceDeclaration')
+                        .ele('Annee').txt(year.toString()).up()
+                        .ele('Mois').txt(month.toString()).up()
+                        .ele('CodeActe').txt(codeActe.toString()).up()
+                    .up()
+                    .ele('AjouterCertificats');
+            
+            data.forEach(item => {
+                root.ele('Certificat')
+                    .ele('Beneficiaire')
+                        .ele('Identifiant').txt(item.beneficiaire_mf || '').up()
+                        .ele('NomPrenomRaisonSociale').txt(item.beneficiaire_name || '').up()
+                    .up()
+                    .ele('DetailsCertificat')
+                        .ele('DateCertificat').txt(item.date || '').up()
+                        .ele('MontantBrut').txt((item.montant_brut || 0).toFixed(3)).up()
+                        .ele('MontantRetenue').txt((item.montant_retenue || 0).toFixed(3)).up()
+                    .up()
+                .up();
+            });
+            
+            xmlString = root.end({ prettyPrint: true });
+        } else {
+            // Schema: DeclarationsTEIF
+            const root = create({ version: '1.0', encoding: 'UTF-8' })
+                .ele('DeclarationsTEIF')
+                    .ele('Declarant')
+                        .ele('Identifiant').txt(company.mf || '').up()
+                        .ele('RaisonSociale').txt(company.name || '').up()
+                    .up()
+                    .ele('ReferenceDeclaration')
+                        .ele('Annee').txt(year.toString()).up()
+                        .ele('Mois').txt(month.toString()).up()
+                        .ele('CodeActe').txt(codeActe.toString()).up()
+                    .up()
+                    .ele('ListeFactures');
+            
+            data.forEach(item => {
+                root.ele('Facture')
+                    .ele('Numero').txt(item.number || '').up()
+                    .ele('Date').txt(item.date || '').up()
+                    .ele('Client')
+                        .ele('Identifiant').txt(item.client_mf || '').up()
+                        .ele('Nom').txt(item.client_name || '').up()
+                    .up()
+                    .ele('MontantHT').txt((item.total_ht || 0).toFixed(3)).up()
+                    .ele('MontantTTC').txt((item.total_ttc || 0).toFixed(3)).up()
+                .up();
+            });
+            
+            xmlString = root.end({ prettyPrint: true });
+        }
+        
+        fs.writeFileSync(filePath, xmlString, 'utf8');
+        return { success: true, path: filePath };
+    } catch (e) {
+        console.error('TEJ Export Error:', e);
+        return { success: false, error: e.message };
+    }
+});
