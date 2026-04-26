@@ -228,8 +228,20 @@ async function showApp() {
     // Load user settings (decimal places, rounding, document theme)
     await loadUserFormatSettings();
     await loadDocumentTheme();
+    await loadAppVersion();
     loadDashboard();
     initNewDocument();
+}
+
+async function loadAppVersion() {
+    try {
+        const v = await window.electronAPI.getAppVersion();
+        console.log('[App] Version:', v);
+        const el = document.getElementById('appVersion');
+        if (el && v) el.textContent = `v${v}`;
+    } catch (e) {
+        console.error('[App] Failed to load version:', e);
+    }
 }
 
 // ==================== LOAD FORMAT SETTINGS ====================
@@ -331,6 +343,9 @@ function renderRecentDocs(docs) {
                 ${doc.type==='devis'?`<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir">🔄</button>`:''}
                 <button class="btn-icon btn-edit"   onclick="editExistingDoc('${doc.id}')"  title="Modifier">✏️</button>
                 <button class="btn-icon btn-pdf"    onclick="downloadDocPDF('${doc.id}')"   title="PDF">📄</button>
+                <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                </button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer">🗑️</button>
             </td></tr>`).join('')}
     </tbody></table>`;
@@ -616,18 +631,55 @@ async function loadCompanyIntoForm() {
     } catch {}
 }
 
-function selectDocType(type) { currentDocType = type; document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === type); updateDocType(); }
+function selectDocType(type, element) {
+    currentDocType = type;
+    document.querySelectorAll('.doc-type-card').forEach(c => c.classList.remove('active'));
+    if (element) element.classList.add('active');
+    const radio = document.querySelector(`input[name="docType"][value="${type}"]`);
+    if (radio) { radio.checked = true; updateDocType(); }
+}
 
-function updateDocType() {
-    currentDocType = document.querySelector('input[name="docType"]:checked').value;
-    document.getElementById('dueDateGroup').style.display = currentDocType === 'facture' ? 'block' : 'none';
-    const currentNum = document.getElementById('docNumber').value;
-    if (currentNum) {
-        const parts = currentNum.split('-'), year = new Date().getFullYear();
-        if (parts.length === 3) {
-            const prefix = {facture:'FAC', devis:'DEV', bon:'BC'}[currentDocType];
-            document.getElementById('docNumber').value = `${prefix}-${year}-${parts[2]}`;
+async function updateDocType() {
+    const radio = document.querySelector('input[name="docType"]:checked');
+    if (!radio) return;
+    currentDocType = radio.value;
+
+    const isStockDoc = ['bl', 'bs', 'be'].includes(currentDocType);
+    const isAvoir = currentDocType === 'avoir';
+    const hidePrices = isStockDoc;
+
+    // Toggle Groups
+    const dueDateGroup = document.getElementById('dueDateGroup');
+    const referenceDocGroup = document.getElementById('referenceDocGroup');
+    if (dueDateGroup) dueDateGroup.classList.toggle('hidden', !['facture', 'avoir'].includes(currentDocType));
+    if (referenceDocGroup) referenceDocGroup.classList.toggle('hidden', !isAvoir);
+
+    // Toggle Totals Section
+    const totalsSection = document.querySelector('.totals-section');
+    const timbreContainer = document.getElementById('applyTimbre')?.closest('div');
+    if (totalsSection) totalsSection.classList.toggle('hidden', hidePrices);
+    if (timbreContainer) timbreContainer.classList.toggle('hidden', hidePrices);
+
+    // Toggle Table Columns (Price, TVA, Total HT)
+    const table = document.querySelector('.items-table');
+    if (table) {
+        const headRow = table.querySelector('thead tr');
+        if (headRow) {
+            // Index 3: Price, 4: TVA, 5: Total HT
+            [3, 4, 5].forEach(idx => headRow.cells[idx]?.classList.toggle('hidden', hidePrices));
         }
+        document.querySelectorAll('#itemsBody tr').forEach(row => {
+            [3, 4, 5].forEach(idx => row.cells[idx]?.classList.toggle('hidden', hidePrices));
+        });
+    }
+
+    // Update Doc Number Prefix
+    try {
+        const year = new Date().getFullYear();
+        const number = await window.electronAPI.getNextDocNumber({ userId: currentUser.id, type: currentDocType, year });
+        document.getElementById('docNumber').value = number;
+    } catch (err) {
+        console.error("Failed to update doc number:", err);
     }
 }
 
@@ -1257,6 +1309,7 @@ function collectDocumentData() {
         number: get('docNumber'),
         date: get('docDate'),
         dueDate: get('docDueDate')||null,
+        referenceDoc: get('docReference')||null,
         currency: get('docCurrency')||'TND',
         paymentMode: get('docPayment'),
         companyName: get('docCompanyName'), companyMF: get('docCompanyMF'),
@@ -1304,6 +1357,9 @@ function renderDocumentsTable(docs) {
                 <button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier">✏️</button>
                 <button class="btn-icon"             onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6">📋</button>
                 <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"           title="PDF">📄</button>
+                <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                </button>
                 ${doc.type==='facture'?`<button class="btn-icon btn-payment" onclick="openPaymentModal('${doc.id}')" title="Paiement" style="color:#10b981">💰</button>`:''}
                 <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer">🗑️</button>
             </td></tr>`).join('')}
@@ -1412,6 +1468,29 @@ async function confirmDeleteDoc(docId) {
 async function exportAllToExcel() {
     try { const result = await window.electronAPI.exportExcelDocuments({ documents: allDocuments }); if (result.success) showToast(`Excel exporté: ${result.path}`,'success'); }
     catch { showToast('Erreur export Excel','error'); }
+}
+
+async function sendWhatsApp(docId) {
+    try {
+        const doc = allDocuments.find(d => d.id === docId) || await window.electronAPI.getDocument(docId);
+        if (!doc) return;
+
+        const phone = doc.clientPhone || "";
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        
+        // Prefix with +216 if it's 8 digits (Tunisian format)
+        let finalPhone = cleanPhone;
+        if (cleanPhone.length === 8) finalPhone = "216" + cleanPhone;
+
+        const typeLabel = getDocTypeLabel(doc.type);
+        const message = `Bonjour,\n\nVoici votre ${typeLabel} N° ${doc.number} d'un montant de ${formatAmount(doc.totalTTC)} ${doc.currency}.\n\nCordialement,\n${doc.companyName}`;
+        
+        const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+        showToast('Lien WhatsApp ouvert', 'success');
+    } catch (e) {
+        showToast('Erreur WhatsApp', 'error');
+    }
 }
 
 // ==================== CLIENTS ====================
@@ -1555,7 +1634,7 @@ async function loadBackupList() {
             <div class="backup-item">
                 <div class="backup-item-info">
                     <div class="backup-date">${new Date(b.created).toLocaleString('fr-FR')}</div>
-                    <div class="backup-size">${(b.size/1024/1024).toFixed(2)} MB</div>
+                    <div class="backup-size">${(b.size/1024/1024).toFixed(3)} MB</div>
                 </div>
                 <button class="btn btn-small btn-secondary" onclick="restoreBackup('${b.path}')">Restaurer</button>
             </div>`).join('');
@@ -1721,6 +1800,20 @@ function updateDocumentThemePreview() {
             <div style="font-size:10px;padding:4px 6px;border:${tableStyle==='bordered'?`1px solid ${border}`:'none'};border-top:none;background:${surface}">Prestation de service&nbsp;&nbsp;1&nbsp;&nbsp;1,000.000</div>
             <div style="text-align:right;margin-top:8px;font-size:11px;font-weight:700;color:${primary}">Total TTC: 1,190.000 TND</div>
         </div>`;
+}
+
+function getDocTypeLabel(type) {
+    const labels = {
+        facture: 'Facture',
+        devis: 'Devis',
+        bon: 'Bon de Commande',
+        bl: 'Bon de Livraison',
+        ba: "Bon d'Achat",
+        bs: 'Bon de Sortie',
+        be: "Bon d'Entrée",
+        avoir: "Facture d'Avoir"
+    };
+    return labels[type] || type.toUpperCase();
 }
 
 async function saveDocumentTheme() {
@@ -3582,27 +3675,108 @@ function openMFValidator() {
     document.getElementById('mfValidatorModal').classList.add('active');
     document.getElementById('mfToVerify').value = '';
     document.getElementById('mfVerifyResult').style.display = 'none';
+    document.getElementById('rneResultBox').style.display = 'none';
+    document.getElementById('rneDataContent').innerHTML = '';
+}
+
+async function searchRNELive() {
+    const mf = document.getElementById('mfToVerify').value;
+    if (!mf) return showToast('Veuillez saisir un matricule fiscal','warning');
+
+    const btn = document.getElementById('btnSearchRNE');
+    const icon = document.getElementById('searchRNEIcon');
+    const spinner = document.getElementById('searchRNESpinner');
+    const resultBox = document.getElementById('rneResultBox');
+    const content = document.getElementById('rneDataContent');
+
+    btn.disabled = true;
+    icon.style.display = 'none';
+    spinner.style.display = 'inline-block';
+    resultBox.style.display = 'none';
+
+    try {
+        const res = await window.electronAPI.searchRNE(mf);
+        if (res.success) {
+            const d = res.data;
+            resultBox.style.display = 'block';
+            document.getElementById('mfVerifyResult').style.display = 'none'; // Hide the format warning on success
+            
+            const statusColor = (d.etatRegistreFr || '').toLowerCase().includes('actif') ? '#10b981' : '#ef4444';
+            
+            // Heuristic: If legal form is null but activity contains SARL/SUARL/SA, swap them or show both
+            let legalForm = d.formeJuridiqueFr || 'N/A';
+            let activity = d.objetActivitePrincipaleFr || 'N/A';
+            
+            if (legalForm === 'N/A' && (activity.includes('SARL') || activity.includes('SUARL') || activity.includes('S.A'))) {
+                legalForm = activity;
+                activity = 'Consultation RNE requise pour détails';
+            }
+
+            const address = [d.rueFr, d.codePostal, d.villeFr].filter(x => x).map(x => x.trim()).join(' ');
+            
+            content.innerHTML = `
+                <div style="margin-bottom:12px">
+                    <div style="font-weight:700; font-size:1.1rem; color:var(--primary); margin-bottom:4px">${(d.denominationLatin || d.nomEtPrenomFr || 'N/A').toUpperCase()}</div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px">
+                        <span style="font-size:0.75rem; font-weight:700; color:white; background:${statusColor}; padding:2px 8px; border-radius:4px; text-transform:uppercase">${d.etatRegistreFr || 'Inconnu'}</span>
+                        <span style="font-size:0.8rem; color:var(--text-secondary)">MF: <b>${d.idUnique || mf}</b></span>
+                    </div>
+                </div>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:0.85rem">
+                    <div style="grid-column: span 2">
+                        <label style="display:block; font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700">Forme Juridique</label>
+                        <div style="font-weight:600">${legalForm}</div>
+                    </div>
+                    <div style="grid-column: span 2">
+                        <label style="display:block; font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700">Adresse</label>
+                        <div style="font-weight:600">${address || 'N/A'}</div>
+                    </div>
+                    <div style="grid-column: span 2">
+                        <label style="display:block; font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700">Activité</label>
+                        <div style="font-weight:600; font-style:italic">${activity}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            showToast(res.error || 'Erreur RNE','error');
+        }
+    } catch (e) {
+        showToast('Erreur de connexion au RNE','error');
+    } finally {
+        btn.disabled = false;
+        icon.style.display = 'inline-block';
+        spinner.style.display = 'none';
+    }
 }
 
 function validateMFInput(val) {
     const resultEl = document.getElementById('mfVerifyResult');
     if (!val) { resultEl.style.display = 'none'; return; }
     
+    const cleanVal = val.toUpperCase().trim();
+    
+    // If it's a short MF (e.g. 1948241P), don't show error, just wait for search
+    if (cleanVal.length < 10 && !cleanVal.includes('/')) {
+        resultEl.style.display = 'none';
+        return;
+    }
+
     // Pattern: XXXXXXX/X/X/XXX
     const mfPattern = /^[0-9]{7}\/[A-P]\/[A-P]\/[0-9]{3}$/;
-    const isValid = mfPattern.test(val.toUpperCase());
+    const isValid = mfPattern.test(cleanVal);
     
     resultEl.style.display = 'block';
     if (isValid) {
         resultEl.style.background = '#d1fae5';
         resultEl.style.border = '1px solid #10b981';
         resultEl.style.color = '#065f46';
-        resultEl.innerHTML = '✅ <b>Format Valide</b><br>Ce matricule respecte la structure réglementaire tunisienne.';
+        resultEl.innerHTML = '✅ <b>Format Valide</b><br>Ce matricule respecte la structure réglementaire complète.';
     } else {
-        resultEl.style.background = '#fee2e2';
-        resultEl.style.border = '1px solid #ef4444';
-        resultEl.style.color = '#991b1b';
-        resultEl.innerHTML = '❌ <b>Format Invalide</b><br>Le format attendu est : 7 chiffres / 1 lettre / 1 lettre / 3 chiffres.<br><i>Exemple: 1234567/A/M/000</i>';
+        resultEl.style.background = '#fffbeb';
+        resultEl.style.border = '1px solid #f59e0b';
+        resultEl.style.color = '#92400e';
+        resultEl.innerHTML = '💡 <b>Recherche RNE</b><br>Utilisez la loupe 🔍 pour interroger le registre public avec ce matricule.';
     }
 }
 

@@ -12,13 +12,14 @@ Welcome to the official documentation for **Factarlou**, the premier intelligent
 ## 2. Key Features
 
 ### 🏢 Core Facturation (Invoicing)
-- **Document Types**: Create professional Factures (Invoices), Devis (Quotes), and Bons de Commande.
-- **Quote-to-Invoice**: One-click conversion from Devis to Facture with automatic status updates.
+- **Document Types**: Support for Factures, Devis, Bons de Commande, **Bons de Livraison (BL)**, **Bons d'Achat (BA)**, **Bons de Sortie (BS)**, **Bons d'Entrée (BE)**, and **Factures d'Avoir**.
+- **Quote-to-Invoice**: One-click conversion from Devis to Facture or BL with automatic status updates.
+- **Avoir Management**: Automated credit notes that reduce client debt and adjust overall revenue totals (negative revenue logic).
 - **Tunisian Fiscal Logic**: 
   - Automatic **Timbre Fiscal** (1.000 TND) calculation.
   - Support for multiple **TVA** rates (0%, 7%, 13%, 19%).
   - Management of **FODEC** and other specific taxes.
-- **Number Formatting**: Support for Tunisian accounting standards (up to 3 decimal places) with automatic rounding adjustments.
+- **Number Formatting**: Full support for Tunisian accounting standards (3 decimal places / Millimes) with automatic rounding adjustments across all modules.
 
 ### 🧠 Intelligent Expense Scanner (OCR)
 - **Automated Entry**: Uses **Tesseract.js** to scan paper receipts and PDFs.
@@ -42,8 +43,14 @@ Welcome to the official documentation for **Factarlou**, the premier intelligent
 
 ### 📊 Real-Time Analytics
 - **Dashboard**: High-resolution, responsive charts showing revenue vs. expenses with automatic scaling on window resize.
+- **Avoir Integration**: Financial totals (Revenue, Unpaid) automatically account for credit notes (Avoirs) to ensure accounting accuracy.
 - **Status Tracking**: Visual indicators for Unpaid, Partially Paid, and Paid documents.
 - **Top Metrics**: Identify your most valuable clients and highest spending categories.
+
+### 🆔 RNE Live Search
+- **Registry Integration**: Direct integration with the **Tunisian National Registry of Enterprises (RNE)**.
+- **Instant Verification**: Fetch official company names, legal status (Actif/Radié), and addresses using only the Matricule Fiscal (MF).
+- **Accuracy**: Reduces manual entry errors by providing verified public data for client profiles.
 
 ---
 
@@ -57,8 +64,9 @@ Welcome to the official documentation for **Factarlou**, the premier intelligent
 - **PDF Engine**: Isolated Electron background process for pixel-perfect A4 rendering.
 
 ### 🔒 Privacy & Security
-- **Local-First**: All financial data, client lists, and passwords stay on your physical machine.
-- **Encryption**: Passwords are hashed using **bcrypt** before storage.
+- **Local-First**: All financial data, client lists, and documents stay on your physical machine.
+- **Encryption**: User passwords are hashed using **bcrypt** before storage.
+- **SMTP Security**: Email credentials are encrypted using **Electron safeStorage**, ensuring hardware-backed protection for your mail server passwords.
 - **No Telemetry**: No tracking, no analytics, no cloud uploads.
 
 ---

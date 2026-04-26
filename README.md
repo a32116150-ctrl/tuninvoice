@@ -1,14 +1,15 @@
 <h1 align="center">
-  🧾 Factarlou
+  <img src="assets/iconblack2.png" alt="Factarlou Logo" width="120" height="120"><br/>
+  Factarlou
 </h1>
 
 <p align="center">
-  <strong>La Solution de Facturation Intelligente pour le Marché Tunisien</strong><br/>
-  Une application de bureau haute performance, confidentielle et sécurisée pour les entrepreneurs et PME.
+  <strong>L'Excellence de la Gestion Fiscale et Commerciale en Tunisie</strong><br/>
+  Une application de bureau haute performance, confidentielle et sécurisée pour entrepreneurs et PME.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.6.0-blue?style=for-the-badge" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-2.6.1-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -16,84 +17,95 @@
 
 ---
 
-## 📖 Aperçu
+## 📖 À propos
 
-**Factarlou** est une application de bureau multiplateforme conçue spécifiquement pour répondre aux exigences fiscales et administratives de la Tunisie. Elle gère tout le cycle de vie de votre facturation — de la création de devis à l'exportation XML pour la plateforme TEJ, tout en gardant vos données financières **100% locales et privées**.
+**Factarlou** est bien plus qu'un simple logiciel de facturation. C'est un écosystème complet de gestion conçu spécifiquement pour le cadre légal et fiscal **Tunisien**. Entièrement **Offline-First**, il garantit que vos données financières sensibles restent exclusivement sur votre machine, sans aucun passage par le cloud.
 
----
-
-## ✨ Features (v2.6.0)
-
-### 🇹🇳 Tunisian Fiscal Compliance
-- **TEJ XML Export**: Generate regulatory XML files for **Retenue à la Source (RS)** and **Electronic Invoices (TEIF)**.
-- **DGF Compliance**: Native generation of official "Certificat de Retenue à la Source".
-- **Timbre Fiscal**: Integrated management of the 1.000 TND fiscal stamp.
-- **Millimes Precision**: Full 3-decimal place support for all calculations.
-
-### 🧰 Fiscal & Legal Toolkit (Outils)
-- **Calculators**: Spontaneous/Rectified penalty calculator, IRPP simulator, and monthly VAT summary.
-- **Legal Tools**: Automated **PV d'Assemblée Générale** generator and **Matricule Fiscal** validator.
-- **Resources**: Tunisian tax calendar and searchable directory of tax offices (Recettes des Finances).
-
-### 📄 Document & Branding
-- **Custom Branding**: Toggle Logo, Stamp, Signature, QR Code, and Accent Bar globally across all documents.
-- **Isolated Rendering**: High-fidelity PDF generation ensuring pixel-perfect A4 documents.
-- **Multi-Theme**: Modern, Executive, and Tunisian theme presets with full color/font customization.
-
-### 💼 Integrated Management
-- **HR & Payroll**: Employee database and monthly **Bulletin de Paie** generation.
-- **CRM & Catalog**: Comprehensive client management and unified service/product catalog.
-- **Inventory/Scanner**: AI-powered **OCR Scanner** to extract data from physical receipts and attachments.
-
-### 📊 Intelligence & Security
-- **Dashboard**: Real-time analytics for Revenue, Expenses, and Tax Liabilities.
-- **Local-First**: All data is stored in a local **SQLite** database. No cloud, no tracking.
-- **Backups**: Automated encrypted backups with customizable retention policies.
+De la génération de factures conformes à l'exportation XML pour la plateforme **TEJ**, Factarlou automatise vos processus tout en assurant une précision chirurgicale (3 décimales).
 
 ---
 
-## 🛠️ Tech Stack
+## ✨ Fonctionnalités Majeures (v2.6.1)
 
-| Layer | Technology |
-|---|---|
-| **Runtime** | Electron.js v28 |
-| **Database** | better-sqlite3 |
-| **OCR** | Tesseract.js |
-| **XML** | xmlbuilder2 |
-| **UI** | Vanilla CSS3 / Modern JS |
-| **Security** | bcryptjs |
+### 🇹🇳 Conformité Fiscale Tunisienne
+- **Export TEJ XML** : Génération de fichiers réglementaires pour la **Retenue à la Source (RS)** et les **Factures Électroniques**.
+- **Certificats de Retenue** : Création instantanée des certificats officiels (DGF) avec taux paramétrables (0.5%, 1%, 1.5%, 5%, 10%, 15%).
+- **Timbre Fiscal** : Gestion automatisée du timbre de 1.000 TND sur les factures TTC.
+- **Précision Millimes** : Support complet des 3 décimales pour tous les calculs monétaires.
+
+### 🧠 Scanner Intelligent (OCR AI)
+- **Extraction Automatique** : Importez vos reçus (Photo/PDF) et laissez l'IA (Tesseract.js) extraire le fournisseur, la date et le montant.
+- **Bilingue** : Compréhension native des documents en **Français** et en **Arabe**.
+- **Text-to-Amount** : Conversion intelligente des montants écrits en toutes lettres.
+
+### 🧰 Boîte à Outils Fiscale & Juridique
+Une suite complète d'assistants pour vous simplifier la vie :
+- **Calculatrices** : Pénalités de retard (système spontané/rectifié), simulateur d'impôt IRPP, récapitulatif de TVA.
+- **Générateurs** : Lettres de relance (mise en demeure), PV d'assemblée générale (modèles types).
+- **Vérificateur & Recherche RNE** : Validation algorithmique du Matricule Fiscal et **interrogation en direct** des registres publics du RNE Tunisie (Dénomination, Statut, Forme Juridique).
+- **Ressources** : Calendrier fiscal tunisien et annuaire complet des Recettes des Finances.
+
+### 👥 Ressources Humaines & Paie
+- **Gestion du Personnel** : Base de données employés avec suivi des contrats (CDI, CDD, CIVP).
+- **Bulletins de Paie** : Génération automatique de fiches de paie avec calcul des cotisations CNSS (@ 9.18%).
+
+### 🎨 Branding & Design Premium
+- **Personnalisation Totale** : Logo, Cachet, Signature, et QR Code activables à la demande.
+- **Moteur de Thèmes** : 
+  - **Classique** : Traditionnel et sobre.
+  - **Moderne** : Épuré avec polices sans-serif (Inter).
+  - **Exécutif** : Luxe et prestige (Sérif/Doré).
+  - **Tunisien** : Couleurs et esthétique locale.
 
 ---
 
-## 📦 Installation
+## 🔒 Sécurité & Architecture
 
-### macOS
-1. Download the `.dmg` from the [Releases page](https://github.com/a32116150-ctrl/tuninvoice/releases).
-2. Drag **Factarlou** to your `Applications` folder.
-
-### Windows
-1. Download the `.exe` installer.
-2. Run the installer and follow the setup wizard.
+| Composant | Technologie | Détails |
+|---|---|---|
+| **Runtime** | Electron.js v28 | Performance native sur Desktop. |
+| **Base de données** | better-sqlite3 | Stockage local ultra-rapide en mode WAL. |
+| **Sécurité** | safeStorage | Chiffrement matériel des identifiants SMTP. |
+| **Moteur PDF** | Offscreen Rendering | Rendu A4 parfait, indépendant de l'UI. |
+| **Confidentialité** | bcryptjs | Hachage sécurisé des mots de passe utilisateurs. |
 
 ---
 
-## 👨‍💻 Local Development
+## 🚀 Quoi de neuf dans la v2.6.1 ?
 
+- **Nouveaux Documents** : Support complet pour les Bons de Livraison (BL), Bons d'Achat (BA), Bons de Sortie (BS), et Bons d'Entrée (BE).
+- **Gestion des Avoirs** : Nouvelle logique de Facture d'Avoir avec impact négatif sur le chiffre d'affaires et réduction automatique de la dette client.
+- **Recherche RNE Live** : Intégration de l'API publique du Registre National des Entreprises pour récupérer les données clients instantanément via leur MF.
+- **WhatsApp Pro** : Icône officielle WhatsApp et interface de partage améliorée.
+- **Optimisation Financière** : Tous les calculs de revenus et impayés prennent désormais en compte les avoirs et les nouveaux types de documents.
+- **Stabilité** : Correction des bugs d'affichage de version et amélioration des performances de la base de données.
+
+---
+
+## 📦 Installation & Déploiement
+
+### Téléchargement
+Retrouvez les installateurs pour votre système sur la page des [Releases](https://github.com/a32116150-ctrl/tuninvoice/releases).
+
+### Développement Local
 ```bash
-# 1. Clone & Install
+# Clonez le dépôt
 git clone https://github.com/a32116150-ctrl/tuninvoice.git
+
+# Installez les dépendances
 npm install
 
-# 2. Start
+# Lancez l'application
 npm start
 
-# 3. Build
-npm run build:mac  # or build:win / build:linux
+# Construisez les binaires
+npm run build:mac  # Pour macOS (.dmg)
+npm run build:win  # Pour Windows (.exe)
 ```
 
 ---
 
 <p align="center">
-  Built with ❤️ by <strong>Anoir Cherif</strong> in Tunisia 🇹🇳<br/>
-  © 2026 Factarlou. All rights reserved.
+  Développé par <strong>Anoir Cherif</strong> en Tunisie 🇹🇳<br/>
+  © 2026 Factarlou. Tous droits réservés.
 </p>

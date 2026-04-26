@@ -152,6 +152,7 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     openCalculator:         ()     => invoke('tools:openCalculator'),
     generateRelanceLetter:  (params) => invoke('tools:relanceLetter', params),
     generateFiscalSummary:  (params) => invoke('tools:fiscalSummary', params),
+    searchRNE:              (mf)     => invoke('tools:searchRNE', mf),
 
     // ── TEJ EXPORT ───────────────────────────────────────────────────
     getTEJData: (params) => invoke('export:tej:getData', params),

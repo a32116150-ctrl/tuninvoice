@@ -12,10 +12,13 @@ Ne perdez plus de temps à saisir vos factures d'achat manuellement.
 - **Support Multi-langue** : Comprend les documents en Français et en Arabe.
 - **Détection des Montants Littéraires** : Capable de lire les montants écrits en toutes lettres (ex: "Deux cent soixante-dix dinars").
 
-### 📄 Facturation & Devis Professionnels
-Générez des documents conformes aux normes fiscales tunisiennes en quelques clics.
-- **Conversion Rapide** : Transformez un devis en facture en un seul clic.
+### 📄 Documents Commerciaux & Avoirs
+Générez 8 types de documents conformes aux normes fiscales tunisiennes en quelques clics.
+- **Types de Documents** : Factures, **Avoirs**, Devis, **Bons de Livraison (BL)**, **Bons d'Achat (BA)**, **Bons de Sortie (BS)**, **Bons d'Entrée (BE)**, et Bons de Commande.
+- **Gestion des Avoirs** : Annulez ou rectifiez vos factures avec une logique comptable rigoureuse (réduction du CA et de la dette client).
+- **Conversion Rapide** : Transformez un devis en facture ou en bon de livraison en un seul clic.
 - **Conformité Fiscale** : Gestion automatique du **Timbre Fiscal (1.000 TND)**, de la **TVA** (7%, 13%, 19%) et du **FODEC**.
+- **Précision Millimes** : Support complet des 3 décimales pour tous les calculs monétaires.
 - **Design Premium** : Plusieurs thèmes visuels pour des PDF élégants et professionnels.
 
 ### 💰 Gestion des Achats & Dépenses
@@ -28,8 +31,13 @@ Générez vos certificats de retenue à la source sans erreurs de calcul.
 - **Calcul Automatique** : Basé sur les taux en vigueur (0.5%, 1%, 1.5%, 5%, 10%, 15%).
 - **Générateur de Certificats** : Exportez des certificats prêts à être remis à vos fournisseurs.
 
+### 🆔 Recherche RNE & Vérification
+Ne faites plus d'erreurs de saisie sur vos fiches clients.
+- **Recherche RNE Directe** : Saisissez un Matricule Fiscal et récupérez instantanément le nom officiel, le statut (Actif/Radié) et l'adresse depuis le **Registre National des Entreprises**.
+- **Vérificateur MF** : Validation algorithmique de la structure du matricule fiscal tunisien.
+
 ### 👥 Gestion des Clients & Services
-- **Base de Données Centralisée** : Historique complet pour chaque client.
+- **Base de Données Centralisée** : Historique complet pour chaque client (Factures vs Avoirs).
 - **Catalogue de Services** : Enregistrez vos prestations récurrentes pour un remplissage instantané des factures.
 
 ### 📊 Tableau de Bord & Analytics

@@ -138,6 +138,7 @@
         </nav>
         <div class="sidebar-footer">
             <button class="btn-logout" onclick="confirmLogout()">🚪 Déconnexion</button>
+            <div class="app-version" id="appVersion">v2.6.1</div>
         </div>
     </aside>
 
@@ -273,7 +274,7 @@
                 <div class="form-section">
                     <div class="section-title">📋 Type de Document</div>
                     <div class="doc-type-grid">
-                        <label class="doc-type-card" onclick="selectDocType('facture',this)">
+                        <label class="doc-type-card active" onclick="selectDocType('facture',this)">
                             <input type="radio" name="docType" value="facture" checked onchange="updateDocType()">
                             <div class="doc-icon">📄</div><div class="doc-label">Facture</div>
                         </label>
@@ -284,6 +285,26 @@
                         <label class="doc-type-card" onclick="selectDocType('bon',this)">
                             <input type="radio" name="docType" value="bon" onchange="updateDocType()">
                             <div class="doc-icon">🛒</div><div class="doc-label">Bon de Commande</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectDocType('bl',this)">
+                            <input type="radio" name="docType" value="bl" onchange="updateDocType()">
+                            <div class="doc-icon">🚚</div><div class="doc-label">Bon Livraison (BL)</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectDocType('ba',this)">
+                            <input type="radio" name="docType" value="ba" onchange="updateDocType()">
+                            <div class="doc-icon">📥</div><div class="doc-label">Bon d'Achat (BA)</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectDocType('bs',this)">
+                            <input type="radio" name="docType" value="bs" onchange="updateDocType()">
+                            <div class="doc-icon">📤</div><div class="doc-label">Bon de Sortie (BS)</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectDocType('be',this)">
+                            <input type="radio" name="docType" value="be" onchange="updateDocType()">
+                            <div class="doc-icon">📦</div><div class="doc-label">Bon d'Entrée (BE)</div>
+                        </label>
+                        <label class="doc-type-card" onclick="selectDocType('avoir',this)">
+                            <input type="radio" name="docType" value="avoir" onchange="updateDocType()">
+                            <div class="doc-icon">↩️</div><div class="doc-label">Avoir / Crédit</div>
                         </label>
                     </div>
                 </div>
@@ -331,6 +352,7 @@
                         <div class="form-group"><label>Numéro</label><input type="text" id="docNumber" placeholder="FAC-2026-001"></div>
                         <div class="form-group"><label>Date *</label><input type="date" id="docDate" required></div>
                         <div class="form-group" id="dueDateGroup"><label>Échéance</label><input type="date" id="docDueDate"></div>
+                        <div class="form-group hidden" id="referenceDocGroup"><label>Facture de Référence</label><input type="text" id="docReference" placeholder="FAC-2026-XXXX"></div>
                     </div>
                     <div class="grid-2" style="margin-top:14px">
                         <div class="form-group"><label>Devise</label>
@@ -1069,15 +1091,40 @@
 
         <!-- ADDITIONAL TOOL MODALS -->
         <div id="mfValidatorModal" class="modal-overlay">
-            <div class="modal" style="max-width:440px">
-                <div class="modal-header"><h2>🆔 Vérificateur de Matricule Fiscal</h2><button class="modal-close" onclick="closeModal('mfValidatorModal')">✕</button></div>
+            <div class="modal" style="max-width:550px">
+                <div class="modal-header">
+                    <h2>🆔 Vérificateur & Recherche RNE</h2>
+                    <button class="modal-close" onclick="closeModal('mfValidatorModal')">✕</button>
+                </div>
                 <div class="modal-body">
-                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px">Vérifiez la validité d'un matricule fiscal tunisien (Format: XXXXXXX/X/X/XXX).</p>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px">
+                        Saisissez un matricule fiscal pour vérifier son format et interroger les registres publics du RNE Tunisie.
+                    </p>
+                    
                     <div class="form-group">
                         <label>Matricule Fiscal</label>
-                        <input type="text" id="mfToVerify" placeholder="1234567/A/M/000" oninput="validateMFInput(this.value)">
+                        <div style="display:flex;gap:8px">
+                            <input type="text" id="mfToVerify" placeholder="1234567/A/M/000" oninput="validateMFInput(this.value)" style="flex:1">
+                            <button class="btn btn-primary" id="btnSearchRNE" onclick="searchRNELive()" title="Rechercher sur le RNE">
+                                <span id="searchRNEIcon">🔍</span>
+                                <span id="searchRNESpinner" class="spinner" style="width:14px;height:14px;border-width:2px;margin:0;display:none"></span>
+                            </button>
+                        </div>
                     </div>
-                    <div id="mfVerifyResult" style="margin-top:20px;padding:16px;border-radius:8px;display:none"></div>
+
+                    <div id="mfVerifyResult" style="margin-top:16px;padding:12px;border-radius:8px;font-size:0.85rem;display:none"></div>
+
+                    <div id="rneResultBox" style="margin-top:16px; display:none">
+                        <div style="padding:16px; background:var(--gray-50); border:1px solid var(--border); border-radius:12px">
+                            <h4 style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px">Informations RNE</h4>
+                            <div id="rneDataContent">
+                                <!-- Data will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal('mfValidatorModal')">Fermer</button>
                 </div>
             </div>
         </div>
@@ -1127,10 +1174,17 @@
             <div class="card">
                 <div class="form-section">
                     <div class="section-title">🔢 Numérotation des Documents</div>
-                    <div class="grid-3">
+                    <div class="grid-4">
                         <div class="form-group"><label>Préfixe Factures</label><input type="text" id="prefixFacture" value="FAC" maxlength="10" oninput="updateSerialPreview()"></div>
                         <div class="form-group"><label>Préfixe Devis</label><input type="text" id="prefixDevis" value="DEV" maxlength="10" oninput="updateSerialPreview()"></div>
-                        <div class="form-group"><label>Préfixe Bons de Commande</label><input type="text" id="prefixBon" value="BC" maxlength="10" oninput="updateSerialPreview()"></div>
+                        <div class="form-group"><label>Préfixe Bons Commande</label><input type="text" id="prefixBon" value="BC" maxlength="10" oninput="updateSerialPreview()"></div>
+                        <div class="form-group"><label>Préfixe Avoir</label><input type="text" id="prefixAvoir" value="AV" maxlength="10" oninput="updateSerialPreview()"></div>
+                    </div>
+                    <div class="grid-4" style="margin-top:14px">
+                        <div class="form-group"><label>Préfixe Livraison (BL)</label><input type="text" id="prefixBL" value="BL" maxlength="10" oninput="updateSerialPreview()"></div>
+                        <div class="form-group"><label>Préfixe d'Achat (BA)</label><input type="text" id="prefixBA" value="BA" maxlength="10" oninput="updateSerialPreview()"></div>
+                        <div class="form-group"><label>Préfixe Sortie (BS)</label><input type="text" id="prefixBS" value="BS" maxlength="10" oninput="updateSerialPreview()"></div>
+                        <div class="form-group"><label>Préfixe Entrée (BE)</label><input type="text" id="prefixBE" value="BE" maxlength="10" oninput="updateSerialPreview()"></div>
                     </div>
                     <div class="serial-preview-box"><h4>Aperçu du prochain numéro :</h4><div id="serialPreview">FAC-2026-001</div></div>
                     <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">

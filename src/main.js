@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification, safeStorage } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const archiver = require('archiver');
@@ -10,7 +10,30 @@ const Database        = require('./database/db');
 const BackupScheduler = require('./backup-scheduler');
 const ExcelExporter   = require('./exporters/excel-exporter');
 const { buildRetenueHTML, buildRelanceHTML, buildFiscalSummaryHTML } = require('./renderer/retenue-builder');
+const { buildInvoiceHTML } = require('./renderer/builders/invoice-builder');
 const { create } = require('xmlbuilder2');
+const XLSX = require('xlsx');
+
+/**
+ * Helper to convert a local file path to base64 data URI
+ * Necessary because offscreen BrowserWindows cannot load local file paths reliably.
+ */
+function imagePathToBase64(filePath) {
+    if (!filePath) return null;
+    // If it's already a data URI, return as is
+    if (typeof filePath === 'string' && filePath.startsWith('data:')) return filePath;
+    try {
+        if (fs.existsSync(filePath)) {
+            const buf = fs.readFileSync(filePath);
+            const ext = path.extname(filePath).toLowerCase().slice(1);
+            const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+            return `data:${mime};base64,${buf.toString('base64')}`;
+        }
+    } catch (e) {
+        console.error(`[base64] Error converting ${filePath}:`, e.message);
+    }
+    return filePath; // Return original if conversion fails
+}
 
 const db            = new Database();
 const excelExporter = new ExcelExporter();
@@ -18,6 +41,7 @@ const excelExporter = new ExcelExporter();
 let mainWindow;
 let backupScheduler;
 let calculatorWindow = null;
+let ocrWorker = null;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -98,7 +122,16 @@ ipcMain.handle('updater:install', () => {
         autoUpdater.quitAndInstall(false, true);
     });
 });
-ipcMain.handle('app:version',     ()       => app.getVersion());
+ipcMain.handle('app:version', () => {
+    let v = app.getVersion();
+    if (v === '0.0.0' || !v) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+            v = pkg.version;
+        } catch { v = '2.6.0'; }
+    }
+    return v;
+});
 
 // ==================== PDF ====================
 async function handlePDFGeneration(html, callback) {
@@ -108,16 +141,16 @@ async function handlePDFGeneration(html, callback) {
         fs.writeFileSync(tempPath, html, 'utf8');
         await win.loadFile(tempPath);
         
-        // Wait for all images to load
+        // Wait for all images and fonts to load for rendering stability
         await win.webContents.executeJavaScript(`
-            Promise.all(Array.from(document.images).map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => { img.onload = img.onerror = resolve; });
-            }))
+            Promise.all([
+                document.fonts.ready,
+                ...Array.from(document.images).map(img => {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(resolve => { img.onload = img.onerror = resolve; });
+                })
+            ])
         `);
-        
-        // Additional small delay for rendering stability
-        await new Promise(r => setTimeout(r, 250));
         
         const data = await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true, marginsType: 0 });
         return data;
@@ -146,11 +179,15 @@ ipcMain.handle('pdf:print', async (_, { html }) => {
         fs.writeFileSync(tempPath, html, 'utf8');
         await win.loadFile(tempPath);
         
+        // Wait for all images and fonts to load
         await win.webContents.executeJavaScript(`
-            Promise.all(Array.from(document.images).map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => { img.onload = img.onerror = resolve; });
-            }))
+            Promise.all([
+                document.fonts.ready,
+                ...Array.from(document.images).map(img => {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(resolve => { img.onload = img.onerror = resolve; });
+                })
+            ])
         `);
         
         await new Promise((res, rej) => win.webContents.print({ silent: false, printBackground: true }, (ok, err) => { 
@@ -193,7 +230,8 @@ ipcMain.handle('docs:convert', async (_, { sourceId, targetType, userId, year })
         if (!src) throw new Error('Source introuvable');
         const num = db.getNextDocumentNumber(userId, targetType, year || new Date().getFullYear());
         const note = `Converti depuis ${src.type.toUpperCase()} N° ${src.number} du ${src.date}`;
-        return { success: true, document: db.saveDocument({ ...src, id: undefined, type: targetType, number: num, date: new Date().toISOString().split('T')[0], dueDate: targetType === 'facture' ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, notes: src.notes ? `${src.notes}\n\n${note}` : note, paymentStatus: 'unpaid', paidAmount: 0 }) };
+        const isFactureOrAvoir = ['facture', 'avoir'].includes(targetType);
+        return { success: true, document: db.saveDocument({ ...src, id: undefined, type: targetType, number: num, date: new Date().toISOString().split('T')[0], dueDate: isFactureOrAvoir ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, referenceDoc: targetType === 'avoir' ? src.number : null, notes: src.notes ? `${src.notes}\n\n${note}` : note, paymentStatus: 'unpaid', paidAmount: 0 }) };
     } catch (e) { return { success: false, error: e.message }; }
 });
 ipcMain.handle('docs:duplicate', async (_, { docId, userId }) => {
@@ -208,6 +246,41 @@ ipcMain.handle('docs:duplicate', async (_, { docId, userId }) => {
 ipcMain.handle('docs:search',   async (_, { userId, query }) => { try { return db.searchDocuments(userId, query); } catch { return []; } });
 ipcMain.handle('docs:overdue',  async (_, userId) => { try { return db.getOverdueDocuments(userId); } catch { return []; } });
 ipcMain.handle('docs:expiring', async (_, { userId, days }) => { try { return db.getExpiringDocuments(userId, days||7); } catch { return []; } });
+ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
+    try {
+        const doc = db.getDocumentById(docId);
+        if (!doc) throw new Error('Document introuvable');
+        const company = db.getCompanySettings(userId || doc.user_id);
+        
+        // Wrap images for base64 conversion
+        if (company) {
+            company.logo_image = imagePathToBase64(company.logo_image);
+            company.stamp_image = imagePathToBase64(company.stamp_image);
+            company.signature_image = imagePathToBase64(company.signature_image);
+        }
+        
+        // Prepare data for builder
+        const data = {
+            ...doc,
+            companyName: company?.name,
+            companyMF: company?.mf,
+            companyAddress: company?.address,
+            logoImage: imagePathToBase64(doc.logoImage) || company?.logo_image,
+            stampImage: imagePathToBase64(doc.stampImage) || company?.stamp_image,
+            signatureImage: imagePathToBase64(doc.signatureImage) || company?.signature_image,
+            // Ensure fiscal fields from database match what builder expects
+            totalHT: doc.totalHT || 0,
+            totalTVA: doc.totalTVA || 0,
+            totalTTC: doc.totalTTC || 0,
+            timbreFiscal: doc.timbreAmount || 0,
+            referenceDoc: doc.referenceDoc || null,
+            tvaLines: doc.items ? [] : [] // Builder handles items and extracts TVA
+        };
+
+        const html = buildInvoiceHTML(data);
+        return { success: true, html };
+    } catch (e) { return { success: false, error: e.message }; }
+});
 
 // ==================== PAYMENTS ====================
 ipcMain.handle('payments:add',    async (_, d) => { try { return { success: true, payment: db.addPayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
@@ -236,8 +309,21 @@ ipcMain.handle('company:saveImages',  async (_, data) => { try { db.saveCompanyI
 ipcMain.handle('company:removeImage', async (_, { userId, imageType }) => { try { db.removeCompanyImage(userId, imageType); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== SETTINGS ====================
-ipcMain.handle('settings:get',          async (_, userId) => db.getUserSettings(userId));
-ipcMain.handle('settings:update',       async (_, { userId, settings }) => { try { return { success: true, settings: db.updateUserSettings(userId, settings) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('settings:get',          async (_, userId) => {
+    const settings = db.getUserSettings(userId);
+    if (settings && settings.smtp_pass && safeStorage.isEncryptionAvailable()) {
+        try { settings.smtp_pass = safeStorage.decryptString(Buffer.from(settings.smtp_pass, 'base64')); } catch {}
+    }
+    return settings;
+});
+ipcMain.handle('settings:update',       async (_, { userId, settings }) => { 
+    try { 
+        if (settings.smtp_pass && safeStorage.isEncryptionAvailable()) {
+            settings.smtp_pass = safeStorage.encryptString(settings.smtp_pass).toString('base64');
+        }
+        return { success: true, settings: db.updateUserSettings(userId, settings) }; 
+    } catch (e) { return { success: false, error: e.message }; } 
+});
 ipcMain.handle('settings:resetCounter', async (_, { userId, type, year }) => { try { db.resetDocumentCounter(userId, type, year || new Date().getFullYear()); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== THEMES ====================
@@ -270,7 +356,6 @@ ipcMain.handle('export:excel:clients', async (_, { clients, filePath }) => {
 ipcMain.handle('export:excel:retenues', async (_, { retenues, filePath }) => {
     try {
         if (!filePath) { const r = await dialog.showSaveDialog(mainWindow, { defaultPath: `retenues-${Date.now()}.xlsx`, filters: [{ name: 'Excel', extensions: ['xlsx'] }] }); if (r.canceled) return { success: false }; filePath = r.filePath; }
-        const XLSX = require('xlsx');
         const rows = retenues.map(r => ({
             'Numéro': r.number, 'Date': r.date, 'Année': r.year, 'Mois': r.month,
             'Retenu par': r.retenuerName, 'MF Retenu': r.retenuerMF||'',
@@ -332,13 +417,18 @@ ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments 
             throw new Error('SMTP non configuré dans les paramètres');
         }
 
+        let smtpPass = settings.smtp_pass;
+        if (smtpPass && safeStorage.isEncryptionAvailable()) {
+            try { smtpPass = safeStorage.decryptString(Buffer.from(smtpPass, 'base64')); } catch {}
+        }
+
         const transporter = nodemailer.createTransport({
             host: settings.smtp_host,
             port: settings.smtp_port,
             secure: settings.smtp_secure === 1,
             auth: {
                 user: settings.smtp_user,
-                pass: settings.smtp_pass
+                pass: smtpPass
             }
         });
 
@@ -380,6 +470,19 @@ ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
         const retenue = db.getRetenueById(retenueId);
         if (!retenue) throw new Error('Retenue introuvable');
         const company = db.getCompanySettings(retenue.user_id);
+        
+        // Wrap images for base64 conversion
+        if (company) {
+            company.logo_image = imagePathToBase64(company.logo_image);
+            company.stamp_image = imagePathToBase64(company.stamp_image);
+            company.signature_image = imagePathToBase64(company.signature_image);
+        }
+        if (retenue) {
+            retenue.logoImage = imagePathToBase64(retenue.logoImage);
+            retenue.stampImage = imagePathToBase64(retenue.stampImage);
+            retenue.signatureImage = imagePathToBase64(retenue.signatureImage);
+        }
+
         const html = buildRetenueHTML({ ...retenue, ...company }, theme || null);
         return { success: true, html };
     } catch (e) { return { success: false, error: e.message }; }
@@ -388,6 +491,14 @@ ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
 ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) => {
     try {
         const { buildPayslipHTML } = require('./renderer/retenue-builder');
+        
+        // Wrap images in company for base64 conversion
+        if (company) {
+            company.logo_image = imagePathToBase64(company.logo_image);
+            company.stamp_image = imagePathToBase64(company.stamp_image);
+            company.signature_image = imagePathToBase64(company.signature_image);
+        }
+
         const html = buildPayslipHTML(payslip, employee, company);
         return { success: true, html };
     } catch (e) { return { success: false, error: e.message }; }
@@ -442,19 +553,20 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
     if (!filePath || !fs.existsSync(filePath)) {
         return { success: false, error: 'Fichier non trouvé' };
     }
-    let worker = null;
     try {
-        const { createWorker } = require('tesseract.js');
-        worker = await createWorker('fra+ara');
-        
-        // Optimize for invoices
-        await worker.setParameters({
-            tessedit_pageseg_mode: '3', // PSM 3: Fully automatic page segmentation, but no OSD.
-            tessjs_create_hocr: '0',
-            tessjs_create_tsv: '0',
-        });
+        if (!ocrWorker) {
+            const { createWorker } = require('tesseract.js');
+            ocrWorker = await createWorker('fra+ara');
+            
+            // Optimize for invoices
+            await ocrWorker.setParameters({
+                tessedit_pageseg_mode: '3', // PSM 3: Fully automatic page segmentation, but no OSD.
+                tessjs_create_hocr: '0',
+                tessjs_create_tsv: '0',
+            });
+        }
 
-        const { data: { text } } = await worker.recognize(filePath);
+        const { data: { text } } = await ocrWorker.recognize(filePath);
         console.log('--- RAW OCR START ---');
         console.log(text);
         console.log('--- RAW OCR END ---');
@@ -462,8 +574,6 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
     } catch (e) {
         console.error('OCR Error:', e);
         return { success: false, error: e.message, text: '' };
-    } finally {
-        if (worker) { try { await worker.terminate(); } catch {} }
     }
 });
 
@@ -506,6 +616,19 @@ ipcMain.handle('tools:relanceLetter', async (_, { docId, userId, attempt }) => {
         const doc = db.getDocumentById(docId);
         if (!doc) throw new Error('Document introuvable');
         const company = db.getCompanySettings(userId);
+        
+        // Wrap images for base64 conversion
+        if (company) {
+            company.logo_image = imagePathToBase64(company.logo_image);
+            company.stamp_image = imagePathToBase64(company.stamp_image);
+            company.signature_image = imagePathToBase64(company.signature_image);
+        }
+        if (doc) {
+            doc.logoImage = imagePathToBase64(doc.logoImage);
+            doc.stampImage = imagePathToBase64(doc.stampImage);
+            doc.signatureImage = imagePathToBase64(doc.signatureImage);
+        }
+
         const html = buildRelanceHTML(doc, company, attempt || 1);
         return { success: true, html };
     } catch (e) { return { success: false, error: e.message }; }
@@ -514,9 +637,47 @@ ipcMain.handle('tools:fiscalSummary', async (_, { userId, year, quarter }) => {
     try {
         const summary = db.getFiscalSummary(userId, year || new Date().getFullYear(), quarter || null);
         const company = db.getCompanySettings(userId);
+        
+        // Wrap images for base64 conversion
+        if (company) {
+            company.logo_image = imagePathToBase64(company.logo_image);
+            company.stamp_image = imagePathToBase64(company.stamp_image);
+            company.signature_image = imagePathToBase64(company.signature_image);
+        }
+
         const html = buildFiscalSummaryHTML(summary, company);
         return { success: true, html, summary };
     } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('tools:searchRNE', async (_, mf) => {
+    try {
+        // Clean MF: replace / with nothing for the API endpoint
+        const cleanMF = (mf || '').replace(/\//g, '').trim();
+        if (!cleanMF) throw new Error('MF invalide');
+
+        // We use the short-details endpoint which is public
+        const url = `https://www.registre-entreprises.tn/api/rne-api/front-office/entites/short-details/${cleanMF}`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) return { success: false, error: 'Matricule non trouvé sur le RNE' };
+            throw new Error(`RNE API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, data };
+    } catch (e) {
+        console.error('[RNE Search Error]:', e);
+        return { success: false, error: e.message };
+    }
 });
 
 // ==================== FS HELPERS ====================

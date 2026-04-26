@@ -2,67 +2,62 @@
 
 ## Project Overview
 - **App Name**: Factarlou (Product Name) / TuniInvoice Pro (Internal Name)
-- **Version**: 2.6.0
+- **Version**: 2.6.1
 - **Description**: A comprehensive, high-performance desktop application tailored for the Tunisian market to manage invoicing, taxation (Retenue), and business operations.
 - **Tech Stack**: 
   - **Framework**: Electron (v28+)
   - **Database**: SQLite (`better-sqlite3`) for robust local data storage.
   - **OCR Engine**: `Tesseract.js` for scanning and text extraction.
   - **Logic**: Node.js / Modern JavaScript.
-  - **Styling**: Vanilla CSS with a premium, dark-mode-ready design system.
+  - **Styling**: Vanilla CSS with a premium design system.
 
-## Critical Recent Fixes
+## Critical Recent Fixes (v2.6.1 Patch)
+15: 
+16: ### 1. Advanced Document Management & RNE (Fixed 2026-04-26)
+17: - **New Document Types**: Integrated 5 new document types into the core engine: **BL** (Bon de Livraison), **BA** (Bon d'Achat), **BS** (Bon de Sortie), **BE** (Bon d'Entrée), and **Avoir** (Credit Note).
+18: - **Negative Revenue Logic**: Re-engineered the database queries for dashboard, annual stats, and fiscal summaries to treat `avoir` as negative revenue (subtraction) and exclude non-financial types (BL, BA, BS, BE) from revenue totals.
+19: - **RNE Live Search**: Implemented a secure bridge to the **Tunisian National Registry of Enterprises (RNE)** API. Users can now fetch official client data (Name, Status, Legal Form, Address) directly via the Matricule Fiscal (MF).
+20: - **WhatsApp Integration**: Replaced generic icons with official **SVG WhatsApp branding** and optimized the messaging workflow for professional client communication.
+21: 
+22: ## Critical Previous Fixes (v2.6.0)
 
-### 1. Missing Document Stamps on Windows PDFs (Fixed 2026-04-22)
-- **Issue**: Company stamps and signatures were failing to appear on exported PDFs in the Windows version, though they worked on macOS.
-- **Root Cause**: 
-  1. **URL Truncation**: Using `data:` URLs to load HTML in the hidden PDF window hit Chromium's URL length limits on Windows (especially with multiple large base64 images).
-  2. **Race Condition**: The PDF capture was triggered before large images (like stamps) were fully decoded by the renderer.
-- **Solution**:
-  - **Temp Files**: Replaced `loadURL('data:...')` with `loadFile()` using temporary HTML files stored in the system temp folder.
-  - **Image Sync**: Implemented an `executeJavaScript` hook that waits for all document images to complete loading (`img.complete` or `onload`) before triggering `printToPDF`.
-  - **Location**: `src/main.js` (Handlers: `pdf:save`, `pdf:print`, `pdf:generateBuffer`).
+### 1. Tunisian Compliance & Precision (Fixed 2026-04-25)
+- **Precision**: Updated all builder functions and UI displays to use **3-decimal precision** (`toFixed(3)`). This is critical for Tunisian Millimes compliance, as 2-decimal rounding caused financial discrepancies.
+- **Localization**: Fully translated invoice templates to **French** (default business language in Tunisia) and optimized labels for clarity.
+- **Fiscal Fields**: Integrated mandatory Tunisian fields: **Matricule Fiscal (MF)**, **TVA Breakdown** per rate, and the **Timbre Fiscal (1.000 TND)** logic.
 
-## Key Features & Modules (v2.6.0 Updates)
+### 2. PDF Rendering & Image Fixes (Fixed 2026-04-25)
+- **Base64 Images**: Implemented a mandatory conversion from local file paths to **Base64 Data URIs** in the main process (`imagePathToBase64`). This resolves the "blank image" bug in offscreen BrowserWindows where `file://` protocols are blocked.
+- **Rendering Sync**: Replaced hardcoded `setTimeout(250)` with `document.fonts.ready` check in the PDF generator. This ensures pixel-perfect PDFs regardless of machine speed.
+- **Unified Builders**: Added `docs:buildHTML` IPC handler to bridge the gap between renderer templates and main-process PDF generation.
 
-### 📄 Invoicing & Document Management
-- **Document Types**: Professional generation of Invoices (Factures), Quotes (Devis), and Purchase Orders (Bons de Commande).
-- **Taxation**: Integrated calculation of Tunisian TVA (19%, 13%, 7%, 0%) and "Timbre Fiscal".
-- **Multi-Theme**: Modern and professional layout options with customizable colors and fonts.
-- **Partial Payments**: Track payments (Virement, Chèque, Espèces) with status updates (Unpaid, Partial, Paid).
+### 3. Performance & Security (Fixed 2026-04-25)
+- **OCR Acceleration**: Implemented **module-level caching** for the Tesseract.js worker. Instead of creating/terminating a worker on every scan (3-5s overhead), the app now reuses a persistent worker, making subsequent scans near-instant.
+- **Credential Safety**: Switched SMTP password storage to use **Electron `safeStorage`**. Passwords are now encrypted at rest in the SQLite database and only decrypted in memory during the `email:send` process.
+- **Import Optimization**: Moved heavy dependencies like `xlsx` to top-level imports to reduce IPC latency.
 
-### 🏦 Taxation (Retenue à la Source)
-- **DGF Compliance**: Generates official Tunisian "Certificat de Retenue à la Source" in the required Ministry of Finance format.
-- **Auto-Conversion**: One-click conversion from a Facture to a Retenue certificate.
+## Key Modules
 
-### 👥 Client & Service Management
-- **CRM**: Detailed client profiles including MF, RIB, Credit Limits, and Categories.
-- **Catalog**: Unified service/product catalog for rapid document filling.
-- **History**: View transaction history and balances per client.
+### 📄 Document Engine
+- **Templates**: Professional templates in `src/renderer/builders/invoice-builder.js` and `retenue-builder.js`.
+- **Types**: Full support for Facture, Avoir, Devis, BL, BA, BS, BE, and Bon de commande.
+- **Logic**: Support for FODEC, Timbre Fiscal, mixed TVA rates, and negative Avoir reconciliation.
 
-### 💼 HR & Payroll
-- **Employees**: Employee database with CIN, CNSS, and Role tracking.
-- **Payslips**: Generation of monthly "Bulletin de Paie" with IRPP and CNSS calculations.
+### 🧠 Scanner Module
+- **OCR**: `scanner:ocrImage` handler in `main.js`.
+- **Caching**: Persistent `ocrWorker` instance.
 
-### 📊 Intelligence & Tools
-- **Dashboard**: Real-time stats on revenue, expenses, and tax liabilities.
-- **Scanner/OCR**: Built-in support for scanning attachments and extracting text using AI.
-- **Excel Export**: Bulk export of documents and client data for accounting software.
-- **Relance**: Automated generation of payment reminder letters (Relance 1, 2, and Mise en Demeure).
-
-### 🔐 Security & Maintenance
-- **Data Safety**: Automated local backups with retention settings.
-- **Access Control**: Encrypted password protection and master key recovery.
-- **Auto-Updater**: Integrated update system for seamless version upgrades.
+### 🔐 Database Module
+- **Schema**: `src/database/db.js` handles all tables (companies, clients, documents, expenses, employees, etc.).
+- **Security**: Password hashing via `bcryptjs` and SMTP encryption via `safeStorage`.
 
 ## Important File Paths
-- **Main Process**: `src/main.js` (IPC handlers, PDF generation, Window management)
-- **Database Logic**: `src/database/db.js` (Schema, CRUD operations, SQL queries)
-- **UI Logic**: `src/renderer/app.js` (State management, UI interactions, form handling)
-- **Theming**: `src/renderer/Themes.js` & `src/renderer/retenue-builder.js` (Templates)
+- **Main Process**: `src/main.js` (Core IPC & PDF logic)
+- **Database Logic**: `src/database/db.js`
+- **Invoicing Logic**: `src/renderer/builders/invoice-builder.js`
+- **Retenue/HR Logic**: `src/renderer/retenue-builder.js`
 
 ## Ongoing Reminders
-- **PDF Export**: Always use the `handlePDFGeneration` helper in `main.js` to ensure Windows compatibility.
-- **Database Schema**: Hardened initialization in `db.js` ensures migrations don't crash the app on startup.
-- **Images**: Company logo, stamp, and signature are stored as Base64 in the `companies` table.
- 
+- **Millimes**: Always use `toFixed(3)` for monatery values.
+- **Images**: Pass base64 strings, not file paths, to builders for PDF reliability.
+- **Offline-First**: Maintain zero cloud dependency for all core features.

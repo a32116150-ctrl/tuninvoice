@@ -45,6 +45,11 @@ class AppDatabase {
         tryAlter(`ALTER TABLE documents ADD COLUMN expiry_date TEXT`);
         tryAlter(`ALTER TABLE documents ADD COLUMN discount_percent REAL DEFAULT 0`);
         tryAlter(`ALTER TABLE documents ADD COLUMN discount_amount REAL DEFAULT 0`);
+        tryAlter(`ALTER TABLE documents ADD COLUMN reference_doc TEXT DEFAULT NULL`);
+        tryAlter(`ALTER TABLE user_settings ADD COLUMN prefix_bl TEXT DEFAULT 'BL'`);
+        tryAlter(`ALTER TABLE user_settings ADD COLUMN prefix_ba TEXT DEFAULT 'BA'`);
+        tryAlter(`ALTER TABLE user_settings ADD COLUMN prefix_bs TEXT DEFAULT 'BS'`);
+        tryAlter(`ALTER TABLE user_settings ADD COLUMN prefix_be TEXT DEFAULT 'BE'`);
         tryAlter(`ALTER TABLE clients ADD COLUMN notes TEXT`);
         tryAlter(`ALTER TABLE clients ADD COLUMN tags TEXT`);
         tryAlter(`ALTER TABLE clients ADD COLUMN credit_limit REAL DEFAULT 0`);
@@ -118,13 +123,13 @@ class AppDatabase {
     initTables() {
         this.db.exec(`CREATE TABLE IF NOT EXISTS document_themes (user_id TEXT PRIMARY KEY, font_family TEXT DEFAULT "'Segoe UI', sans-serif", font_size TEXT DEFAULT '14px', title_facture_text TEXT DEFAULT 'FACTURE', title_facture_color TEXT DEFAULT '#1e3a8a', title_devis_text TEXT DEFAULT 'DEVIS', title_devis_color TEXT DEFAULT '#92400e', title_bon_text TEXT DEFAULT 'BON DE COMMANDE', title_bon_color TEXT DEFAULT '#065f46')`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, master_key_hash TEXT, company TEXT, mf TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        this.db.exec(`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, date TEXT NOT NULL, due_date TEXT, expiry_date TEXT, currency TEXT DEFAULT 'TND', payment_mode TEXT, payment_status TEXT DEFAULT 'unpaid', paid_amount REAL DEFAULT 0, paid_date TEXT, company_name TEXT, company_mf TEXT, company_address TEXT, company_phone TEXT, company_email TEXT, company_rc TEXT, client_id TEXT, client_name TEXT NOT NULL, client_mf TEXT, client_address TEXT, client_phone TEXT, client_email TEXT, items_json TEXT NOT NULL DEFAULT '[]', apply_timbre INTEGER DEFAULT 0, timbre_amount REAL DEFAULT 0, rounding_adjustment REAL DEFAULT 0, discount_percent REAL DEFAULT 0, discount_amount REAL DEFAULT 0, total_ht REAL NOT NULL DEFAULT 0, total_ttc REAL NOT NULL DEFAULT 0, logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+        this.db.exec(`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, date TEXT NOT NULL, due_date TEXT, expiry_date TEXT, currency TEXT DEFAULT 'TND', payment_mode TEXT, payment_status TEXT DEFAULT 'unpaid', paid_amount REAL DEFAULT 0, paid_date TEXT, company_name TEXT, company_mf TEXT, company_address TEXT, company_phone TEXT, company_email TEXT, company_rc TEXT, client_id TEXT, client_name TEXT NOT NULL, client_mf TEXT, client_address TEXT, client_phone TEXT, client_email TEXT, items_json TEXT NOT NULL DEFAULT '[]', apply_timbre INTEGER DEFAULT 0, timbre_amount REAL DEFAULT 0, rounding_adjustment REAL DEFAULT 0, discount_percent REAL DEFAULT 0, discount_amount REAL DEFAULT 0, total_ht REAL NOT NULL DEFAULT 0, total_ttc REAL NOT NULL DEFAULT 0, logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, reference_doc TEXT DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         
         this.db.exec(`CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, mf TEXT, address TEXT, phone TEXT, email TEXT, notes TEXT, tags TEXT, credit_limit REAL DEFAULT 0, category TEXT DEFAULT 'standard', rib TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS companies (user_id TEXT PRIMARY KEY, name TEXT, mf TEXT, address TEXT, phone TEXT, email TEXT, rc TEXT, website TEXT, bank TEXT, rib TEXT, logo_image TEXT, stamp_image TEXT, signature_image TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS doc_counters (user_id TEXT NOT NULL, type TEXT NOT NULL, year INTEGER NOT NULL, last_number INTEGER DEFAULT 0, PRIMARY KEY (user_id, type, year))`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS services (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, description TEXT, price REAL DEFAULT 0, tva REAL DEFAULT 19, category TEXT, unit TEXT DEFAULT 'unité', barcode TEXT, stock INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        this.db.exec(`CREATE TABLE IF NOT EXISTS user_settings (user_id TEXT PRIMARY KEY, prefix_facture TEXT DEFAULT 'FAC', prefix_devis TEXT DEFAULT 'DEV', prefix_bon TEXT DEFAULT 'BC', prefix_retenue TEXT DEFAULT 'RS', prefix_avoir TEXT DEFAULT 'AV', prefix_contract TEXT DEFAULT 'CTR', decimal_places INTEGER DEFAULT 3, rounding_method TEXT DEFAULT 'half_up', document_theme TEXT DEFAULT NULL, currency_default TEXT DEFAULT 'TND', smtp_host TEXT, smtp_port INTEGER DEFAULT 587, smtp_user TEXT, smtp_pass TEXT, smtp_secure INTEGER DEFAULT 0, FOREIGN KEY (user_id) REFERENCES users(id))`);
+        this.db.exec(`CREATE TABLE IF NOT EXISTS user_settings (user_id TEXT PRIMARY KEY, prefix_facture TEXT DEFAULT 'FAC', prefix_devis TEXT DEFAULT 'DEV', prefix_bon TEXT DEFAULT 'BC', prefix_retenue TEXT DEFAULT 'RS', prefix_avoir TEXT DEFAULT 'AV', prefix_contract TEXT DEFAULT 'CTR', prefix_bl TEXT DEFAULT 'BL', prefix_ba TEXT DEFAULT 'BA', prefix_bs TEXT DEFAULT 'BS', prefix_be TEXT DEFAULT 'BE', decimal_places INTEGER DEFAULT 3, rounding_method TEXT DEFAULT 'half_up', document_theme TEXT DEFAULT NULL, currency_default TEXT DEFAULT 'TND', smtp_host TEXT, smtp_port INTEGER DEFAULT 587, smtp_user TEXT, smtp_pass TEXT, smtp_secure INTEGER DEFAULT 0, FOREIGN KEY (user_id) REFERENCES users(id))`);
         try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN smtp_host TEXT`); } catch(e){}
         try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN smtp_port INTEGER DEFAULT 587`); } catch(e){}
         try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN smtp_user TEXT`); } catch(e){}
@@ -245,6 +250,10 @@ class AppDatabase {
             case 'facture': return s?.prefix_facture || 'FAC';
             case 'devis': return s?.prefix_devis || 'DEV';
             case 'bon': return s?.prefix_bon || 'BC';
+            case 'bl': return s?.prefix_bl || 'BL';
+            case 'ba': return s?.prefix_ba || 'BA';
+            case 'bs': return s?.prefix_bs || 'BS';
+            case 'be': return s?.prefix_be || 'BE';
             case 'retenue': return s?.prefix_retenue || 'RS';
             case 'avoir': return s?.prefix_avoir || 'AV';
             case 'contract': return s?.prefix_contract || 'CTR';
@@ -277,11 +286,11 @@ class AppDatabase {
         const id = docData.id || uuidv4();
         const number = docData.number || this.getNextDocumentNumber(docData.userId, docData.type, new Date().getFullYear());
         const existing = this.db.prepare('SELECT id FROM documents WHERE id=?').get(id);
-        const vals = [docData.type, number, docData.date, docData.dueDate||null, docData.expiryDate||null, docData.currency||'TND', docData.paymentMode||null, docData.paymentStatus||'unpaid', docData.paidAmount||0, docData.paidDate||null, docData.companyName||null, docData.companyMF||null, docData.companyAddress||null, docData.companyPhone||null, docData.companyEmail||null, docData.companyRC||null, docData.clientId||null, docData.clientName, docData.clientMF||null, docData.clientAddress||null, docData.clientPhone||null, docData.clientEmail||null, JSON.stringify(docData.items || []), docData.applyTimbre?1:0, docData.timbreAmount||0, docData.roundingAdjustment||0, docData.discountPercent||0, docData.discountAmount||0, docData.totalHT||0, docData.totalTTC||0, docData.logoImage||null, docData.stampImage||null, docData.signatureImage||null, docData.notes||null];
+        const vals = [docData.type, number, docData.date, docData.dueDate||null, docData.expiryDate||null, docData.currency||'TND', docData.paymentMode||null, docData.paymentStatus||'unpaid', docData.paidAmount||0, docData.paidDate||null, docData.companyName||null, docData.companyMF||null, docData.companyAddress||null, docData.companyPhone||null, docData.companyEmail||null, docData.companyRC||null, docData.clientId||null, docData.clientName, docData.clientMF||null, docData.clientAddress||null, docData.clientPhone||null, docData.clientEmail||null, JSON.stringify(docData.items || []), docData.applyTimbre?1:0, docData.timbreAmount||0, docData.roundingAdjustment||0, docData.discountPercent||0, docData.discountAmount||0, docData.totalHT||0, docData.totalTTC||0, docData.logoImage||null, docData.stampImage||null, docData.signatureImage||null, docData.notes||null, docData.referenceDoc || null];
         if (existing) {
-            this.db.prepare(`UPDATE documents SET type=?,number=?,date=?,due_date=?,expiry_date=?,currency=?,payment_mode=?,payment_status=?,paid_amount=?,paid_date=?,company_name=?,company_mf=?,company_address=?,company_phone=?,company_email=?,company_rc=?,client_id=?,client_name=?,client_mf=?,client_address=?,client_phone=?,client_email=?,items_json=?,apply_timbre=?,timbre_amount=?,rounding_adjustment=?,discount_percent=?,discount_amount=?,total_ht=?,total_ttc=?,logo_image=?,stamp_image=?,signature_image=?,notes=? WHERE id=?`).run(...vals, id);
+            this.db.prepare(`UPDATE documents SET type=?,number=?,date=?,due_date=?,expiry_date=?,currency=?,payment_mode=?,payment_status=?,paid_amount=?,paid_date=?,company_name=?,company_mf=?,company_address=?,company_phone=?,company_email=?,company_rc=?,client_id=?,client_name=?,client_mf=?,client_address=?,client_phone=?,client_email=?,items_json=?,apply_timbre=?,timbre_amount=?,rounding_adjustment=?,discount_percent=?,discount_amount=?,total_ht=?,total_ttc=?,logo_image=?,stamp_image=?,signature_image=?,notes=?,reference_doc=? WHERE id=?`).run(...vals, id);
         } else {
-            this.db.prepare(`INSERT INTO documents (id,user_id,type,number,date,due_date,expiry_date,currency,payment_mode,payment_status,paid_amount,paid_date,company_name,company_mf,company_address,company_phone,company_email,company_rc,client_id,client_name,client_mf,client_address,client_phone,client_email,items_json,apply_timbre,timbre_amount,rounding_adjustment,discount_percent,discount_amount,total_ht,total_ttc,logo_image,stamp_image,signature_image,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, docData.userId, ...vals);
+            this.db.prepare(`INSERT INTO documents (id,user_id,type,number,date,due_date,expiry_date,currency,payment_mode,payment_status,paid_amount,paid_date,company_name,company_mf,company_address,company_phone,company_email,company_rc,client_id,client_name,client_mf,client_address,client_phone,client_email,items_json,apply_timbre,timbre_amount,rounding_adjustment,discount_percent,discount_amount,total_ht,total_ttc,logo_image,stamp_image,signature_image,notes,reference_doc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, docData.userId, ...vals);
         }
         this.logActivity(docData.userId, existing?'update_document':'create_document', 'document', id, `${(docData.type||'').toUpperCase()} N° ${number}`);
         return this.getDocumentById(id);
@@ -302,7 +311,7 @@ class AppDatabase {
     }
     formatDocument(doc) {
         return {
-            id: doc.id, userId: doc.user_id, type: doc.type, number: doc.number, date: doc.date, dueDate: doc.due_date, expiryDate: doc.expiry_date, currency: doc.currency, paymentMode: doc.payment_mode, paymentStatus: doc.payment_status||'unpaid', paidAmount: doc.paid_amount||0, paidDate: doc.paid_date, companyName: doc.company_name, companyMF: doc.company_mf, companyAddress: doc.company_address, companyPhone: doc.company_phone, companyEmail: doc.company_email, companyRC: doc.company_rc, clientId: doc.client_id, clientName: doc.client_name, clientMF: doc.client_mf, clientAddress: doc.client_address, clientPhone: doc.client_phone, clientEmail: doc.client_email, items: (()=>{try{return JSON.parse(doc.items_json);}catch{return[];}})(), applyTimbre: doc.apply_timbre===1, timbreAmount: doc.timbre_amount||0, roundingAdjustment: doc.rounding_adjustment||0, discountPercent: doc.discount_percent||0, discountAmount: doc.discount_amount||0, totalHT: doc.total_ht||0, totalTTC: doc.total_ttc||0, logoImage: doc.logo_image, stampImage: doc.stamp_image, signatureImage: doc.signature_image, notes: doc.notes, createdAt: doc.created_at
+            id: doc.id, userId: doc.user_id, type: doc.type, number: doc.number, date: doc.date, dueDate: doc.due_date, expiryDate: doc.expiry_date, currency: doc.currency, paymentMode: doc.payment_mode, paymentStatus: doc.payment_status||'unpaid', paidAmount: doc.paid_amount||0, paidDate: doc.paid_date, companyName: doc.company_name, companyMF: doc.company_mf, companyAddress: doc.company_address, companyPhone: doc.company_phone, companyEmail: doc.company_email, companyRC: doc.company_rc, clientId: doc.client_id, clientName: doc.client_name, clientMF: doc.client_mf, clientAddress: doc.client_address, clientPhone: doc.client_phone, clientEmail: doc.client_email, items: (()=>{try{return JSON.parse(doc.items_json);}catch{return[];}})(), applyTimbre: doc.apply_timbre===1, timbreAmount: doc.timbre_amount||0, roundingAdjustment: doc.rounding_adjustment||0, discountPercent: doc.discount_percent||0, discountAmount: doc.discount_amount||0, totalHT: doc.total_ht||0, totalTTC: doc.total_ttc||0, logoImage: doc.logo_image, stampImage: doc.stamp_image, signatureImage: doc.signature_image, notes: doc.notes, referenceDoc: doc.reference_doc, createdAt: doc.created_at
         };
     }
 
@@ -378,13 +387,14 @@ class AppDatabase {
             const monthEnd = quarter * 3;
             dateFilter += ` AND CAST(strftime('%m', date) AS INTEGER) BETWEEN ${monthStart} AND ${monthEnd}`;
         }
-        const factures = this.db.prepare(`SELECT * FROM documents WHERE user_id=? AND type='facture' AND ${dateFilter}`).all(userId);
+        const factures = this.db.prepare(`SELECT * FROM documents WHERE user_id=? AND type IN ('facture', 'avoir') AND ${dateFilter}`).all(userId);
         let totalHT = 0, totalTTC = 0, totalTimbre = 0;
         const tvaMap = {};
         factures.forEach(doc => {
-            totalHT += doc.total_ht || 0;
-            totalTTC += doc.total_ttc || 0;
-            totalTimbre += doc.timbre_amount || 0;
+            const sign = doc.type === 'avoir' ? -1 : 1;
+            totalHT += (doc.total_ht || 0) * sign;
+            totalTTC += (doc.total_ttc || 0) * sign;
+            totalTimbre += (doc.timbre_amount || 0) * sign;
             let items = [];
             try { items = JSON.parse(doc.items_json); } catch {}
             items.forEach(item => {
@@ -392,8 +402,8 @@ class AppDatabase {
                 const itemHT = (Number(item.quantity) || 0) * (Number(item.price) || 0);
                 const itemTV = itemHT * rate / 100;
                 if (!tvaMap[rate]) tvaMap[rate] = { baseHT: 0, tvaAmount: 0 };
-                tvaMap[rate].baseHT += itemHT;
-                tvaMap[rate].tvaAmount += itemTV;
+                tvaMap[rate].baseHT += itemHT * sign;
+                tvaMap[rate].tvaAmount += itemTV * sign;
             });
         });
         const totalTVA = Object.values(tvaMap).reduce((s, v) => s + v.tvaAmount, 0);
@@ -403,9 +413,9 @@ class AppDatabase {
         const monthList = quarter ? Array.from({ length: 3 }, (_, i) => String((quarter - 1) * 3 + i + 1).padStart(2, '0')) : Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
         const monthly = monthList.map(m => {
             const mDocs = factures.filter(d => (d.date || '').slice(5, 7) === m);
-            const mRev = mDocs.reduce((s, d) => s + (d.total_ttc || 0), 0);
-            const mHT = mDocs.reduce((s, d) => s + (d.total_ht || 0), 0);
-            const mTimb = mDocs.reduce((s, d) => s + (d.timbre_amount || 0), 0);
+            const mRev = mDocs.reduce((s, d) => s + (d.type === 'avoir' ? -(d.total_ttc || 0) : (d.total_ttc || 0)), 0);
+            const mHT = mDocs.reduce((s, d) => s + (d.type === 'avoir' ? -(d.total_ht || 0) : (d.total_ht || 0)), 0);
+            const mTimb = mDocs.reduce((s, d) => s + (d.type === 'avoir' ? -(d.timbre_amount || 0) : (d.timbre_amount || 0)), 0);
             const mTVA = mRev - mHT - mTimb;
             const mRet = this.db.prepare(`SELECT COALESCE(SUM(montant_retenue),0) as t FROM retenues WHERE user_id=? AND year=? AND month=?`).get(userId, y, parseInt(m)).t;
             return { month: m, revenue: mRev, tva: Math.max(0, mTVA), retenu: mRet || 0, timbre: mTimb };
@@ -506,14 +516,14 @@ class AppDatabase {
     // ==================== STATS ====================
     getDashboardStats(userId) {
         const totalDocs = this.db.prepare('SELECT COUNT(*) as count FROM documents WHERE user_id=?').get(userId).count;
-        const totalRevenue = this.db.prepare(`SELECT COALESCE(SUM(total_ttc),0) as total FROM documents WHERE user_id=? AND type='facture'`).get(userId).total;
+        const totalRevenue = this.db.prepare(`SELECT COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc WHEN type='avoir' THEN -total_ttc ELSE 0 END),0) as total FROM documents WHERE user_id=?`).get(userId).total;
         const totalClients = this.db.prepare('SELECT COUNT(*) as count FROM clients WHERE user_id=?').get(userId).count;
         const thisMonth = this.db.prepare(`SELECT COUNT(*) as count FROM documents WHERE user_id=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')`).get(userId).count;
         const unpaidCount = this.db.prepare(`SELECT COUNT(*) as count FROM documents WHERE user_id=? AND type='facture' AND payment_status!='paid'`).get(userId).count;
-        const unpaidTotal = this.db.prepare(`SELECT COALESCE(SUM(total_ttc-paid_amount),0) as total FROM documents WHERE user_id=? AND type='facture' AND payment_status!='paid'`).get(userId).total;
-        const monthlyRevenue = this.db.prepare(`SELECT strftime('%Y-%m',date) as month, COALESCE(SUM(total_ttc),0) as revenue, COUNT(*) as count FROM documents WHERE user_id=? AND type='facture' AND date>=date('now','-6 months') GROUP BY month ORDER BY month ASC`).all(userId);
+        const unpaidTotal = this.db.prepare(`SELECT COALESCE(SUM(CASE WHEN type='facture' THEN (total_ttc-paid_amount) WHEN type='avoir' THEN -(total_ttc-paid_amount) ELSE 0 END),0) as total FROM documents WHERE user_id=? AND payment_status!='paid'`).get(userId).total;
+        const monthlyRevenue = this.db.prepare(`SELECT strftime('%Y-%m',date) as month, COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc WHEN type='avoir' THEN -total_ttc ELSE 0 END),0) as revenue, COUNT(*) as count FROM documents WHERE user_id=? AND type IN ('facture', 'avoir') AND date>=date('now','-6 months') GROUP BY month ORDER BY month ASC`).all(userId);
         const typeBreakdown = this.db.prepare(`SELECT type, COUNT(*) as count, COALESCE(SUM(total_ttc),0) as total FROM documents WHERE user_id=? GROUP BY type`).all(userId);
-        const topClients = this.db.prepare(`SELECT client_name, COUNT(*) as doc_count, COALESCE(SUM(total_ttc),0) as revenue FROM documents WHERE user_id=? AND type='facture' GROUP BY client_name ORDER BY revenue DESC LIMIT 5`).all(userId);
+        const topClients = this.db.prepare(`SELECT client_name, COUNT(*) as doc_count, COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc WHEN type='avoir' THEN -total_ttc ELSE 0 END),0) as revenue FROM documents WHERE user_id=? AND type IN ('facture', 'avoir') GROUP BY client_name ORDER BY revenue DESC LIMIT 5`).all(userId);
         const recentActivity = this.db.prepare(`SELECT * FROM activity_log WHERE user_id=? ORDER BY created_at DESC LIMIT 8`).all(userId);
         const today = new Date().toISOString().split('T')[0];
         const overdueCount = this.db.prepare(`SELECT COUNT(*) as count FROM documents WHERE user_id=? AND type='facture' AND payment_status!='paid' AND due_date IS NOT NULL AND due_date < ?`).get(userId, today).count;
@@ -559,7 +569,38 @@ class AppDatabase {
         return s;
     }
     updateUserSettings(userId, settings) {
-        this.db.prepare(`UPDATE user_settings SET prefix_facture=COALESCE(?,prefix_facture), prefix_devis=COALESCE(?,prefix_devis), prefix_bon=COALESCE(?,prefix_bon), prefix_retenue=COALESCE(?,prefix_retenue), prefix_avoir=COALESCE(?,prefix_avoir), prefix_contract=COALESCE(?,prefix_contract), decimal_places=COALESCE(?,decimal_places), rounding_method=COALESCE(?,rounding_method), document_theme=COALESCE(?,document_theme), currency_default=COALESCE(?,currency_default) WHERE user_id=?`).run(settings.prefix_facture||null, settings.prefix_devis||null, settings.prefix_bon||null, settings.prefix_retenue||null, settings.prefix_avoir||null, settings.prefix_contract||null, settings.decimal_places !== undefined ? settings.decimal_places : null, settings.rounding_method||null, settings.document_theme !== undefined ? settings.document_theme : null, settings.currency_default||null, userId);
+        this.db.prepare(`UPDATE user_settings SET 
+            prefix_facture=COALESCE(?,prefix_facture), 
+            prefix_devis=COALESCE(?,prefix_devis), 
+            prefix_bon=COALESCE(?,prefix_bon), 
+            prefix_bl=COALESCE(?,prefix_bl),
+            prefix_ba=COALESCE(?,prefix_ba),
+            prefix_bs=COALESCE(?,prefix_bs),
+            prefix_be=COALESCE(?,prefix_be),
+            prefix_retenue=COALESCE(?,prefix_retenue), 
+            prefix_avoir=COALESCE(?,prefix_avoir), 
+            prefix_contract=COALESCE(?,prefix_contract), 
+            decimal_places=COALESCE(?,decimal_places), 
+            rounding_method=COALESCE(?,rounding_method), 
+            document_theme=COALESCE(?,document_theme), 
+            currency_default=COALESCE(?,currency_default) 
+            WHERE user_id=?`).run(
+                settings.prefix_facture||null, 
+                settings.prefix_devis||null, 
+                settings.prefix_bon||null, 
+                settings.prefix_bl||null,
+                settings.prefix_ba||null,
+                settings.prefix_bs||null,
+                settings.prefix_be||null,
+                settings.prefix_retenue||null, 
+                settings.prefix_avoir||null, 
+                settings.prefix_contract||null, 
+                settings.decimal_places !== undefined ? settings.decimal_places : null, 
+                settings.rounding_method||null, 
+                settings.document_theme !== undefined ? settings.document_theme : null, 
+                settings.currency_default||null, 
+                userId
+            );
         return this.getUserSettings(userId);
     }
 
@@ -674,10 +715,10 @@ class AppDatabase {
     // ==================== ANNUAL STATS ====================
     getAnnualStats(userId, year) {
         const y = year || new Date().getFullYear();
-        const monthly = this.db.prepare(`SELECT strftime('%m', date) as month, COUNT(*) as count, COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc ELSE 0 END),0) as revenue FROM documents WHERE user_id=? AND strftime('%Y',date)=? GROUP BY month ORDER BY month ASC`).all(userId, String(y));
+        const monthly = this.db.prepare(`SELECT strftime('%m', date) as month, COUNT(*) as count, COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc WHEN type='avoir' THEN -total_ttc ELSE 0 END),0) as revenue FROM documents WHERE user_id=? AND strftime('%Y',date)=? GROUP BY month ORDER BY month ASC`).all(userId, String(y));
         const byType = this.db.prepare(`SELECT type, COUNT(*) as count, COALESCE(SUM(total_ttc),0) as total FROM documents WHERE user_id=? AND strftime('%Y',date)=? GROUP BY type`).all(userId, String(y));
-        const totalRevenue = this.db.prepare(`SELECT COALESCE(SUM(total_ttc),0) as total FROM documents WHERE user_id=? AND type='facture' AND strftime('%Y',date)=?`).get(userId, String(y)).total;
-        const topClients = this.db.prepare(`SELECT client_name, COUNT(*) as count, COALESCE(SUM(total_ttc),0) as revenue FROM documents WHERE user_id=? AND type='facture' AND strftime('%Y',date)=? GROUP BY client_name ORDER BY revenue DESC LIMIT 10`).all(userId, String(y));
+        const totalRevenue = this.db.prepare(`SELECT COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc WHEN type='avoir' THEN -total_ttc ELSE 0 END),0) as total FROM documents WHERE user_id=? AND strftime('%Y',date)=?`).get(userId, String(y)).total;
+        const topClients = this.db.prepare(`SELECT client_name, COUNT(*) as count, COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc WHEN type='avoir' THEN -total_ttc ELSE 0 END),0) as revenue FROM documents WHERE user_id=? AND strftime('%Y',date)=? GROUP BY client_name ORDER BY revenue DESC LIMIT 10`).all(userId, String(y));
         const totalRetenueYear = this.db.prepare(`SELECT COALESCE(SUM(montant_retenue),0) as total FROM retenues WHERE user_id=? AND year=?`).get(userId, y).total;
         const expenseSummary = this.getExpenseSummary(userId, y);
         return { year: y, monthly, byType, totalRevenue, topClients, totalRetenueYear, expenseSummary };
@@ -685,9 +726,9 @@ class AppDatabase {
 
     getClientStats(userId, clientName) {
         const docs = this.db.prepare(`SELECT * FROM documents WHERE user_id=? AND client_name=? ORDER BY date DESC`).all(userId, clientName).map(d => this.formatDocument(d));
-        const totalRevenue = docs.filter(d => d.type==='facture').reduce((s, d) => s + d.totalTTC, 0);
-        const unpaidRevenue = docs.filter(d => d.type==='facture' && d.paymentStatus!=='paid').reduce((s, d) => s + d.totalTTC - d.paidAmount, 0);
-        const monthlyRevenue = this.db.prepare(`SELECT strftime('%Y-%m', date) as month, COALESCE(SUM(total_ttc),0) as revenue FROM documents WHERE user_id=? AND client_name=? AND type='facture' GROUP BY month ORDER BY month ASC`).all(userId, clientName);
+        const totalRevenue = docs.filter(d => ['facture', 'avoir'].includes(d.type)).reduce((s, d) => s + (d.type === 'avoir' ? -d.totalTTC : d.totalTTC), 0);
+        const unpaidRevenue = docs.filter(d => ['facture', 'avoir'].includes(d.type) && d.paymentStatus !== 'paid').reduce((s, d) => s + (d.type === 'avoir' ? -(d.totalTTC - d.paidAmount) : (d.totalTTC - d.paidAmount)), 0);
+        const monthlyRevenue = this.db.prepare(`SELECT strftime('%Y-%m', date) as month, COALESCE(SUM(CASE WHEN type='facture' THEN total_ttc WHEN type='avoir' THEN -total_ttc ELSE 0 END),0) as revenue FROM documents WHERE user_id=? AND client_name=? AND type IN ('facture', 'avoir') GROUP BY month ORDER BY month ASC`).all(userId, clientName);
         return { docs, totalRevenue, unpaidRevenue, docCount: docs.length, monthlyRevenue };
     }
 
