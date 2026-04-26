@@ -97,21 +97,93 @@ autoUpdater.on('download-progress', (p) => {
 autoUpdater.on('update-downloaded', (info) => {
     if (mainWindow && process.platform === 'win32') mainWindow.setProgressBar(-1);
     sendUpdate('downloaded', { version: info.version });
-    dialog.showMessageBox(mainWindow, {
-        type: 'info', title: '🎉 Mise à jour prête',
-        message: `Factarlou ${info.version} est téléchargé et prêt.`,
-        detail: 'Redémarrez maintenant pour appliquer la mise à jour, ou elle s\'installera automatiquement au prochain démarrage.',
-        buttons: ['🔄 Redémarrer maintenant', '⏰ Plus tard'],
-        defaultId: 0, cancelId: 1
-    }).then(r => { 
-        if (r.response === 0) {
-            // Use setImmediate to ensure the dialog is fully closed before quitting
-            setImmediate(() => {
-                app.removeAllListeners("window-all-closed");
-                autoUpdater.quitAndInstall(false, true);
+
+    if (process.platform === 'darwin') {
+        try {
+            // Try multiple ways to find the downloaded DMG
+            const cacheDir = path.join(app.getPath('userData'), 'pending'); // electron-updater cache location
+            
+            // Find the DMG file — try info first, then scan cache
+            let downloadedPath = info.downloadedFile || (info.files && info.files[0] && info.files[0].path);
+            
+            if (!downloadedPath || !fs.existsSync(downloadedPath)) {
+                // Scan the cache directory for the DMG
+                if (fs.existsSync(cacheDir)) {
+                    const files = fs.readdirSync(cacheDir)
+                        .filter(f => f.endsWith('.dmg'))
+                        .map(f => path.join(cacheDir, f));
+                    if (files.length > 0) downloadedPath = files[0];
+                }
+            }
+            
+            if (!downloadedPath || !fs.existsSync(downloadedPath)) {
+                // Fallback — just open website
+                dialog.showMessageBox(mainWindow, {
+                    type: 'info',
+                    title: '🚀 Mise à jour disponible',
+                    message: `Factarlou v${info.version} est prêt`,
+                    detail: 'Téléchargez le fichier DMG depuis notre site et remplacez l\'application dans votre dossier Applications.',
+                    buttons: ['Ouvrir le site web', 'Plus tard'],
+                    defaultId: 0
+                }).then(r => {
+                    if (r.response === 0) {
+                        shell.openExternal('https://www.factarlou.online/');
+                    }
+                });
+                return;
+            }
+
+            // Copy DMG to Downloads folder
+            const downloadsFolder = app.getPath('downloads');
+            const fileName = `Factarlou-${info.version}.dmg`;
+            const destPath = path.join(downloadsFolder, fileName);
+            
+            fs.copyFileSync(downloadedPath, destPath);
+            
+            // Show notification
+            if (Notification.isSupported()) {
+                new Notification({ 
+                    title: '✅ Factarlou mis à jour',
+                    body: `v${info.version} est dans votre dossier Téléchargements`
+                }).show();
+            }
+
+            // Show dialog with clear instructions
+            dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                title: '🚀 Mise à jour prête',
+                message: `Factarlou v${info.version} est dans votre dossier Téléchargements`,
+                detail: `Pour installer la mise à jour :\n\n1. Ouvrez le fichier "${fileName}"\n2. Faites glisser Factarlou vers Applications\n3. Cliquez sur "Remplacer"\n4. Relancez l'application\n\n⚠️ Fermez Factarlou avant d'installer.`,
+                buttons: ['📁 Ouvrir Téléchargements', '✕ Plus tard'],
+                defaultId: 0,
+                cancelId: 1
+            }).then(r => {
+                if (r.response === 0) {
+                    shell.openPath(downloadsFolder);
+                }
             });
+
+        } catch (e) {
+            console.error('[updater] Mac copy error:', e);
+            shell.openExternal('https://www.factarlou.online/');
         }
-    });
+    } else {
+        // Windows behavior stays automatic
+        dialog.showMessageBox(mainWindow, {
+            type: 'info', title: '🎉 Mise à jour prête',
+            message: `Factarlou ${info.version} est téléchargé et prêt.`,
+            detail: 'Redémarrez maintenant pour appliquer la mise à jour, ou elle s\'installera automatiquement au prochain démarrage.',
+            buttons: ['🔄 Redémarrer maintenant', '⏰ Plus tard'],
+            defaultId: 0, cancelId: 1
+        }).then(r => { 
+            if (r.response === 0) {
+                setImmediate(() => {
+                    app.removeAllListeners("window-all-closed");
+                    autoUpdater.quitAndInstall(false, true);
+                });
+            }
+        });
+    }
 });
 autoUpdater.on('error', (err) => { sendUpdate('error', { message: err.message }); console.error('[updater]', err); });
 

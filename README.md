@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.6.1-blue?style=for-the-badge" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-2.6.2-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -25,7 +25,7 @@ De la génération de factures conformes à l'exportation XML pour la plateforme
 
 ---
 
-## ✨ Fonctionnalités Majeures (v2.6.1)
+## ✨ Fonctionnalités Majeures (v2.6.2)
 
 ### 🇹🇳 Conformité Fiscale Tunisienne
 - **Export TEJ XML** : Génération de fichiers réglementaires pour la **Retenue à la Source (RS)** et les **Factures Électroniques**.
@@ -71,8 +71,9 @@ Une suite complète d'assistants pour vous simplifier la vie :
 
 ---
 
-## 🚀 Quoi de neuf dans la v2.6.1 ?
+## 🚀 Quoi de neuf dans la v2.6.2 ?
 
+- **Auto-Updater Mac Robuste** : Nouveau système de mise à jour pour macOS avec détection intelligente du cache, copie automatique vers le dossier Téléchargements et fallback vers le site officiel en cas d'erreur.
 - **Nouveaux Documents** : Support complet pour les Bons de Livraison (BL), Bons d'Achat (BA), Bons de Sortie (BS), et Bons d'Entrée (BE).
 - **Gestion des Avoirs** : Nouvelle logique de Facture d'Avoir avec impact négatif sur le chiffre d'affaires et réduction automatique de la dette client.
 - **Recherche RNE Live** : Intégration de l'API publique du Registre National des Entreprises pour récupérer les données clients instantanément via leur MF.
