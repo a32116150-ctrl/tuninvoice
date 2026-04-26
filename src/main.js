@@ -1,14 +1,14 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Notification, safeStorage } = require('electron');
 const path = require('path');
-const fs   = require('fs');
+const fs = require('fs');
 const archiver = require('archiver');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const { autoUpdater } = require('electron-updater');
 
-const Database        = require('./database/db');
+const Database = require('./database/db');
 const BackupScheduler = require('./backup-scheduler');
-const ExcelExporter   = require('./exporters/excel-exporter');
+const ExcelExporter = require('./exporters/excel-exporter');
 const { buildRetenueHTML, buildRelanceHTML, buildFiscalSummaryHTML } = require('./renderer/retenue-builder');
 const { buildInvoiceHTML } = require('./renderer/builders/invoice-builder');
 const { create } = require('xmlbuilder2');
@@ -35,7 +35,7 @@ function imagePathToBase64(filePath) {
     return filePath; // Return original if conversion fails
 }
 
-const db            = new Database();
+const db = new Database();
 const excelExporter = new ExcelExporter();
 
 let mainWindow;
@@ -102,10 +102,10 @@ autoUpdater.on('update-downloaded', (info) => {
         try {
             // Try multiple ways to find the downloaded DMG
             const cacheDir = path.join(app.getPath('userData'), 'pending'); // electron-updater cache location
-            
+
             // Find the DMG file — try info first, then scan cache
             let downloadedPath = info.downloadedFile || (info.files && info.files[0] && info.files[0].path);
-            
+
             if (!downloadedPath || !fs.existsSync(downloadedPath)) {
                 // Scan the cache directory for the DMG
                 if (fs.existsSync(cacheDir)) {
@@ -115,7 +115,7 @@ autoUpdater.on('update-downloaded', (info) => {
                     if (files.length > 0) downloadedPath = files[0];
                 }
             }
-            
+
             if (!downloadedPath || !fs.existsSync(downloadedPath)) {
                 // Fallback — just open website
                 dialog.showMessageBox(mainWindow, {
@@ -137,12 +137,12 @@ autoUpdater.on('update-downloaded', (info) => {
             const downloadsFolder = app.getPath('downloads');
             const fileName = `Factarlou-${info.version}.dmg`;
             const destPath = path.join(downloadsFolder, fileName);
-            
+
             fs.copyFileSync(downloadedPath, destPath);
-            
+
             // Show notification
             if (Notification.isSupported()) {
-                new Notification({ 
+                new Notification({
                     title: '✅ Factarlou mis à jour',
                     body: `v${info.version} est dans votre dossier Téléchargements`
                 }).show();
@@ -175,7 +175,7 @@ autoUpdater.on('update-downloaded', (info) => {
             detail: 'Redémarrez maintenant pour appliquer la mise à jour, ou elle s\'installera automatiquement au prochain démarrage.',
             buttons: ['🔄 Redémarrer maintenant', '⏰ Plus tard'],
             defaultId: 0, cancelId: 1
-        }).then(r => { 
+        }).then(r => {
             if (r.response === 0) {
                 setImmediate(() => {
                     app.removeAllListeners("window-all-closed");
@@ -187,7 +187,7 @@ autoUpdater.on('update-downloaded', (info) => {
 });
 autoUpdater.on('error', (err) => { sendUpdate('error', { message: err.message }); console.error('[updater]', err); });
 
-ipcMain.handle('updater:check',   async () => { try { const r = await autoUpdater.checkForUpdates(); return { success: true, version: r?.updateInfo?.version }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('updater:check', async () => { try { const r = await autoUpdater.checkForUpdates(); return { success: true, version: r?.updateInfo?.version }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('updater:install', () => {
     setImmediate(() => {
         app.removeAllListeners("window-all-closed");
@@ -212,7 +212,7 @@ async function handlePDFGeneration(html, callback) {
     try {
         fs.writeFileSync(tempPath, html, 'utf8');
         await win.loadFile(tempPath);
-        
+
         // Wait for all images and fonts to load for rendering stability
         await win.webContents.executeJavaScript(`
             Promise.all([
@@ -223,7 +223,7 @@ async function handlePDFGeneration(html, callback) {
                 })
             ])
         `);
-        
+
         const data = await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true, marginsType: 0 });
         return data;
     } finally {
@@ -236,7 +236,7 @@ ipcMain.handle('pdf:save', async (_, { html, filename }) => {
     try {
         const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, { defaultPath: filename || 'document.pdf', filters: [{ name: 'PDF', extensions: ['pdf'] }] });
         if (canceled || !filePath) return { success: false, canceled: true };
-        
+
         const data = await handlePDFGeneration(html);
         fs.writeFileSync(filePath, data);
         shell.showItemInFolder(filePath);
@@ -250,7 +250,7 @@ ipcMain.handle('pdf:print', async (_, { html }) => {
     try {
         fs.writeFileSync(tempPath, html, 'utf8');
         await win.loadFile(tempPath);
-        
+
         // Wait for all images and fonts to load
         await win.webContents.executeJavaScript(`
             Promise.all([
@@ -261,9 +261,9 @@ ipcMain.handle('pdf:print', async (_, { html }) => {
                 })
             ])
         `);
-        
-        await new Promise((res, rej) => win.webContents.print({ silent: false, printBackground: true }, (ok, err) => { 
-            if (ok || err === 'cancelled') res(); else rej(new Error(err)); 
+
+        await new Promise((res, rej) => win.webContents.print({ silent: false, printBackground: true }, (ok, err) => {
+            if (ok || err === 'cancelled') res(); else rej(new Error(err));
         }));
         return { success: true };
     } catch (e) { return { success: false, error: e.message }; }
@@ -276,25 +276,25 @@ ipcMain.handle('pdf:print', async (_, { html }) => {
 ipcMain.handle('pdf:generateBuffer', async (_, { html }) => {
     try {
         const data = await handlePDFGeneration(html);
-        return { success: true, data: data }; 
+        return { success: true, data: data };
     } catch (e) { return { success: false, error: e.message }; }
 });
 
 // ==================== AUTH ====================
-ipcMain.handle('auth:register',       async (_, d) => { try { return { success: true, user: db.registerUser(d) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('auth:login',          async (_, d) => { try { return { success: true, user: db.loginUser(d.email, d.password) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('auth:register', async (_, d) => { try { return { success: true, user: db.registerUser(d) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('auth:login', async (_, d) => { try { return { success: true, user: db.loginUser(d.email, d.password) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('auth:changePassword', async (_, { userId, oldPassword, newPassword }) => { try { db.changePassword(userId, oldPassword, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('auth:resetPasswordMasterKey', async (_, { email, masterKey, newPassword }) => { try { db.resetPasswordWithMasterKey(email, masterKey, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== DOCUMENTS ====================
-ipcMain.handle('docs:getAll',        async (_, userId) => db.getDocuments(userId));
-ipcMain.handle('docs:getByType',     async (_, { userId, type }) => db.getDocumentsByType(userId, type));
-ipcMain.handle('docs:getById',       async (_, id) => db.getDocumentById(id));
-ipcMain.handle('docs:save',          async (_, data) => { try { return { success: true, document: db.saveDocument(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('docs:update',        async (_, { docId, updates }) => { try { const ex = db.getDocumentById(docId); if (!ex) throw new Error('Introuvable'); return { success: true, document: db.saveDocument({ ...ex, ...updates, id: docId }) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('docs:delete',        async (_, id) => { try { db.deleteDocument(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('docs:getAll', async (_, userId) => db.getDocuments(userId));
+ipcMain.handle('docs:getByType', async (_, { userId, type }) => db.getDocumentsByType(userId, type));
+ipcMain.handle('docs:getById', async (_, id) => db.getDocumentById(id));
+ipcMain.handle('docs:save', async (_, data) => { try { return { success: true, document: db.saveDocument(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('docs:update', async (_, { docId, updates }) => { try { const ex = db.getDocumentById(docId); if (!ex) throw new Error('Introuvable'); return { success: true, document: db.saveDocument({ ...ex, ...updates, id: docId }) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('docs:delete', async (_, id) => { try { db.deleteDocument(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('docs:getNextNumber', async (_, { userId, type, year }) => db.getNextDocumentNumber(userId, type, year));
-ipcMain.handle('docs:peekNextNumber',async (_, { userId, type, year }) => db.peekNextDocumentNumber(userId, type, year));
+ipcMain.handle('docs:peekNextNumber', async (_, { userId, type, year }) => db.peekNextDocumentNumber(userId, type, year));
 ipcMain.handle('docs:counterStatus', async (_, { userId, year }) => db.getCounterStatus(userId, year));
 ipcMain.handle('docs:convert', async (_, { sourceId, targetType, userId, year }) => {
     try {
@@ -315,22 +315,22 @@ ipcMain.handle('docs:duplicate', async (_, { docId, userId }) => {
         return { success: true, document: db.saveDocument({ ...src, id: undefined, number: num, date: new Date().toISOString().split('T')[0], dueDate: src.type === 'facture' ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, notes: src.notes ? `${src.notes}\n\n${note}` : note, paymentStatus: 'unpaid', paidAmount: 0 }) };
     } catch (e) { return { success: false, error: e.message }; }
 });
-ipcMain.handle('docs:search',   async (_, { userId, query }) => { try { return db.searchDocuments(userId, query); } catch { return []; } });
-ipcMain.handle('docs:overdue',  async (_, userId) => { try { return db.getOverdueDocuments(userId); } catch { return []; } });
-ipcMain.handle('docs:expiring', async (_, { userId, days }) => { try { return db.getExpiringDocuments(userId, days||7); } catch { return []; } });
+ipcMain.handle('docs:search', async (_, { userId, query }) => { try { return db.searchDocuments(userId, query); } catch { return []; } });
+ipcMain.handle('docs:overdue', async (_, userId) => { try { return db.getOverdueDocuments(userId); } catch { return []; } });
+ipcMain.handle('docs:expiring', async (_, { userId, days }) => { try { return db.getExpiringDocuments(userId, days || 7); } catch { return []; } });
 ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
     try {
         const doc = db.getDocumentById(docId);
         if (!doc) throw new Error('Document introuvable');
         const company = db.getCompanySettings(userId || doc.user_id);
-        
+
         // Wrap images for base64 conversion
         if (company) {
             company.logo_image = imagePathToBase64(company.logo_image);
             company.stamp_image = imagePathToBase64(company.stamp_image);
             company.signature_image = imagePathToBase64(company.signature_image);
         }
-        
+
         // Prepare data for builder
         const data = {
             ...doc,
@@ -355,59 +355,59 @@ ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
 });
 
 // ==================== PAYMENTS ====================
-ipcMain.handle('payments:add',    async (_, d) => { try { return { success: true, payment: db.addPayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('payments:add', async (_, d) => { try { return { success: true, payment: db.addPayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('payments:getAll', async (_, id) => db.getPayments(id));
 ipcMain.handle('payments:delete', async (_, id) => { try { db.deletePayment(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== CLIENTS ====================
-ipcMain.handle('clients:getAll',  async (_, userId) => db.getClients(userId));
+ipcMain.handle('clients:getAll', async (_, userId) => db.getClients(userId));
 ipcMain.handle('clients:getById', async (_, id) => db.getClientById(id));
-ipcMain.handle('clients:save',    async (_, data) => { try { return { success: true, client: db.saveClient(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('clients:delete',  async (_, id) => { try { db.deleteClient(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('clients:save', async (_, data) => { try { return { success: true, client: db.saveClient(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('clients:delete', async (_, id) => { try { db.deleteClient(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('clients:history', async (_, { userId, clientName }) => { try { return db.getClientHistory(userId, clientName); } catch { return {}; } });
 
 // ==================== SERVICES ====================
-ipcMain.handle('services:getAll',   async (_, userId) => db.getServices(userId));
-ipcMain.handle('services:save',     async (_, data) => { try { return { success: true, service: db.saveService(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('services:delete',   async (_, id) => { try { db.deleteService(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('services:getAll', async (_, userId) => db.getServices(userId));
+ipcMain.handle('services:save', async (_, data) => { try { return { success: true, service: db.saveService(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('services:delete', async (_, id) => { try { db.deleteService(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('services:cats:get', async (_, userId) => db.getServiceCategories(userId));
-ipcMain.handle('services:cats:save',async (_, data) => { try { return { success: true, category: db.saveServiceCategory(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('services:cats:save', async (_, data) => { try { return { success: true, category: db.saveServiceCategory(data) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('services:cats:del', async (_, id) => { try { db.deleteServiceCategory(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== COMPANY ====================
-ipcMain.handle('company:get',         async (_, userId) => db.getCompanySettings(userId));
-ipcMain.handle('company:save',        async (_, data) => { try { return { success: true, company: db.saveCompanySettings(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('company:saveImages',  async (_, data) => { try { db.saveCompanyImages(data.userId, data); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('company:get', async (_, userId) => db.getCompanySettings(userId));
+ipcMain.handle('company:save', async (_, data) => { try { return { success: true, company: db.saveCompanySettings(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('company:saveImages', async (_, data) => { try { db.saveCompanyImages(data.userId, data); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('company:removeImage', async (_, { userId, imageType }) => { try { db.removeCompanyImage(userId, imageType); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== SETTINGS ====================
-ipcMain.handle('settings:get',          async (_, userId) => {
+ipcMain.handle('settings:get', async (_, userId) => {
     const settings = db.getUserSettings(userId);
     if (settings && settings.smtp_pass && safeStorage.isEncryptionAvailable()) {
-        try { settings.smtp_pass = safeStorage.decryptString(Buffer.from(settings.smtp_pass, 'base64')); } catch {}
+        try { settings.smtp_pass = safeStorage.decryptString(Buffer.from(settings.smtp_pass, 'base64')); } catch { }
     }
     return settings;
 });
-ipcMain.handle('settings:update',       async (_, { userId, settings }) => { 
-    try { 
+ipcMain.handle('settings:update', async (_, { userId, settings }) => {
+    try {
         if (settings.smtp_pass && safeStorage.isEncryptionAvailable()) {
             settings.smtp_pass = safeStorage.encryptString(settings.smtp_pass).toString('base64');
         }
-        return { success: true, settings: db.updateUserSettings(userId, settings) }; 
-    } catch (e) { return { success: false, error: e.message }; } 
+        return { success: true, settings: db.updateUserSettings(userId, settings) };
+    } catch (e) { return { success: false, error: e.message }; }
 });
 ipcMain.handle('settings:resetCounter', async (_, { userId, type, year }) => { try { db.resetDocumentCounter(userId, type, year || new Date().getFullYear()); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== THEMES ====================
-ipcMain.handle('theme:get',     async (_, userId) => db.getThemeSettings(userId));
-ipcMain.handle('theme:save',    async (_, { userId, theme }) => { try { db.saveThemeSettings(userId, theme); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('doctheme:get',  async (_, userId) => db.getDocumentTheme(userId));
+ipcMain.handle('theme:get', async (_, userId) => db.getThemeSettings(userId));
+ipcMain.handle('theme:save', async (_, { userId, theme }) => { try { db.saveThemeSettings(userId, theme); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('doctheme:get', async (_, userId) => db.getDocumentTheme(userId));
 ipcMain.handle('doctheme:save', async (_, { userId, theme }) => { try { db.saveDocumentTheme(userId, theme); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== STATS ====================
-ipcMain.handle('stats:get',      async (_, userId) => db.getDashboardStats(userId));
-ipcMain.handle('stats:annual',   async (_, { userId, year }) => db.getAnnualStats(userId, year));
-ipcMain.handle('stats:client',   async (_, { userId, clientName }) => db.getClientStats(userId, clientName));
+ipcMain.handle('stats:get', async (_, userId) => db.getDashboardStats(userId));
+ipcMain.handle('stats:annual', async (_, { userId, year }) => db.getAnnualStats(userId, year));
+ipcMain.handle('stats:client', async (_, { userId, clientName }) => db.getClientStats(userId, clientName));
 ipcMain.handle('stats:expenses', async (_, { userId, year }) => db.getExpenseSummary(userId, year));
 
 // ==================== EXCEL ====================
@@ -430,9 +430,9 @@ ipcMain.handle('export:excel:retenues', async (_, { retenues, filePath }) => {
         if (!filePath) { const r = await dialog.showSaveDialog(mainWindow, { defaultPath: `retenues-${Date.now()}.xlsx`, filters: [{ name: 'Excel', extensions: ['xlsx'] }] }); if (r.canceled) return { success: false }; filePath = r.filePath; }
         const rows = retenues.map(r => ({
             'Numéro': r.number, 'Date': r.date, 'Année': r.year, 'Mois': r.month,
-            'Retenu par': r.retenuerName, 'MF Retenu': r.retenuerMF||'',
-            'Bénéficiaire': r.beneficiaireName, 'MF Bénéficiaire': r.beneficiaireMF||'',
-            'N° Facture': r.factureNumber||'', 'Date Facture': r.factureDate||'',
+            'Retenu par': r.retenuerName, 'MF Retenu': r.retenuerMF || '',
+            'Bénéficiaire': r.beneficiaireName, 'MF Bénéficiaire': r.beneficiaireMF || '',
+            'N° Facture': r.factureNumber || '', 'Date Facture': r.factureDate || '',
             'Montant Brut': r.montantBrut, 'Taux %': r.tauxRetenue, 'Montant Retenu': r.montantRetenue,
             'Nature Revenu': r.natureRevenu, 'Statut': r.status
         }));
@@ -446,22 +446,22 @@ ipcMain.handle('export:excel:retenues', async (_, { retenues, filePath }) => {
 
 // ==================== NOTES ====================
 ipcMain.handle('notes:getAll', async (_, userId) => db.getNotes(userId));
-ipcMain.handle('notes:save',   async (_, data) => { try { return { success: true, note: db.saveNote(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('notes:save', async (_, data) => { try { return { success: true, note: db.saveNote(data) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('notes:delete', async (_, id) => { try { db.deleteNote(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== REMINDERS ====================
-ipcMain.handle('reminders:getAll',   async (_, userId) => db.getReminders(userId));
-ipcMain.handle('reminders:save',     async (_, data) => { try { return { success: true, reminder: db.saveReminder(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('reminders:delete',   async (_, id) => { try { db.deleteReminder(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('reminders:getAll', async (_, userId) => db.getReminders(userId));
+ipcMain.handle('reminders:save', async (_, data) => { try { return { success: true, reminder: db.saveReminder(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('reminders:delete', async (_, id) => { try { db.deleteReminder(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('reminders:markDone', async (_, id) => { try { db.markReminderDone(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== HR (EMPLOYEES & PAYSLIPS) ====================
-ipcMain.handle('hr:getEmployees',    async (_, userId) => db.getEmployees(userId));
-ipcMain.handle('hr:saveEmployee',    async (_, data) => { try { return { success: true, employee: db.saveEmployee(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('hr:deleteEmployee',  async (_, id) => { try { db.deleteEmployee(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('hr:getPayslips',     async (_, userId) => db.getPayslips(userId));
-ipcMain.handle('hr:savePayslip',     async (_, data) => { try { return { success: true, payslip: db.savePayslip(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('hr:deletePayslip',   async (_, id) => { try { db.deletePayslip(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('hr:getEmployees', async (_, userId) => db.getEmployees(userId));
+ipcMain.handle('hr:saveEmployee', async (_, data) => { try { return { success: true, employee: db.saveEmployee(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('hr:deleteEmployee', async (_, id) => { try { db.deleteEmployee(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('hr:getPayslips', async (_, userId) => db.getPayslips(userId));
+ipcMain.handle('hr:savePayslip', async (_, data) => { try { return { success: true, payslip: db.savePayslip(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('hr:deletePayslip', async (_, id) => { try { db.deletePayslip(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -471,15 +471,15 @@ setInterval(() => {
             if (Notification.isSupported()) new Notification({ title: '⏰ Rappel Factarlou', body: r.title }).show();
             mainWindow.webContents.send('reminder:due', r);
         });
-    } catch {}
+    } catch { }
 }, 10 * 60 * 1000);
 
 // ==================== BACKUP ====================
-ipcMain.handle('backup:settings:get',  () => backupScheduler.getSettings());
+ipcMain.handle('backup:settings:get', () => backupScheduler.getSettings());
 ipcMain.handle('backup:settings:save', (_, s) => { backupScheduler.saveSettings(s); backupScheduler.start(); return { success: true }; });
 ipcMain.handle('backup:create:manual', async () => await backupScheduler.createBackup(true));
-ipcMain.handle('backup:list',          () => backupScheduler.getBackupList());
-ipcMain.handle('backup:restore',       async (_, p) => { try { await backupScheduler.restoreBackup(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('backup:list', () => backupScheduler.getBackupList());
+ipcMain.handle('backup:restore', async (_, p) => { try { await backupScheduler.restoreBackup(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== EMAIL ====================
 ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments }) => {
@@ -491,7 +491,7 @@ ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments 
 
         let smtpPass = settings.smtp_pass;
         if (smtpPass && safeStorage.isEncryptionAvailable()) {
-            try { smtpPass = safeStorage.decryptString(Buffer.from(smtpPass, 'base64')); } catch {}
+            try { smtpPass = safeStorage.decryptString(Buffer.from(smtpPass, 'base64')); } catch { }
         }
 
         const transporter = nodemailer.createTransport({
@@ -519,17 +519,17 @@ ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments 
 });
 
 // ==================== CONTRACTS ====================
-ipcMain.handle('contracts:getAll',  async (_, userId) => db.getContracts(userId));
+ipcMain.handle('contracts:getAll', async (_, userId) => db.getContracts(userId));
 ipcMain.handle('contracts:getById', async (_, id) => db.getContractById(id));
-ipcMain.handle('contracts:save',    async (_, data) => { try { return { success: true, contract: db.saveContract(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('contracts:delete',  async (_, id) => { try { db.deleteContract(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('contracts:save', async (_, data) => { try { return { success: true, contract: db.saveContract(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('contracts:delete', async (_, id) => { try { db.deleteContract(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== EMPLOYEES ====================
 // ==================== RETENUE À LA SOURCE ====================
-ipcMain.handle('retenues:getAll',  async (_, userId) => db.getRetenues(userId));
+ipcMain.handle('retenues:getAll', async (_, userId) => db.getRetenues(userId));
 ipcMain.handle('retenues:getById', async (_, id) => db.getRetenueById(id));
-ipcMain.handle('retenues:save',    async (_, data) => { try { return { success: true, retenue: db.saveRetenue(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('retenues:delete',  async (_, id) => { try { db.deleteRetenue(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('retenues:save', async (_, data) => { try { return { success: true, retenue: db.saveRetenue(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('retenues:delete', async (_, id) => { try { db.deleteRetenue(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('retenues:createFromFacture', async (_, { userId, factureId, tauxRetenue }) => {
     try {
         const retenue = db.createRetenueFromFacture(userId, factureId, tauxRetenue || 1.5);
@@ -542,7 +542,7 @@ ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
         const retenue = db.getRetenueById(retenueId);
         if (!retenue) throw new Error('Retenue introuvable');
         const company = db.getCompanySettings(retenue.user_id);
-        
+
         // Wrap images for base64 conversion
         if (company) {
             company.logo_image = imagePathToBase64(company.logo_image);
@@ -563,7 +563,7 @@ ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
 ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) => {
     try {
         const { buildPayslipHTML } = require('./renderer/retenue-builder');
-        
+
         // Wrap images in company for base64 conversion
         if (company) {
             company.logo_image = imagePathToBase64(company.logo_image);
@@ -577,15 +577,15 @@ ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) 
 });
 
 // ==================== EXPENSES ====================
-ipcMain.handle('expenses:getAll',  async (_, userId) => db.getExpenses(userId));
-ipcMain.handle('expenses:getById', async (_, id)     => db.getExpenseById(id));
-ipcMain.handle('expenses:save',    async (_, data)   => { try { return { success: true, expense: db.saveExpense(data) }; }  catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('expenses:delete',  async (_, id)     => { 
-    try { 
-        const attachPath = db.deleteExpense(id); 
+ipcMain.handle('expenses:getAll', async (_, userId) => db.getExpenses(userId));
+ipcMain.handle('expenses:getById', async (_, id) => db.getExpenseById(id));
+ipcMain.handle('expenses:save', async (_, data) => { try { return { success: true, expense: db.saveExpense(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('expenses:delete', async (_, id) => {
+    try {
+        const attachPath = db.deleteExpense(id);
         if (attachPath && fs.existsSync(attachPath)) fs.unlinkSync(attachPath);
-        return { success: true }; 
-    } catch (e) { return { success: false, error: e.message }; } 
+        return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
 });
 ipcMain.handle('expenses:summary', async (_, { userId, year }) => { try { return db.getExpenseSummary(userId, year); } catch (e) { return { success: false, error: e.message }; } });
 
@@ -593,7 +593,7 @@ ipcMain.handle('expenses:summary', async (_, { userId, year }) => { try { return
 ipcMain.handle('scanner:pickFile', async () => {
     const r = await dialog.showOpenDialog(mainWindow, {
         properties: ['openFile'],
-        filters: [{ name: 'Documents', extensions: ['pdf','png','jpg','jpeg','webp'] }]
+        filters: [{ name: 'Documents', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'webp'] }]
     });
     return r.canceled ? null : r.filePaths[0];
 });
@@ -605,10 +605,10 @@ ipcMain.handle('scanner:storeFile', async (_, srcPath) => {
         const destName = `${Date.now()}_${path.basename(srcPath)}`;
         const destPath = path.join(attachDir, destName);
         fs.copyFileSync(srcPath, destPath);
-        const buf    = fs.readFileSync(srcPath);
+        const buf = fs.readFileSync(srcPath);
         const base64 = buf.toString('base64');
-        const ext    = path.extname(srcPath).toLowerCase().slice(1);
-        const mime   = ext === 'pdf' ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        const ext = path.extname(srcPath).toLowerCase().slice(1);
+        const mime = ext === 'pdf' ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
         return { success: true, path: destPath, originalName: path.basename(srcPath), base64, mimeType: mime, isPdf: ext === 'pdf' };
     } catch (e) { return { success: false, error: e.message }; }
 });
@@ -629,7 +629,7 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
         if (!ocrWorker) {
             const { createWorker } = require('tesseract.js');
             ocrWorker = await createWorker('fra+ara');
-            
+
             // Optimize for invoices
             await ocrWorker.setParameters({
                 tessedit_pageseg_mode: '3', // PSM 3: Fully automatic page segmentation, but no OSD.
@@ -688,7 +688,7 @@ ipcMain.handle('tools:relanceLetter', async (_, { docId, userId, attempt }) => {
         const doc = db.getDocumentById(docId);
         if (!doc) throw new Error('Document introuvable');
         const company = db.getCompanySettings(userId);
-        
+
         // Wrap images for base64 conversion
         if (company) {
             company.logo_image = imagePathToBase64(company.logo_image);
@@ -709,7 +709,7 @@ ipcMain.handle('tools:fiscalSummary', async (_, { userId, year, quarter }) => {
     try {
         const summary = db.getFiscalSummary(userId, year || new Date().getFullYear(), quarter || null);
         const company = db.getCompanySettings(userId);
-        
+
         // Wrap images for base64 conversion
         if (company) {
             company.logo_image = imagePathToBase64(company.logo_image);
@@ -730,7 +730,7 @@ ipcMain.handle('tools:searchRNE', async (_, mf) => {
 
         // We use the short-details endpoint which is public
         const url = `https://www.registre-entreprises.tn/api/rne-api/front-office/entites/short-details/${cleanMF}`;
-        
+
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -753,7 +753,7 @@ ipcMain.handle('tools:searchRNE', async (_, mf) => {
 });
 
 // ==================== FS HELPERS ====================
-ipcMain.handle('fs:openFolder',   async (_, p) => { try { shell.openPath(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('fs:openFolder', async (_, p) => { try { shell.openPath(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('fs:selectFolder', async () => { const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; });
 
 // ── TEJ EXPORT HANDLERS ──────────────────────────────────────────
@@ -766,78 +766,78 @@ ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeAct
         const monthStr = String(month).padStart(2, '0');
         const mfClean = (company.mf || '0000000').replace(/[^a-zA-Z0-9]/g, '');
         const defaultFilename = `${mfClean}-${year}-${monthStr}-${codeActe}.xml`;
-        
+
         const { filePath, canceled } = await dialog.showSaveDialog({
             title: `Enregistrer l'export XML ${type}`,
             defaultPath: defaultFilename,
             filters: [{ name: 'Fichiers XML', extensions: ['xml'] }]
         });
-        
+
         if (canceled) return { success: false, canceled: true };
-        
+
         let xmlString = '';
-        
+
         if (type === 'RS') {
             // Schema: DeclarationsRS
             const root = create({ version: '1.0', encoding: 'UTF-8' })
                 .ele('DeclarationsRS')
-                    .ele('Declarant')
-                        .ele('Identifiant').txt(company.mf || '').up()
-                        .ele('RaisonSociale').txt(company.name || '').up()
-                    .up()
-                    .ele('ReferenceDeclaration')
-                        .ele('Annee').txt(year.toString()).up()
-                        .ele('Mois').txt(month.toString()).up()
-                        .ele('CodeActe').txt(codeActe.toString()).up()
-                    .up()
-                    .ele('AjouterCertificats');
-            
+                .ele('Declarant')
+                .ele('Identifiant').txt(company.mf || '').up()
+                .ele('RaisonSociale').txt(company.name || '').up()
+                .up()
+                .ele('ReferenceDeclaration')
+                .ele('Annee').txt(year.toString()).up()
+                .ele('Mois').txt(month.toString()).up()
+                .ele('CodeActe').txt(codeActe.toString()).up()
+                .up()
+                .ele('AjouterCertificats');
+
             data.forEach(item => {
                 root.ele('Certificat')
                     .ele('Beneficiaire')
-                        .ele('Identifiant').txt(item.beneficiaire_mf || '').up()
-                        .ele('NomPrenomRaisonSociale').txt(item.beneficiaire_name || '').up()
+                    .ele('Identifiant').txt(item.beneficiaire_mf || '').up()
+                    .ele('NomPrenomRaisonSociale').txt(item.beneficiaire_name || '').up()
                     .up()
                     .ele('DetailsCertificat')
-                        .ele('DateCertificat').txt(item.date || '').up()
-                        .ele('MontantBrut').txt((item.montant_brut || 0).toFixed(3)).up()
-                        .ele('MontantRetenue').txt((item.montant_retenue || 0).toFixed(3)).up()
+                    .ele('DateCertificat').txt(item.date || '').up()
+                    .ele('MontantBrut').txt((item.montant_brut || 0).toFixed(3)).up()
+                    .ele('MontantRetenue').txt((item.montant_retenue || 0).toFixed(3)).up()
                     .up()
-                .up();
+                    .up();
             });
-            
+
             xmlString = root.end({ prettyPrint: true });
         } else {
             // Schema: DeclarationsTEIF
             const root = create({ version: '1.0', encoding: 'UTF-8' })
                 .ele('DeclarationsTEIF')
-                    .ele('Declarant')
-                        .ele('Identifiant').txt(company.mf || '').up()
-                        .ele('RaisonSociale').txt(company.name || '').up()
-                    .up()
-                    .ele('ReferenceDeclaration')
-                        .ele('Annee').txt(year.toString()).up()
-                        .ele('Mois').txt(month.toString()).up()
-                        .ele('CodeActe').txt(codeActe.toString()).up()
-                    .up()
-                    .ele('ListeFactures');
-            
+                .ele('Declarant')
+                .ele('Identifiant').txt(company.mf || '').up()
+                .ele('RaisonSociale').txt(company.name || '').up()
+                .up()
+                .ele('ReferenceDeclaration')
+                .ele('Annee').txt(year.toString()).up()
+                .ele('Mois').txt(month.toString()).up()
+                .ele('CodeActe').txt(codeActe.toString()).up()
+                .up()
+                .ele('ListeFactures');
+
             data.forEach(item => {
                 root.ele('Facture')
                     .ele('Numero').txt(item.number || '').up()
                     .ele('Date').txt(item.date || '').up()
                     .ele('Client')
-                        .ele('Identifiant').txt(item.client_mf || '').up()
-                        .ele('Nom').txt(item.client_name || '').up()
+                    .ele('Identifiant').txt(item.client_mf || '').up()
+                    .ele('Nom').txt(item.client_name || '').up()
                     .up()
                     .ele('MontantHT').txt((item.total_ht || 0).toFixed(3)).up()
                     .ele('MontantTTC').txt((item.total_ttc || 0).toFixed(3)).up()
-                .up();
+                    .up();
             });
-            
+
             xmlString = root.end({ prettyPrint: true });
         }
-        
+
         fs.writeFileSync(filePath, xmlString, 'utf8');
         return { success: true, path: filePath };
     } catch (e) {
