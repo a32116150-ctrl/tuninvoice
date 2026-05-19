@@ -57,44 +57,39 @@
 
 ## New Features (2026-05-19)
 
-### 1. Dark Mode Toggle
-- Added theme toggle button in topbar (`#themeToggleBtn`) — already fully wired in JS (`initTheme`/`toggleTheme`)
-- Added `[data-theme="light"]` CSS overrides for lighter sidebar, topbar, cards, tables, inputs
-- Toggle persists in `localStorage`
-
-### 2. Sticky Notes Feature (UI completed)
+### 1. Sticky Notes Feature (UI completed)
 - The notes system was fully implemented in JS+DB but **missing HTML** (no page, nav item, or modal)
 - **Added**: Notes nav item in "Productivité" section, notes page with grid layout, note modal with title/content/color picker/pin option
 - Notes are persisted in SQLite with colors, pinning, and timestamps
 
-### 3. Dashboard Notes Widget
+### 2. Dashboard Notes Widget
 - Recent 4 notes displayed on the dashboard in a clickable grid
 - Empty state links to notes page to create the first note
 - Clicking a note navigates to the full notes page
 
-### 4. Document Search Enhancement
+### 3. Document Search Enhancement
 - Search query in `db.js` now also searches `items_json` (line item descriptions)
 - Broader search coverage across document content
 
-### 5. Batch Operations on Documents
+### 4. Batch Operations on Documents
 - Checkbox column added to the documents table with "Select All" header checkbox
 - **Batch Delete**: Delete multiple documents at once with confirmation
 - **Batch Mark Paid**: Mark multiple factures as paid in one click
 - **Batch Export PDF**: Export PDFs for selected documents
 - Batch buttons are disabled until at least one document is selected
 
-### 6. BA → Expense Conversion
+### 5. BA → Expense Conversion
 - BA (Bon d'Achat) documents now have a "Convert to Expense" button in the actions column
 - Automatically calculates HT/TVA from line items and creates an expense entry
 
-### 7. Devis → Facture → BL Pipeline Tracking
+### 6. Devis → Facture → BL Pipeline Tracking
 - New "Pipeline" column in documents table shows conversion status:
   - Devis not yet converted: yellow "En attente" badge
   - Converted devis: green indicator with reference to resulting document
   - Documents with reference_doc: blue badge showing source document number
 - Uses the existing `reference_doc` field on the documents table
 
-### 8. TVA Déclaration Assistant
+### 7. TVA Déclaration Assistant
 - New "Déclaration TVA" tool card in the Outils section
 - Monthly TVA declaration summary showing:
   - **TVA Collectée**: From factures and avoirs, broken down by rate (7%, 13%, 19%)
