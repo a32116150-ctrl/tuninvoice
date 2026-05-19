@@ -21,6 +21,12 @@ Welcome to the official documentation for **Factarlou**, the premier intelligent
   - Management of **FODEC** and other specific taxes.
 - **Number Formatting**: Full support for Tunisian accounting standards (3 decimal places / Millimes) with automatic rounding adjustments across all modules.
 
+### 🇹🇳 TVA Declaration Assistant
+- **Monthly Summary**: Automatically computes TVA collectée (from invoices/avoirs) and TVA déductible (from expenses) for any month.
+- **Rate Breakdown**: Per-rate analysis at 7%, 13%, 19%.
+- **Net Result**: Calculates TVA à reverser or crédit TVA reportable.
+- **Access**: Available from the Outils (Tools) page.
+
 ### 🧠 Intelligent Expense Scanner (OCR)
 - **Automated Entry**: Uses **Tesseract.js** to scan paper receipts and PDFs.
 - **Data Extraction**: Automatically detects the vendor name, date, and total amount (TTC).
@@ -41,6 +47,19 @@ Welcome to the official documentation for **Factarlou**, the premier intelligent
   - Automated **Payslip (Bulletin de Paie)** generation with built-in CNSS calculations (@ 9.18%).
   - PDF Preview and Download functionality for all HR documents.
 
+### 🔄 Document Pipeline & BA→Expense
+- **Devis→Facture→BL Pipeline**: Track conversion status of documents with automatic reference linking.
+- **BA→Expense**: One-click conversion of Bon d'Achat documents into expense entries.
+
+### 🎨 Interface & Themes
+- **Clair/Sombre Toggle**: Theme switching button in the topbar, persists across sessions.
+- **Document Themes**: 4 built-in presets (Classique, Moderne, Exécutif, Tunisien) + custom theme builder.
+
+### 🗒️ Notes & Productivité
+- **Sticky Notes**: Notes adhésives avec code couleur, épinglage, et widget tableau de bord.
+- **Batch Operations**: Sélection multiple et actions groupées (supprimer, marquer payé, exporter PDF) sur la liste des documents.
+- **Pipeline Tracking**: Colonne "Pipeline" indiquant le statut de conversion Devis→Facture→BL.
+
 ### 📊 Real-Time Analytics
 - **Dashboard**: High-resolution, responsive charts showing revenue vs. expenses with automatic scaling on window resize.
 - **Avoir Integration**: Financial totals (Revenue, Unpaid) automatically account for credit notes (Avoirs) to ensure accounting accuracy.
@@ -59,6 +78,8 @@ Welcome to the official documentation for **Factarlou**, the premier intelligent
 ### 🛠️ Tech Stack
 - **Runtime**: Electron.js (Cross-platform support for Windows, macOS, and Linux).
 - **Frontend**: Vanilla JS, HTML5, CSS3 (No heavy frameworks for maximum performance).
+- **Styling**: Premium vanilla CSS design system with custom properties, refined shadows, smooth transitions, and hover/active micro-interactions. Inspired by a generated design system from Open Design.
+- **Icons**: Lucide SVG icon library for consistent, crisp rendering throughout the interface.
 - **Database**: SQLite (via `better-sqlite3`) for robust, local data storage.
 - **OCR Engine**: Tesseract.js (Optical Character Recognition).
 - **PDF Engine**: Isolated Electron background process for pixel-perfect A4 rendering.

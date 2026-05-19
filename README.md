@@ -43,13 +43,19 @@ Une suite complète d'assistants pour vous simplifier la vie :
 - **Calculatrices** : Pénalités de retard (système spontané/rectifié), simulateur d'impôt IRPP, récapitulatif de TVA.
 - **Générateurs** : Lettres de relance (mise en demeure), PV d'assemblée générale (modèles types).
 - **Vérificateur & Recherche RNE** : Validation algorithmique du Matricule Fiscal et **interrogation en direct** des registres publics du RNE Tunisie (Dénomination, Statut, Forme Juridique).
+- **Assistant Déclaration TVA** : Génération d'un récapitulatif mensuel TVA collectée/déductible avec calcul automatique du solde.
 - **Ressources** : Calendrier fiscal tunisien et annuaire complet des Recettes des Finances.
 
 ### 👥 Ressources Humaines & Paie
 - **Gestion du Personnel** : Base de données employés avec suivi des contrats (CDI, CDD, CIVP).
 - **Bulletins de Paie** : Génération automatique de fiches de paie avec calcul des cotisations CNSS (@ 9.18%).
 
+### 🗒️ Notes & Productivité
+- **Notes Adhésives** : Notes colorées avec épinglage, accessibles depuis le menu latéral et le tableau de bord.
+- **Opérations par Lot** : Sélection multiple et actions groupées (supprimer, marquer payé) sur les documents.
+
 ### 🎨 Branding & Design Premium
+- **Interface Premium** : Design CSS haut de gamme avec ombres portées, dégradés subtils, micro-interactions (lift, glow, accent bars) et transitions fluides.
 - **Personnalisation Totale** : Logo, Cachet, Signature, et QR Code activables à la demande.
 - **Moteur de Thèmes** : 
   - **Classique** : Traditionnel et sobre.
@@ -80,6 +86,14 @@ Une suite complète d'assistants pour vous simplifier la vie :
 - **Recherche RNE Live** : Intégration de l'API publique du Registre National des Entreprises pour récupérer les données clients instantanément via leur MF.
 - **WhatsApp Pro** : Icône officielle WhatsApp et interface de partage améliorée.
 - **Optimisation Financière** : Tous les calculs de revenus et impayés prennent désormais en compte les avoirs et les nouveaux types de documents.
+- **Refonte Design Premium** : Interface utilisateur entièrement repensée avec un système de design CSS (ombres, dégradés, micro-interactions, animations de page, icônes Lucide cohérentes) pour une expérience haut de gamme.
+- **Icônes Lucide** : Remplacement complet des émojis par des icônes SVG vectorielles pour une apparence professionnelle et cohérente.
+- **Thème Claire/Sombre** : Nouveau bouton de basculement dans la barre supérieure pour passer entre le thème par défaut et le thème clair.
+- **Notes Adhésives** : Nouveau module de notes sticky avec code couleur, épinglage et widget sur le tableau de bord.
+- **Opérations par Lot** : Sélection multiple et actions groupées (supprimer, marquer payé, exporter PDF) sur la liste des documents.
+- **Pipeline Devis→Facture** : Nouvelle colonne "Pipeline" indiquant le statut de conversion des documents.
+- **BA → Dépense** : Conversion en un clic des Bons d'Achat en dépenses comptables.
+- **Assistant Déclaration TVA** : Nouvel outil dans la section Outils pour générer un récapitulatif mensuel TVA collectée/déductible avec calcul du solde.
 - **Stabilité** : Correction des bugs d'affichage de version et amélioration des performances de la base de données.
 
 ---

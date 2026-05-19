@@ -735,7 +735,7 @@ class AppDatabase {
     // ==================== DOCUMENT SEARCH ====================
     searchDocuments(userId, query) {
         const q = `%${query}%`;
-        return this.db.prepare(`SELECT * FROM documents WHERE user_id=? AND (number LIKE ? OR client_name LIKE ? OR company_name LIKE ? OR notes LIKE ?) ORDER BY created_at DESC LIMIT 30`).all(userId, q, q, q, q).map(d => this.formatDocument(d));
+        return this.db.prepare(`SELECT * FROM documents WHERE user_id=? AND (number LIKE ? OR client_name LIKE ? OR company_name LIKE ? OR notes LIKE ? OR items_json LIKE ?) ORDER BY created_at DESC LIMIT 30`).all(userId, q, q, q, q, q).map(d => this.formatDocument(d));
     }
 
     // ==================== NOTES ====================

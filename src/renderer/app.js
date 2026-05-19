@@ -73,6 +73,7 @@ const DEFAULT_THEMES = {
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
+    if(window.lucide) lucide.createIcons();
     const rememberedUser = localStorage.getItem('rememberedUser');
     const sessionUser = sessionStorage.getItem('currentUser');
     const raw = rememberedUser || sessionUser;
@@ -82,9 +83,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+
+
 // ==================== TOAST ====================
 function showToast(message, type = 'info', duration = 3500) {
-    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+    const icons = { success: '<i data-lucide="check-circle" class="lucide-sm"></i>', error: '<i data-lucide="x-circle" class="lucide-sm"></i>', info: '<i data-lucide="info" class="lucide-sm"></i>', warning: '<i data-lucide="alert-triangle" class="lucide-sm"></i>' };
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -99,8 +102,9 @@ function hideLoading() { document.getElementById('loadingOverlay').classList.add
 
 // ==================== CONFIRM MODAL ====================
 function showConfirm(title, message, onConfirm, btnLabel = 'Confirmer', btnClass = 'btn-danger') {
-    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmTitle').innerHTML = title;
     document.getElementById('confirmMessage').innerHTML = message;
+    if (window.lucide) lucide.createIcons();
     const btn = document.getElementById('confirmBtn');
     btn.textContent = btnLabel; btn.className = `btn ${btnClass}`;
     confirmCallback = onConfirm;
@@ -132,7 +136,7 @@ function showError(msg) { document.getElementById('errorText').textContent = msg
 async function handleLogin(e) {
     e.preventDefault(); hideError();
     const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true; btn.textContent = '⏳ Connexion...';
+    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Connexion...'; if (window.lucide) lucide.createIcons();
     try {
         const result = await window.electronAPI.authLogin({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value });
         if (result.success) {
@@ -156,7 +160,7 @@ async function handleForgotPassword(e) {
 
     if (newPassword.length < 6) return showError('Minimum 6 caractères');
 
-    btn.disabled = true; btn.textContent = '⏳ Réinitialisation...';
+    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Réinitialisation...'; if (window.lucide) lucide.createIcons();
     try {
         const result = await window.electronAPI.authResetPasswordMasterKey({ email, masterKey, newPassword });
         if (result.success) {
@@ -181,7 +185,7 @@ async function handleRegister(e) {
     if (password !== passwordConfirm) return showError('Les mots de passe ne correspondent pas');
     if (password.length < 6) return showError('Minimum 6 caractères');
     const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true; btn.textContent = '⏳ Création...';
+    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Création...'; if (window.lucide) lucide.createIcons();
     try {
         const result = await window.electronAPI.authRegister({ name: document.getElementById('regName').value.trim(), email: document.getElementById('regEmail').value.trim(), company: document.getElementById('regCompany').value.trim(), mf: document.getElementById('regMF').value.trim(), password });
         if (result.success) {
@@ -321,6 +325,7 @@ async function loadDashboard() {
         renderDashboardCharts(stats);
         renderTopClients(stats.topClients || []);
         renderRecentActivity(stats.recentActivity || []);
+        renderDashboardNotes();
     } catch (e) {
         console.error('Dashboard error:', e);
         showToast('Erreur tableau de bord', 'error');
@@ -329,7 +334,7 @@ async function loadDashboard() {
 
 function renderRecentDocs(docs) {
     const container = document.getElementById('recentDocsTable');
-    if (!docs.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Aucun document</h3><p>Créez votre premier document</p></div>`; return; }
+    if (!docs.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="file-text" class="lucide-sm"></i></div><h3>Aucun document</h3><p>Créez votre premier document</p></div>`; if (window.lucide) lucide.createIcons(); return; }
     container.innerHTML = `<table><thead><tr><th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Total TTC</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
         ${docs.map(doc => `<tr>
             <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
@@ -354,7 +359,7 @@ function renderRecentDocs(docs) {
 function renderPaymentBadge(doc) {
     if (doc.type !== 'facture') return '—';
     const status = doc.paymentStatus || 'unpaid';
-    const map = { paid: '✅ Payée', partial: '⏳ Partiel', unpaid: '❌ Impayée' };
+    const map = { paid: '<i data-lucide="check-circle" class="lucide-sm"></i> Payée', partial: '<i data-lucide="clock" class="lucide-sm"></i> Partiel', unpaid: '<i data-lucide="x-circle" class="lucide-sm"></i> Impayée' };
     const cls = { paid: 'badge-paid', partial: 'badge-partial', unpaid: 'badge-unpaid' };
     return `<span class="badge ${cls[status] || 'badge-unpaid'}" onclick="openPaymentModal('${doc.id}')" style="cursor:pointer" title="Gérer paiement">${map[status] || status}</span>`;
 }
@@ -519,17 +524,39 @@ function renderTopClients(topClients) {
 function renderRecentActivity(activities) {
     const el = document.getElementById('recentActivityList');
     if (!el) return;
-    const icons = { create_document: '📄', update_document: '✏️', create_client: '👤', default: '🔔' };
+    const icons = { create_document: '<i data-lucide="file-text" class="lucide-sm"></i>', update_document: '<i data-lucide="edit" class="lucide-sm"></i>', create_client: '<i data-lucide="user" class="lucide-sm"></i>', default: '<i data-lucide="bell" class="lucide-sm"></i>' };
     const labels = { create_document: 'Document créé', update_document: 'Document modifié', create_client: 'Client ajouté', default: 'Action' };
     if (!activities.length) { el.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem;padding:12px">Aucune activité récente</p>'; return; }
     el.innerHTML = activities.map(a => `
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6">
-            <span style="font-size:1.2rem">${icons[a.action] || icons.default}</span>
+            <span>${icons[a.action] || icons.default}</span>
             <div>
                 <div style="font-size:0.85rem;font-weight:500;color:#374151">${escapeHtml(a.entity_label || labels[a.action] || a.action)}</div>
                 <div style="font-size:0.75rem;color:#9ca3af">${formatDate(a.created_at?.split('T')[0] || a.created_at)}</div>
             </div>
         </div>`).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+// ==================== DASHBOARD NOTES WIDGET ====================
+async function renderDashboardNotes() {
+    const container = document.getElementById('dashboardNotesGrid');
+    if (!container) return;
+    try {
+        const notes = await window.electronAPI.getNotes(currentUser.id);
+        const recent = notes.slice(0, 4);
+        if (!recent.length) {
+            container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem">Aucune note — <a href="#" onclick="navigateTo(\'notes\');return false" style="color:var(--primary)">Créer une note</a></div>';
+            return;
+        }
+        container.innerHTML = recent.map(note => `
+            <div class="note-card" style="background:${note.color || '#fef9c3'};border-radius:10px;padding:12px;position:relative;min-height:80px;box-shadow:0 1px 4px rgba(0,0,0,0.06);cursor:pointer" onclick="navigateTo('notes')">
+                ${note.pinned ? '<i data-lucide="pin" style="position:absolute;top:6px;right:6px;font-size:0.75rem;opacity:0.5"></i>' : ''}
+                ${note.title ? `<div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;color:#1e293b">${escapeHtml(note.title)}</div>` : ''}
+                <div style="font-size:0.8rem;color:#374151;line-height:1.4;word-break:break-word">${escapeHtml(note.content || '').substring(0, 80)}${(note.content || '').length > 80 ? '…' : ''}</div>
+            </div>`).join('');
+        if (window.lucide) lucide.createIcons();
+    } catch {}
 }
 
 // ==================== PAYMENT MODAL ====================
@@ -1341,29 +1368,120 @@ async function loadDocuments() {
 }
 
 function renderDocumentsTable(docs) {
+    window._filteredDocs = docs;
     const container = document.getElementById('allDocsTable');
-    if (!docs.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div><h3>Aucun document</h3><p>Créez votre premier document pour commencer</p></div>`; return; }
-    container.innerHTML = `<table><thead><tr><th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Total TTC</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+    if (!docs.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="file-text" class="lucide-sm"></i></div><h3>Aucun document</h3><p>Créez votre premier document pour commencer</p></div>`; if (window.lucide) lucide.createIcons(); updateBatchButtons(); return; }
+    container.innerHTML = `<table><thead><tr><th style="width:36px"><input type="checkbox" id="selectAllDocs" onchange="toggleSelectAllDocs(this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></th><th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Total TTC</th><th>Statut</th><th>Pipeline</th><th>Actions</th></tr></thead><tbody>
         ${docs.map(doc => `<tr>
+            <td><input type="checkbox" class="doc-select" value="${doc.id}" onchange="updateBatchButtons()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
             <td style="font-family:monospace;font-size:0.82rem">${doc.number}</td>
             <td>${escapeHtml(doc.clientName)}</td>
             <td>${formatDate(doc.date)}</td>
             <td style="font-weight:600">${formatAmount(doc.totalTTC)} ${doc.currency}</td>
             <td>${renderPaymentBadge(doc)}</td>
+            <td>${renderPipelineBadge(doc)}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"    onclick="viewDocument('${doc.id}')"           title="Aperçu">👁️</button>
-                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir">🔄</button>` : ''}
-                <button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier">✏️</button>
-                <button class="btn-icon"             onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6">📋</button>
-                <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"           title="PDF">📄</button>
+                <button class="btn-icon btn-view"    onclick="viewDocument('${doc.id}')"           title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
+                <button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>
+                <button class="btn-icon"             onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6"><i data-lucide="clipboard-list" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"           title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 </button>
-                ${doc.type === 'facture' ? `<button class="btn-icon btn-payment" onclick="openPaymentModal('${doc.id}')" title="Paiement" style="color:#10b981">💰</button>` : ''}
-                <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer">🗑️</button>
+                ${doc.type === 'facture' ? `<button class="btn-icon btn-payment" onclick="openPaymentModal('${doc.id}')" title="Paiement" style="color:#10b981"><i data-lucide="coins" class="lucide-sm"></i></button>` : ''}
+                ${doc.type === 'ba' ? `<button class="btn-icon" onclick="convertBAToExpense('${doc.id}')" title="Convertir en dépense" style="color:#8b5cf6"><i data-lucide="shopping-cart" class="lucide-sm"></i></button>` : ''}
+                <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`).join('')}
     </tbody></table>`;
+    if (window.lucide) lucide.createIcons();
+    updateBatchButtons();
+}
+
+function renderPipelineBadge(doc) {
+    if (doc.reference_doc) {
+        const ref = allDocuments.find(d => d.id === doc.reference_doc);
+        if (ref) return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#e0e7ff;color:#4338ca;white-space:nowrap"><i data-lucide="link" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Issu de ${ref.number}</span>`;
+        return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#f3f4f6;color:#6b7280;white-space:nowrap">Réf. liée</span>`;
+    }
+    if (doc.type === 'devis') {
+        const converted = allDocuments.find(d => d.reference_doc === doc.id);
+        if (converted) return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#d1fae5;color:#065f46;white-space:nowrap"><i data-lucide="check" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Converti → ${converted.number}</span>`;
+        return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#fef3c7;color:#92400e;white-space:nowrap"><i data-lucide="clock" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> En attente</span>`;
+    }
+    return '<span style="color:var(--text-muted);font-size:0.75rem">—</span>';
+}
+
+function toggleSelectAllDocs(checked) {
+    document.querySelectorAll('.doc-select').forEach(cb => cb.checked = checked);
+    updateBatchButtons();
+}
+function updateBatchButtons() {
+    const selected = document.querySelectorAll('.doc-select:checked').length;
+    document.getElementById('batchDeleteBtn').disabled = selected === 0;
+    document.getElementById('batchPaidBtn').disabled = selected === 0;
+    document.getElementById('batchPdfBtn').disabled = selected === 0;
+}
+function getSelectedDocIds() {
+    return Array.from(document.querySelectorAll('.doc-select:checked')).map(cb => cb.value);
+}
+async function batchDeleteSelected() {
+    const ids = getSelectedDocIds();
+    if (!ids.length) return;
+    showConfirm('<i data-lucide="trash-2" class="lucide-sm"></i> Supprimer', `Supprimer ${ids.length} document(s) définitivement ?`, async () => {
+        for (const id of ids) {
+            try { await window.electronAPI.deleteDocument(id); } catch {}
+        }
+        showToast(`${ids.length} document(s) supprimés`, 'success');
+        await loadDocuments();
+    });
+}
+async function batchMarkPaid() {
+    const ids = getSelectedDocIds();
+    if (!ids.length) return;
+    for (const id of ids) {
+        try {
+            const doc = allDocuments.find(d => d.id === id);
+            if (doc && doc.type === 'facture') {
+                await window.electronAPI.saveDocument({ ...doc, id, paymentStatus: 'paid', paidDate: new Date().toISOString().split('T')[0], paidAmount: doc.totalTTC });
+            }
+        } catch {}
+    }
+    showToast(`${ids.length} facture(s) marquées payées`, 'success');
+    await loadDocuments();
+}
+async function batchExportPDF() {
+    const ids = getSelectedDocIds();
+    if (!ids.length) return;
+    for (const id of ids) {
+        try { await downloadDocPDF(id); } catch {}
+    }
+}
+
+// ==================== BA → EXPENSE CONVERSION ====================
+async function convertBAToExpense(docId) {
+    const doc = allDocuments.find(d => d.id === docId) || await window.electronAPI.getDocument(docId);
+    if (!doc) return;
+    try {
+        const items = JSON.parse(doc.items_json || '[]');
+        const totalHT = items.reduce((s, i) => s + (parseFloat(i.unitPrice) * parseFloat(i.quantity || 1)), 0);
+        const totalTVA = (doc.totalTTC || 0) - totalHT;
+        const tvaRate = totalHT > 0 ? Math.round((totalTVA / totalHT) * 100) : 19;
+        await window.electronAPI.saveExpense({
+            userId: currentUser.id,
+            vendor: doc.clientName,
+            date: doc.date,
+            amountTTC: doc.totalTTC || 0,
+            amountHT: totalHT,
+            tvaRate: Math.min(Math.max(tvaRate, 0), 19),
+            category: 'Fournitures',
+            reference: doc.number,
+            description: `Bon d'Achat ${doc.number} — ${doc.clientName}`,
+            docType: 'facture'
+        });
+        showToast('Dépense créée depuis le BA', 'success');
+    } catch (e) { showToast('Erreur conversion: ' + e.message, 'error'); }
 }
 
 function filterDocuments() {
@@ -3897,6 +4015,89 @@ async function calculateTVASummary() {
         document.getElementById('tvaSumResult').style.display = 'block';
 
     } catch (e) { showToast('Erreur calcul TVA', 'error'); }
+    finally { hideLoading(); }
+}
+
+// ==================== TVA DÉCLARATION ASSISTANT ====================
+function openTVADeclaration() {
+    document.getElementById('tvaDeclarationModal').classList.add('active');
+    document.getElementById('tvaDeclResult').style.display = 'none';
+}
+
+async function calculateTVADeclaration() {
+    const year = parseInt(document.getElementById('tvaDeclYear').value);
+    const month = parseInt(document.getElementById('tvaDeclMonth').value);
+    showLoading('Calcul de la déclaration TVA...');
+    try {
+        const docs = await window.electronAPI.getDocuments(currentUser.id);
+        const expenses = await window.electronAPI.getExpenses(currentUser.id);
+        const periodDocs = docs.filter(d => {
+            const dt = new Date(d.date);
+            return dt.getFullYear() === year && (dt.getMonth() + 1) === month && (d.type === 'facture' || d.type === 'avoir');
+        });
+        const periodExpenses = expenses.filter(e => {
+            const dt = new Date(e.date);
+            return dt.getFullYear() === year && (dt.getMonth() + 1) === month;
+        });
+        const collected = { 7: { ht: 0, tva: 0 }, 13: { ht: 0, tva: 0 }, 19: { ht: 0, tva: 0 } };
+        let colHT = 0, colTVA = 0;
+        periodDocs.forEach(doc => {
+            const items = JSON.parse(doc.items_json || '[]');
+            items.forEach(item => {
+                const rate = parseInt(item.tva) || 19;
+                const ht = parseFloat(item.unitPrice) * parseFloat(item.quantity || 1);
+                const sign = doc.type === 'avoir' ? -1 : 1;
+                if (collected[rate]) {
+                    collected[rate].ht += ht * sign;
+                    collected[rate].tva += ht * (rate / 100) * sign;
+                }
+                colHT += ht * sign;
+                colTVA += ht * (rate / 100) * sign;
+            });
+        });
+        const deductible = { 7: { ht: 0, tva: 0 }, 13: { ht: 0, tva: 0 }, 19: { ht: 0, tva: 0 } };
+        let dedHT = 0, dedTVA = 0;
+        periodExpenses.forEach(e => {
+            const rate = parseInt(e.tva_rate) || 0;
+            if (deductible[rate]) {
+                deductible[rate].ht += (e.amount_ht || 0);
+                deductible[rate].tva += (e.amount_tva || 0);
+            }
+            dedHT += (e.amount_ht || 0);
+            dedTVA += (e.amount_tva || 0);
+        });
+        const collectedBody = document.getElementById('tvaDeclCollectedBody');
+        collectedBody.innerHTML = '';
+        Object.keys(collected).sort((a, b) => a - b).forEach(rate => {
+            if (Math.abs(collected[rate].ht) > 0.001) {
+                collectedBody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(collected[rate].ht)}</td><td>${formatAmount(collected[rate].tva)}</td></tr>`;
+            }
+        });
+        document.getElementById('tvaDeclCollectedHT').textContent = formatAmount(colHT);
+        document.getElementById('tvaDeclCollectedTVA').textContent = formatAmount(colTVA);
+        const deductibleBody = document.getElementById('tvaDeclDeductibleBody');
+        deductibleBody.innerHTML = '';
+        Object.keys(deductible).sort((a, b) => a - b).forEach(rate => {
+            if (Math.abs(deductible[rate].ht) > 0.001) {
+                deductibleBody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(deductible[rate].ht)}</td><td>${formatAmount(deductible[rate].tva)}</td></tr>`;
+            }
+        });
+        document.getElementById('tvaDeclDeductibleHT').textContent = formatAmount(dedHT);
+        document.getElementById('tvaDeclDeductibleTVA').textContent = formatAmount(dedTVA);
+        const netTVA = colTVA - dedTVA;
+        const netEl = document.getElementById('tvaDeclNetResult');
+        if (netTVA >= 0) {
+            netEl.style.background = '#fef3c7';
+            netEl.style.color = '#92400e';
+            netEl.innerHTML = `<i data-lucide="arrow-up" style="vertical-align:middle"></i> TVA à reverser : <span style="font-size:1.2rem">${formatAmount(netTVA)} TND</span>`;
+        } else {
+            netEl.style.background = '#d1fae5';
+            netEl.style.color = '#065f46';
+            netEl.innerHTML = `<i data-lucide="arrow-down" style="vertical-align:middle"></i> Crédit TVA (reportable) : <span style="font-size:1.2rem">${formatAmount(Math.abs(netTVA))} TND</span>`;
+        }
+        if (window.lucide) lucide.createIcons();
+        document.getElementById('tvaDeclResult').style.display = 'block';
+    } catch (e) { showToast('Erreur calcul déclaration TVA', 'error'); }
     finally { hideLoading(); }
 }
 

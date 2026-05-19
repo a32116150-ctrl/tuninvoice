@@ -20,6 +20,7 @@ Générez 8 types de documents conformes aux normes fiscales tunisiennes en quel
 - **Conformité Fiscale** : Gestion automatique du **Timbre Fiscal (1.000 TND)**, de la **TVA** (7%, 13%, 19%) et du **FODEC**.
 - **Précision Millimes** : Support complet des 3 décimales pour tous les calculs monétaires.
 - **Design Premium** : Plusieurs thèmes visuels pour des PDF élégants et professionnels.
+- **Thème d'interface** : Basculement clair/sombre depuis la barre supérieure.
 
 ### 💰 Gestion des Achats & Dépenses
 Gardez un œil sur vos sorties d'argent pour une comptabilité simplifiée.
@@ -35,6 +36,15 @@ Générez vos certificats de retenue à la source sans erreurs de calcul.
 Ne faites plus d'erreurs de saisie sur vos fiches clients.
 - **Recherche RNE Directe** : Saisissez un Matricule Fiscal et récupérez instantanément le nom officiel, le statut (Actif/Radié) et l'adresse depuis le **Registre National des Entreprises**.
 - **Vérificateur MF** : Validation algorithmique de la structure du matricule fiscal tunisien.
+- **Assistant Déclaration TVA** : Récapitulatif mensuel TVA collectée/déductible avec calcul du solde.
+
+### 🗒️ Notes & Productivité
+- **Notes Adhésives** : Prenez des notes colorées, épinglez-les et retrouvez-les depuis le tableau de bord.
+- **Opérations par Lot** : Sélectionnez plusieurs documents et supprimez, marquez payé ou exportez en une seule action.
+- **Pipeline Devis→Facture** : Visualisez le statut de conversion de vos devis en factures directement dans la liste.
+
+### 🔄 BA → Dépense
+- **Conversion Rapide** : Transformez un Bon d'Achat en écriture de dépense en un clic depuis la liste des documents.
 
 ### 👥 Gestion des Clients & Services
 - **Base de Données Centralisée** : Historique complet pour chaque client (Factures vs Avoirs).
