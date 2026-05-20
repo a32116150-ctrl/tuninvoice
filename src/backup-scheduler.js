@@ -86,6 +86,13 @@ class BackupScheduler {
             archive.on('error', reject);
             archive.pipe(output);
             archive.file(this.db.getDatabasePath(), { name: 'tuniinvoice.db' });
+
+            // Include attachments directory in backup
+            const attachDir = path.join(app.getPath('userData'), 'attachments');
+            if (fs.existsSync(attachDir)) {
+                archive.directory(attachDir, 'attachments');
+            }
+
             archive.finalize();
         });
     }
@@ -141,6 +148,17 @@ class BackupScheduler {
         }
         
         this.db.restore(dbFile);
+
+        // Restore attachments directory if present in backup
+        const extractAttachDir = path.join(tempPath, 'attachments');
+        if (fs.existsSync(extractAttachDir)) {
+            const targetAttachDir = path.join(app.getPath('userData'), 'attachments');
+            if (fs.existsSync(targetAttachDir)) {
+                fs.rmSync(targetAttachDir, { recursive: true, force: true });
+            }
+            fs.cpSync(extractAttachDir, targetAttachDir, { recursive: true });
+        }
+
         fs.rmSync(tempPath, { recursive: true, force: true });
         return true;
     }

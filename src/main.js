@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Notification, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification, safeStorage, Tray, Menu, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
@@ -9,10 +9,22 @@ const { autoUpdater } = require('electron-updater');
 const Database = require('./database/db');
 const BackupScheduler = require('./backup-scheduler');
 const ExcelExporter = require('./exporters/excel-exporter');
+const CSVExporter = require('./exporters/csv-exporter');
+const { validateDocSave, validateClientSave, validateExpenseSave, validateSettings, validateRecurringInvoice } = require('./validate');
 const { buildRetenueHTML, buildRelanceHTML, buildFiscalSummaryHTML } = require('./renderer/retenue-builder');
 const { buildInvoiceHTML } = require('./renderer/builders/invoice-builder');
 const { create } = require('xmlbuilder2');
 const XLSX = require('xlsx');
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 /**
  * Helper to convert a local file path to base64 data URI
@@ -37,21 +49,57 @@ function imagePathToBase64(filePath) {
 
 const db = new Database();
 const excelExporter = new ExcelExporter();
+const csvExporter = new CSVExporter();
 
 let mainWindow;
 let backupScheduler;
 let calculatorWindow = null;
 let ocrWorker = null;
 
+function loadWindowState() {
+    try {
+        const p = path.join(app.getPath('userData'), 'window-state.json');
+        if (fs.existsSync(p)) {
+            return JSON.parse(fs.readFileSync(p, 'utf8'));
+        }
+    } catch {}
+    return { width: 1400, height: 900 };
+}
+
 function createWindow() {
-    mainWindow = new BrowserWindow({
-        width: 1400, height: 900, minWidth: 1200, minHeight: 700,
+    const savedState = loadWindowState();
+    const winOpts = {
+        width: savedState.width || 1400, height: savedState.height || 900, minWidth: 1200, minHeight: 700,
         show: false,
         icon: path.join(__dirname, '../assets/iconblack2.png'),
         webPreferences: { contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js') }
-    });
+    };
+    if (savedState.x !== undefined) winOpts.x = savedState.x;
+    if (savedState.y !== undefined) winOpts.y = savedState.y;
+    mainWindow = new BrowserWindow(winOpts);
     mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
-    mainWindow.once('ready-to-show', () => mainWindow.show());
+
+    // Save window state on resize/move/close
+    const saveState = () => {
+        try {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                const bounds = mainWindow.getBounds();
+                const isMax = mainWindow.isMaximized();
+                fs.writeFileSync(
+                    path.join(app.getPath('userData'), 'window-state.json'),
+                    JSON.stringify({ ...bounds, maximized: isMax })
+                );
+            }
+        } catch {}
+    };
+    mainWindow.on('resize', saveState);
+    mainWindow.on('move', saveState);
+    mainWindow.on('close', saveState);
+
+    mainWindow.once('ready-to-show', () => {
+        if (savedState.maximized) mainWindow.maximize();
+        mainWindow.show();
+    });
     mainWindow.on('closed', () => { mainWindow = null; });
     backupScheduler = new BackupScheduler(db);
     backupScheduler.start();
@@ -69,12 +117,59 @@ app.whenReady().then(() => {
         app.dock.setIcon(path.join(__dirname, '../assets/iconblack2.png'));
     }
     createWindow();
+    createTray();
+    registerShortcuts();
+    startRecurringCron();
     setTimeout(() => {
         autoUpdater.checkForUpdatesAndNotify().catch(err => console.log('[updater] skipped:', err.message));
     }, 3000);
 });
+app.on('before-quit', () => stopRecurringCron());
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+
+// ==================== TRAY ICON ====================
+let appTray = null;
+function createTray() {
+    try {
+        const iconPath = path.join(__dirname, '../assets/iconblack2.png');
+        appTray = new Tray(iconPath);
+        appTray.setToolTip('Factarlou — Gestion facturation');
+
+        const contextMenu = Menu.buildFromTemplate([
+            { label: 'Ouvrir Factarlou', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } } },
+            { type: 'separator' },
+            { label: 'Nouvelle Facture', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'facture'); } } },
+            { label: 'Nouveau Devis', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'devis'); } } },
+            { type: 'separator' },
+            { label: 'Tableau de bord', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:navigate', 'dashboard'); } } },
+            { type: 'separator' },
+            { label: 'Quitter', click: () => { app.isQuitting = true; app.quit(); } }
+        ]);
+        appTray.setContextMenu(contextMenu);
+        appTray.on('double-click', () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } });
+    } catch (e) {
+        console.error('[tray] Failed to create tray:', e.message);
+    }
+}
+
+// ==================== KEYBOARD SHORTCUTS ====================
+function registerShortcuts() {
+    globalShortcut.register('CommandOrControl+N', () => {
+        if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'facture'); }
+    });
+    globalShortcut.register('CommandOrControl+Shift+N', () => {
+        if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'devis'); }
+    });
+    globalShortcut.register('CommandOrControl+F', () => {
+        if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:focusSearch'); }
+    });
+}
+
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+    if (appTray) { appTray.destroy(); appTray = null; }
+});
 
 // ==================== AUTO-UPDATER ====================
 autoUpdater.autoDownload = true;
@@ -287,11 +382,28 @@ ipcMain.handle('auth:changePassword', async (_, { userId, oldPassword, newPasswo
 ipcMain.handle('auth:resetPasswordMasterKey', async (_, { email, masterKey, newPassword }) => { try { db.resetPasswordWithMasterKey(email, masterKey, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== DOCUMENTS ====================
-ipcMain.handle('docs:getAll', async (_, userId) => db.getDocuments(userId));
+ipcMain.handle('docs:getAll', async (_, { userId, page, pageSize }) => {
+        if (pageSize === -1) return db.getDocuments(userId);
+        return db.getDocumentsPaginated(userId, page || 1, pageSize || 50);
+    });
 ipcMain.handle('docs:getByType', async (_, { userId, type }) => db.getDocumentsByType(userId, type));
 ipcMain.handle('docs:getById', async (_, id) => db.getDocumentById(id));
-ipcMain.handle('docs:save', async (_, data) => { try { return { success: true, document: db.saveDocument(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('docs:update', async (_, { docId, updates }) => { try { const ex = db.getDocumentById(docId); if (!ex) throw new Error('Introuvable'); return { success: true, document: db.saveDocument({ ...ex, ...updates, id: docId }) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('docs:save', async (_, data) => {
+    try {
+        const errors = validateDocSave(data);
+        if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
+        return { success: true, document: db.saveDocument(data) };
+    } catch (e) { return { success: false, error: e.message }; }
+});
+ipcMain.handle('docs:update', async (_, { docId, updates }) => {
+    try {
+        const ex = db.getDocumentById(docId);
+        if (!ex) throw new Error('Introuvable');
+        const errors = validateDocSave({ ...ex, ...updates, id: docId });
+        if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
+        return { success: true, document: db.saveDocument({ ...ex, ...updates, id: docId }) };
+    } catch (e) { return { success: false, error: e.message }; }
+});
 ipcMain.handle('docs:delete', async (_, id) => { try { db.deleteDocument(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('docs:getNextNumber', async (_, { userId, type, year }) => db.getNextDocumentNumber(userId, type, year));
 ipcMain.handle('docs:peekNextNumber', async (_, { userId, type, year }) => db.peekNextDocumentNumber(userId, type, year));
@@ -354,15 +466,105 @@ ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
     } catch (e) { return { success: false, error: e.message }; }
 });
 
-// ==================== PAYMENTS ====================
-ipcMain.handle('payments:add', async (_, d) => { try { return { success: true, payment: db.addPayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('docs:generatePDF', async (_, { doc, company, type, theme, decimalPlaces, roundingMethod }) => {
+    try {
+        // Build HTML for the document
+        const items = (doc.items || []).map(item => ({
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            price: item.price || 0,
+            tva: item.tva || 19,
+            total: (item.quantity || 0) * (item.price || 0)
+        }));
+
+        const totalHT = items.reduce((s, i) => s + i.total, 0);
+        let tva19 = 0, tva13 = 0, tva7 = 0;
+        items.forEach(i => {
+            if (i.tva === 19) tva19 += i.total * 0.19;
+            else if (i.tva === 13) tva13 += i.total * 0.13;
+            else if (i.tva === 7) tva7 += i.total * 0.07;
+        });
+        const totalTTC = totalHT + tva19 + tva13 + tva7 + (doc.timbreAmount || 0);
+
+        // Create full HTML document for PDF generation
+        const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;padding:40px;color:#1e293b;background:#fff}
+.header{display:flex;justify-content:space-between;margin-bottom:40px}
+.header .left h1{font-size:28px;color:#1e3a8a;margin-bottom:4px}
+.header .right{text-align:right;font-size:13px;color:#64748b}
+.client-info{margin-bottom:32px}
+.client-info .label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#64748b;margin-bottom:6px}
+.client-info .name{font-size:15px;font-weight:600}
+table{width:100%;border-collapse:collapse;margin-bottom:32px}
+th{background:#f8fafc;border-bottom:2px solid #1e3a8a;padding:10px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748b}
+td{padding:10px;border-bottom:1px solid #e2e8f0;font-size:13px}
+td:last-child,th:last-child{text-align:right}
+.totals{margin-left:auto;width:300px}
+.totals .row{display:flex;justify-content:space-between;padding:5px 0;color:#64748b;font-size:13px}
+.totals .grand{font-size:18px;font-weight:800;color:#1e3a8a;border-top:2px solid #1e3a8a;padding-top:10px;margin-top:10px}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b}
+</style></head><body>
+<div class="header">
+    <div class="left">
+        <h1>${(doc.type || type || 'FACTURE').toUpperCase()}</h1>
+        <div style="font-size:13px;color:#64748b;margin-top:4px">${escapeHtml(doc.companyName || company?.name || '')}</div>
+    </div>
+    <div class="right">
+        <div style="font-weight:600;font-size:15px"># ${escapeHtml(doc.number)}</div>
+        <div style="margin-top:4px">Date: ${doc.date || ''}</div>
+        ${doc.dueDate ? `<div>Échéance: ${doc.dueDate}</div>` : ''}
+    </div>
+</div>
+<div class="client-info">
+    <div class="label">Facturé à</div>
+    <div class="name">${escapeHtml(doc.clientName)}</div>
+    ${doc.clientEmail ? `<div style="font-size:12px;color:#64748b;margin-top:4px">${escapeHtml(doc.clientEmail)}</div>` : ''}
+</div>
+<table>
+    <thead><tr><th>Description</th><th>Qté</th><th>Prix HT</th><th>TVA</th><th>Total HT</th></tr></thead>
+    <tbody>${items.map(i => `<tr><td>${escapeHtml(i.description)}</td><td>${i.quantity}</td><td>${(i.price).toFixed(decimalPlaces || 3)}</td><td>${i.tva}%</td><td>${i.total.toFixed(decimalPlaces || 3)}</td></tr>`).join('')}</tbody>
+</table>
+<div class="totals">
+    <div class="row"><span>Total HT</span><span>${totalHT.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>
+    ${tva19 > 0 ? `<div class="row"><span>TVA 19%</span><span>${tva19.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
+    ${tva13 > 0 ? `<div class="row"><span>TVA 13%</span><span>${tva13.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
+    ${tva7 > 0 ? `<div class="row"><span>TVA 7%</span><span>${tva7.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
+    ${doc.timbreAmount ? `<div class="row"><span>Timbre fiscal</span><span>${(doc.timbreAmount).toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
+    <div class="row grand"><span>Total TTC</span><span>${totalTTC.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>
+</div>
+${doc.notes ? `<div class="footer">${escapeHtml(doc.notes).replace(/\n/g, '<br>')}</div>` : ''}
+</body></html>`;
+
+        const pdfData = await handlePDFGeneration(html);
+
+        // Save to a temp file in the user data directory
+        const pdfDir = path.join(app.getPath('userData'), 'temp-pdfs');
+        fs.mkdirSync(pdfDir, { recursive: true });
+        const filename = `${(doc.number || 'document').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+        const filePath = path.join(pdfDir, filename);
+        fs.writeFileSync(filePath, pdfData);
+
+        return { success: true, path: filePath };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('payments:add', async (_, d) => { try { return { success: true, payment: db.savePayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('payments:getAll', async (_, id) => db.getPayments(id));
 ipcMain.handle('payments:delete', async (_, id) => { try { db.deletePayment(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== CLIENTS ====================
 ipcMain.handle('clients:getAll', async (_, userId) => db.getClients(userId));
 ipcMain.handle('clients:getById', async (_, id) => db.getClientById(id));
-ipcMain.handle('clients:save', async (_, data) => { try { return { success: true, client: db.saveClient(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('clients:save', async (_, data) => {
+    try {
+        const errors = validateClientSave(data);
+        if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
+        return { success: true, client: db.saveClient(data) };
+    } catch (e) { return { success: false, error: e.message }; }
+});
 ipcMain.handle('clients:delete', async (_, id) => { try { db.deleteClient(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('clients:history', async (_, { userId, clientName }) => { try { return db.getClientHistory(userId, clientName); } catch { return {}; } });
 
@@ -444,6 +646,39 @@ ipcMain.handle('export:excel:retenues', async (_, { retenues, filePath }) => {
     } catch (e) { return { success: false, error: e.message }; }
 });
 
+ipcMain.handle('export:xlsx', async (_, { data, headers, filename }) => {
+    try {
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Export');
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        const { filePath, canceled } = await dialog.showSaveDialog({
+            title: 'Exporter vers Excel',
+            defaultPath: filename || 'export.xlsx',
+            filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+        });
+        if (canceled) return { success: false, canceled: true };
+        fs.writeFileSync(filePath, buf);
+        return { success: true, path: filePath };
+    } catch (e) { return { success: false, error: e.message }; }
+});
+
+// ==================== CSV ====================
+ipcMain.handle('export:csv:document', async (_, { document, filePath }) => {
+    try {
+        if (!filePath) {
+            const r = await dialog.showSaveDialog(mainWindow, {
+                defaultPath: `${document.number || 'document'}-${Date.now()}.csv`,
+                filters: [{ name: 'CSV', extensions: ['csv'] }]
+            });
+            if (r.canceled) return { success: false };
+            filePath = r.filePath;
+        }
+        csvExporter.exportDocument(document, filePath);
+        return { success: true, path: filePath };
+    } catch (e) { return { success: false, error: e.message }; }
+});
+
 // ==================== NOTES ====================
 ipcMain.handle('notes:getAll', async (_, userId) => db.getNotes(userId));
 ipcMain.handle('notes:save', async (_, data) => { try { return { success: true, note: db.saveNote(data) }; } catch (e) { return { success: false, error: e.message }; } });
@@ -474,12 +709,43 @@ setInterval(() => {
     } catch { }
 }, 10 * 60 * 1000);
 
+// ==================== ACTIVITY LOG ====================
+ipcMain.handle('activity:getAll', async (_, userId) => db.getActivityLog(userId, 50));
+ipcMain.handle('activity:clear', async (_, userId) => { db.clearActivityLog(userId); return { success: true }; });
+
 // ==================== BACKUP ====================
 ipcMain.handle('backup:settings:get', () => backupScheduler.getSettings());
 ipcMain.handle('backup:settings:save', (_, s) => { backupScheduler.saveSettings(s); backupScheduler.start(); return { success: true }; });
 ipcMain.handle('backup:create:manual', async () => await backupScheduler.createBackup(true));
 ipcMain.handle('backup:list', () => backupScheduler.getBackupList());
 ipcMain.handle('backup:restore', async (_, p) => { try { await backupScheduler.restoreBackup(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+
+ipcMain.handle('backup:report', async (event, userId) => {
+    if (!userId) return null;
+    try {
+        const rawDb = db.getDatabase();
+        const docs = rawDb.prepare('SELECT COUNT(*) as count, COALESCE(SUM(net_total), 0) as total, type FROM documents WHERE user_id = ? GROUP BY type').all(userId);
+        const totalDocs = rawDb.prepare('SELECT COUNT(*) as c FROM documents WHERE user_id = ?').get(userId);
+        const totalClients = rawDb.prepare('SELECT COUNT(*) as c FROM clients WHERE user_id = ?').get(userId);
+        const totalServices = rawDb.prepare('SELECT COUNT(*) as c FROM services WHERE user_id = ?').get(userId);
+        const totalExpenses = rawDb.prepare('SELECT COUNT(*) as c, COALESCE(SUM(amount_ttc), 0) as total FROM expenses WHERE user_id = ?').get(userId);
+        const totalRetenues = rawDb.prepare('SELECT COUNT(*) as c, COALESCE(SUM(montant_retenue), 0) as total FROM retenues WHERE user_id = ?').get(userId);
+        const totalContracts = rawDb.prepare('SELECT COUNT(*) as c FROM contracts WHERE user_id = ?').get(userId);
+        const companyCount = rawDb.prepare('SELECT COUNT(*) as c FROM companies WHERE user_id = ?').get(userId);
+        const user = rawDb.prepare('SELECT username, email FROM users WHERE id = ?').get(userId);
+        return {
+            generatedAt: new Date().toISOString(),
+            user,
+            documents: { total: totalDocs.c, byType: docs },
+            clients: totalClients.c,
+            services: totalServices.c,
+            expenses: { count: totalExpenses.c, total: totalExpenses.total },
+            retenues: { count: totalRetenues.c, total: totalRetenues.total },
+            contracts: totalContracts.c,
+            companies: companyCount.c,
+        };
+    } catch (e) { return null; }
+});
 
 // ==================== EMAIL ====================
 ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments }) => {
@@ -576,10 +842,61 @@ ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) 
     } catch (e) { return { success: false, error: e.message }; }
 });
 
+// ==================== POS (Point of Sale) ====================
+ipcMain.handle('pos:getProducts', async (_, userId) => db.getProducts(userId));
+ipcMain.handle('pos:getProductByBarcode', async (_, { userId, barcode }) => db.getProductByBarcode(userId, barcode));
+ipcMain.handle('pos:updateStock', async (_, { id, quantity }) => { try { db.updateStock(id, quantity); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('pos:saveSale', async (_, data) => {
+    try {
+        const id = require('uuid').v4();
+        const now = new Date().toISOString();
+        const today = now.split('T')[0];
+        // Reserve a document number
+        const number = db.getNextDocumentNumber(data.userId, 'facture', new Date().getFullYear());
+        // Create a document for the POS sale
+        const docData = {
+            id, userId: data.userId, type: 'facture', number, date: today,
+            clientName: data.clientName || 'Client du magasin', items: data.items,
+            totalHT: data.totalHT, totalTTC: data.totalTTC, paymentStatus: 'paid',
+            paidAmount: data.totalTTC, paidDate: today, paymentMode: data.paymentMethod,
+            currency: data.currency || 'TND', notes: data.notes || '',
+            isPos: true, posSessionId: data.sessionId || null
+        };
+        // Save as document
+        db.saveDocument(docData);
+        // Deduct stock for each item
+        if (data.items && Array.isArray(data.items)) {
+            data.items.forEach(item => {
+                if (item.serviceId) db.deductStock(item.serviceId, item.quantity);
+            });
+        }
+        // Update session totals
+        if (data.sessionId) {
+            db.addPosSaleToSession(data.sessionId, data.totalTTC, data.paymentMethod);
+        }
+        return { success: true, id, number };
+    } catch (e) { return { success: false, error: e.message }; }
+});
+ipcMain.handle('pos:getSales', async (_, { userId, sessionId }) => db.getPosSales(userId, sessionId));
+ipcMain.handle('pos:getTodaySales', async (_, userId) => db.getTodayPosSales(userId));
+ipcMain.handle('pos:getSaleById', async (_, id) => db.getPosSaleById(id));
+ipcMain.handle('pos:deleteSale', async (_, id) => { try { db.deleteDocument(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('pos:openSession', async (_, { userId, openingBalance }) => { try { return db.openSession(userId, openingBalance); } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('pos:closeSession', async (_, { id, closingCash, closingCard }) => { try { return db.closeSession(id, closingCash, closingCard); } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('pos:getActiveSession', async (_, userId) => db.getActiveSession(userId));
+ipcMain.handle('pos:getSessions', async (_, userId) => db.getPosSessions(userId));
+ipcMain.handle('pos:getLowStock', async (_, userId) => db.getLowStockProducts(userId));
+
 // ==================== EXPENSES ====================
 ipcMain.handle('expenses:getAll', async (_, userId) => db.getExpenses(userId));
 ipcMain.handle('expenses:getById', async (_, id) => db.getExpenseById(id));
-ipcMain.handle('expenses:save', async (_, data) => { try { return { success: true, expense: db.saveExpense(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('expenses:save', async (_, data) => {
+    try {
+        const errors = validateExpenseSave(data);
+        if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
+        return { success: true, expense: db.saveExpense(data) };
+    } catch (e) { return { success: false, error: e.message }; }
+});
 ipcMain.handle('expenses:delete', async (_, id) => {
     try {
         const attachPath = db.deleteExpense(id);
@@ -755,6 +1072,94 @@ ipcMain.handle('tools:searchRNE', async (_, mf) => {
 // ==================== FS HELPERS ====================
 ipcMain.handle('fs:openFolder', async (_, p) => { try { shell.openPath(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('fs:selectFolder', async () => { const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; });
+
+// ==================== RECURRING INVOICES ====================
+ipcMain.handle('recurring:getAll', async (_, userId) => db.getRecurringInvoices(userId));
+ipcMain.handle('recurring:save', async (_, data) => { try { return { success: true, id: db.saveRecurringInvoice(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('recurring:delete', async (_, id) => { try { db.deleteRecurringInvoice(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+
+let recurringTimer = null;
+
+function startRecurringCron() {
+    // Check every hour
+    recurringTimer = setInterval(generateDueRecurring, 60 * 60 * 1000);
+    // Also check immediately after a short delay (give DB time to fully init)
+    setTimeout(generateDueRecurring, 5000);
+}
+
+function stopRecurringCron() {
+    if (recurringTimer) { clearInterval(recurringTimer); recurringTimer = null; }
+}
+
+function generateDueRecurring() {
+    try {
+        const due = db.getDueRecurringInvoices();
+        if (!due || !due.length) return;
+        due.forEach(r => {
+            try {
+                const items = (r.items_template ? (typeof r.items_template === 'string' ? JSON.parse(r.items_template) : r.items_template) : []);
+                const parsedItems = items.map(line => {
+                    const p = (line || '').split('|').map(s => s.trim());
+                    return { description: p[0] || '', quantity: parseFloat(p[1]) || 1, price: parseFloat(p[2]) || 0, tva: parseInt(p[3]) || 19 };
+                });
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+                const year = now.getFullYear();
+                const docType = r.doc_type || 'facture';
+                const docNumber = db.getNextDocumentNumber(r.user_id, docType, year);
+                const dueDate = new Date(now);
+                dueDate.setDate(r.day_of_month || 15);
+                if (dueDate <= now) dueDate.setMonth(dueDate.getMonth() + 1);
+
+                // Calculate totals for items_template
+                const ht = parsedItems.reduce((s, it) => s + it.quantity * it.price, 0);
+                const tvaAmounts = {};
+                parsedItems.forEach(it => {
+                    if (it.tva > 0) tvaAmounts[it.tva] = (tvaAmounts[it.tva] || 0) + it.quantity * it.price * (it.tva / 100);
+                });
+                const totalTva = Object.values(tvaAmounts).reduce((s, v) => s + v, 0);
+                const netTotal = ht + totalTva;
+
+                const docId = require('uuid').v4();
+                const company = db.db.prepare('SELECT * FROM companies WHERE user_id=? LIMIT 1').get(r.user_id);
+
+                db.db.prepare(`INSERT INTO documents (id,user_id,type,number,date,due_date,client_name,client_mf,client_address,client_phone,client_email,currency,payment_mode,items_json,notes,net_total,tva_total,timbre,amount_ttc,payment_status,created_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`).run(
+                    docId, r.user_id, docType, docNumber, dateStr, dueDate.toISOString().split('T')[0],
+                    '', '', '', '', '', r.currency || 'TND', r.payment_mode || 'Virement bancaire',
+                    JSON.stringify(parsedItems), 'Généré automatiquement', netTotal, totalTva, 0, netTotal, 'impaye'
+                );
+
+                // Calculate next run
+                const nextDate = new Date();
+                switch (r.frequency) {
+                    case 'weekly': nextDate.setDate(nextDate.getDate() + 7); break;
+                    case 'monthly': nextDate.setMonth(nextDate.getMonth() + 1); break;
+                    case 'quarterly': nextDate.setMonth(nextDate.getMonth() + 3); break;
+                    case 'yearly': nextDate.setFullYear(nextDate.getFullYear() + 1); break;
+                }
+                nextDate.setDate(r.day_of_month || 15);
+                db.updateRecurringNextRun(r.id, dateStr, nextDate.toISOString().split('T')[0]);
+            } catch (e) { console.error('Failed to generate recurring invoice:', r.id, e); }
+        });
+    } catch (e) { console.error('Recurring cron error:', e); }
+}
+
+// ==================== DOCUMENT TEMPLATES ====================
+ipcMain.handle('templates:getAll', async (_, userId) => db.getTemplates(userId));
+ipcMain.handle('templates:save', async (_, data) => { try { return { success: true, id: db.saveTemplate(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('templates:delete', async (_, id) => { try { db.deleteTemplate(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+
+// ==================== XLSX IMPORT ====================
+ipcMain.handle('import:xlsx', async (_, { filePath }) => {
+    try {
+        const XLSX = require('xlsx');
+        const wb = XLSX.readFile(filePath);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        return { success: true, data };
+    } catch (e) { return { success: false, error: e.message }; }
+});
 
 // ── TEJ EXPORT HANDLERS ──────────────────────────────────────────
 ipcMain.handle('export:tej:getData', async (_, params) => {

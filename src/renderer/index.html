@@ -40,7 +40,10 @@
             </div>
             <div class="form-group" style="margin-bottom:14px">
                 <label>Mot de passe</label>
-                <input type="password" id="loginPassword" required placeholder="••••••••" autocomplete="current-password">
+                <div class="password-wrap">
+                    <input type="password" id="loginPassword" required placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" tabindex="-1" aria-label="Afficher/masquer le mot de passe"><i data-lucide="eye"></i></button>
+                </div>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
                 <div style="display:flex;align-items:center;gap:8px">
@@ -66,8 +69,8 @@
                 <input type="text" id="regMF" placeholder="XXXXXXX / XXX / XXX / XXX">
             </div>
             <div class="grid-2" style="margin-bottom:20px">
-                <div class="form-group"><label>Mot de passe *</label><input type="password" id="regPassword" required minlength="6" placeholder="Min. 6 caractères"></div>
-                <div class="form-group"><label>Confirmer *</label><input type="password" id="regPasswordConfirm" required placeholder="Répéter"></div>
+                <div class="form-group"><label>Mot de passe *</label><div class="password-wrap"><input type="password" id="regPassword" required minlength="6" placeholder="Min. 6 caractères"><button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" tabindex="-1" aria-label="Afficher/masquer le mot de passe"><i data-lucide="eye"></i></button></div></div>
+                <div class="form-group"><label>Confirmer *</label><div class="password-wrap"><input type="password" id="regPasswordConfirm" required placeholder="Répéter"><button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" tabindex="-1" aria-label="Afficher/masquer le mot de passe"><i data-lucide="eye"></i></button></div></div>
             </div>
             <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px"><i data-lucide="edit-3"></i> Créer mon compte</button>
         </form>
@@ -85,7 +88,10 @@
             </div>
             <div class="form-group" style="margin-bottom:20px">
                 <label>Nouveau mot de passe *</label>
-                <input type="password" id="forgotNewPassword" required minlength="6" placeholder="••••••••">
+                <div class="password-wrap">
+                    <input type="password" id="forgotNewPassword" required minlength="6" placeholder="••••••••">
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" tabindex="-1" aria-label="Afficher/masquer le mot de passe"><i data-lucide="eye"></i></button>
+                </div>
             </div>
             <button type="submit" class="btn btn-warning" style="width:100%;justify-content:center;padding:12px;margin-bottom:14px"><i data-lucide="key"></i> Réinitialiser le mot de passe</button>
             <div style="text-align:center">
@@ -133,9 +139,12 @@
                 </span> TEJ Export
             </div>
             <div class="nav-item" onclick="navigateTo('outils')"><span class="nav-icon"><i data-lucide="wrench"></i></span> Outils</div>
+            <div class="nav-section-label">Ventes</div>
+            <div class="nav-item nav-item-pos" onclick="navigateTo('pos')"><span class="nav-icon"><i data-lucide="cash-register"></i></span> Point de Vente</div>
             <div class="nav-section-label">Productivité</div>
             <div class="nav-item" onclick="navigateTo('notes')"><span class="nav-icon"><i data-lucide="sticky-note"></i></span> Notes</div>
             <div class="nav-section-label">Système</div>
+            <div class="nav-item" onclick="navigateTo('audit-log')"><span class="nav-icon"><i data-lucide="history"></i></span> Journal d'Activité</div>
             <div class="nav-item" onclick="navigateTo('settings')"><span class="nav-icon"><i data-lucide="settings"></i></span> Paramètres</div>
         </nav>
         <div class="sidebar-footer">
@@ -150,7 +159,7 @@
             <div class="topbar-left">
                 <div class="topbar-search">
                     <span class="topbar-search-ico"><i data-lucide="search"></i></span>
-                    <input type="text" placeholder="Rechercher..." id="globalSearch" onkeyup="globalSearchHandler()">
+                    <input type="text" placeholder="Rechercher..." id="globalSearch" onkeyup="globalSearchHandler()" data-i18n-placeholder>
                 </div>
             </div>
             <div class="topbar-right">
@@ -193,19 +202,15 @@
                     <div class="stat-sub">Clients actifs</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-card-top"><div><div class="stat-label">Ce mois</div><div class="stat-value red" id="statThisMonth">0</div></div><div class="stat-icon red"><i data-lucide="calendar"></i></div></div>
-                    <div class="stat-sub">Documents créés</div>
+                    <div class="stat-card-top"><div><div class="stat-label">Impayées</div><div class="stat-value" id="statUnpaid">0 TND</div></div><div class="stat-icon red"><i data-lucide="alert-triangle"></i></div></div>
+                    <div class="stat-sub">Factures en attente</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-card-top"><div><div class="stat-label">Impayées</div><div class="stat-value" id="statUnpaid" style="color:#ef4444;font-size:0.95rem">0</div></div><div class="stat-icon" style="background:#fee2e2"><i data-lucide="alert-triangle"></i></div></div>
-                    <div class="stat-sub">Factures en attente</div>
+                    <div class="stat-card-top"><div><div class="stat-label">Total Dépenses</div><div class="stat-value" id="statExpenses">0 TND</div></div><div class="stat-icon purple"><i data-lucide="shopping-cart"></i></div></div>
+                    <div class="stat-sub">Achats &amp; charges</div>
                 </div>
             </div>
             <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-top:16px">
-                <div class="stat-card">
-                    <div class="stat-card-top"><div><div class="stat-label">Total Dépenses</div><div class="stat-value" id="statTotalExpenses" style="color:#ef4444">0.000 TND</div></div><div class="stat-icon" style="background:#fee2e2"><i data-lucide="shopping-cart"></i></div></div>
-                    <div class="stat-sub">Achats &amp; charges</div>
-                </div>
                 <div class="stat-card">
                     <div class="stat-card-top"><div><div class="stat-label">Bénéfice Net</div><div class="stat-value" id="statNetProfit" style="color:#10b981">0.000 TND</div></div><div class="stat-icon" style="background:#dcfce7"><i data-lucide="trending-up"></i></div></div>
                     <div class="stat-sub">Revenus − Dépenses</div>
@@ -278,7 +283,10 @@
         <!-- ══════════ NEW DOCUMENT ══════════ -->
         <div id="page-new-document" class="page">
             <div class="page-header">
-                <div class="page-header-left"><h1>Nouveau Document</h1><p>Facture, devis ou bon de commande</p></div>
+                <div class="page-header-left">
+                    <div class="breadcrumb"><span onclick="navigateTo('documents')" style="cursor:pointer;color:var(--primary)">Documents</span> <span style="color:var(--text-light);margin:0 6px">›</span> <span id="breadcrumbDocType">Nouveau</span></div>
+                    <h1>Nouveau Document</h1><p>Facture, devis ou bon de commande</p>
+                </div>
             </div>
             <div class="card">
                 <!-- Type -->
@@ -428,9 +436,18 @@
                     <textarea id="docNotes" rows="3" placeholder="Conditions de paiement, délai de livraison, notes diverses..."></textarea>
                 </div>
 
+                <div class="form-section" style="margin-top:24px">
+                    <div class="section-title" style="font-size:0.9rem;font-weight:600;margin-bottom:12px"><i data-lucide="list"></i> Champs personnalisés</div>
+                    <div id="customFieldsContainer"></div>
+                    <button type="button" class="btn btn-secondary btn-small" onclick="addCustomField()" style="margin-top:8px"><i data-lucide="plus-circle"></i> Ajouter un champ</button>
+                </div>
+
                 <div class="action-bar">
                     <button type="button" class="btn btn-secondary" onclick="resetDocumentForm()"><i data-lucide="refresh-cw"></i> Réinitialiser</button>
+                    <button type="button" class="btn btn-secondary" onclick="openTemplateModal()"><i data-lucide="file-text"></i> Modèles</button>
                     <button type="button" class="btn btn-secondary" onclick="previewDocument()"><i data-lucide="eye"></i> Prévisualiser</button>
+                    <button type="button" class="btn btn-secondary" onclick="simulateCurrentDocument()"><i data-lucide="git-compare"></i> Simuler</button>
+                    <button type="button" class="btn btn-secondary" onclick="saveAndNew()" id="saveAndNewBtn"><i data-lucide="plus-circle"></i> Enregistrer &amp; Nouveau</button>
                     <button type="button" class="btn btn-success" id="saveBtn" onclick="saveAndDownloadPDF()"><i data-lucide="save"></i> Enregistrer &amp; Exporter PDF</button>
                 </div>
             </div>
@@ -440,6 +457,8 @@
         <div id="page-documents" class="page">
             <div class="page-header">
                 <div class="page-header-left"><h1>Mes Documents</h1><p>Historique complet de tous vos documents</p></div>
+                <div class="breadcrumb" style="margin-bottom:4px"><span style="color:var(--text-light)">Documents</span></div>
+                <button class="btn btn-secondary btn-small" onclick="exportDocumentsXLSX()"><i data-lucide="file-spreadsheet"></i> Excel</button>
                 <button class="btn btn-primary" onclick="navigateTo('new-document')"><i data-lucide="plus-circle"></i> Nouveau</button>
             </div>
             <div class="card">
@@ -463,11 +482,13 @@
                             <button class="btn btn-small btn-danger" onclick="batchDeleteSelected()" title="Supprimer la sélection" disabled id="batchDeleteBtn"><i data-lucide="trash-2" class="lucide-sm"></i></button>
                             <button class="btn btn-small btn-success" onclick="batchMarkPaid()" title="Marquer payées" disabled id="batchPaidBtn"><i data-lucide="check-circle" class="lucide-sm"></i></button>
                             <button class="btn btn-small btn-primary" onclick="batchExportPDF()" title="Exporter PDF" disabled id="batchPdfBtn"><i data-lucide="file-text" class="lucide-sm"></i></button>
+                            <button class="btn btn-small btn-secondary" onclick="emailSelectedDocs()" title="Envoyer par Email" disabled id="batchEmailBtn"><i data-lucide="mail" class="lucide-sm"></i></button>
                             <button class="btn btn-small btn-secondary" onclick="exportAllToExcel()"><i data-lucide="layout-dashboard"></i> Excel</button>
                         </div>
                     </div>
                 </div>
                 <div style="padding:0"><div id="allDocsTable" class="table-container"></div></div>
+                <div id="docPagination"></div>
             </div>
         </div>
 
@@ -477,6 +498,7 @@
                 <div class="page-header-left"><h1>Gestion des Clients</h1><p>Gérez votre base de données clients</p></div>
                 <div style="display:flex;gap:10px">
                     <button class="btn btn-secondary" onclick="exportClientsToExcel()"><i data-lucide="layout-dashboard"></i> Exporter</button>
+                    <button class="btn btn-secondary btn-small" onclick="openClientImportModal()"><i data-lucide="upload"></i> Importer</button>
                     <button class="btn btn-primary" onclick="openClientModal()"><i data-lucide="plus-circle"></i> Ajouter un Client</button>
                 </div>
             </div>
@@ -488,7 +510,17 @@
                 </div>
             </div>
             <div class="card">
-                <div class="card-header"><h2><i data-lucide="users"></i> Clients</h2></div>
+                <div class="card-header">
+                    <h2><i data-lucide="users"></i> Clients</h2>
+                    <div class="toolbar" style="display:flex;gap:10px;align-items:center">
+                        <div class="search-box"><input type="text" id="searchClients" placeholder="Rechercher client..." onkeyup="filterClients()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
+                    </div>
+                </div>
+                <div class="batch-actions" style="display:flex;gap:10px;align-items:center;padding:0 20px 12px 20px">
+                    <label style="font-size:0.85rem"><input type="checkbox" id="selectAllClients" onchange="toggleSelectAllClients(this)" style="width:16px;height:16px;accent-color:var(--primary)"> Tout sélectionner</label>
+                    <button class="btn btn-danger btn-small" onclick="deleteSelectedClients()" id="deleteSelectedClientsBtn" disabled><i data-lucide="trash-2"></i> Supprimer sélection</button>
+                    <span id="selectedClientsCount" style="font-size:0.8rem;color:var(--text-light)">0 sélectionné(s)</span>
+                </div>
                 <div style="padding:0"><div id="clientsTable" class="table-container"></div></div>
             </div>
         </div>
@@ -497,14 +529,299 @@
         <div id="page-services" class="page">
             <div class="page-header">
                 <div class="page-header-left"><h1>Services &amp; Produits</h1><p>Gérez vos prestations pour un remplissage rapide</p></div>
+                <button class="btn btn-secondary btn-small" onclick="exportServicesXLSX()"><i data-lucide="file-spreadsheet"></i> Excel</button>
                 <button class="btn btn-primary" onclick="openServiceModal()"><i data-lucide="plus-circle"></i> Nouveau Service</button>
             </div>
             <div class="card">
                 <div class="card-header">
                     <h2><i data-lucide="shopping-bag"></i> Catalogue</h2>
-                    <div class="search-box"><input type="text" id="searchServices" placeholder="Rechercher..." onkeyup="filterServices()"></div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <select id="filterServiceCategory" onchange="filterServices()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white">
+                            <option value="">Toutes catégories</option>
+                            <option>Service</option><option>Produit</option><option>Abonnement</option><option>Consulting</option><option>Autre</option>
+                        </select>
+                        <div class="search-box"><input type="text" id="searchServices" placeholder="Rechercher..." onkeyup="filterServices()"></div>
+                    </div>
+                </div>
+                <div class="batch-actions" style="display:flex;gap:10px;align-items:center;padding:0 20px 12px 20px">
+                    <label style="font-size:0.85rem"><input type="checkbox" id="selectAllServices" onchange="toggleSelectAllServices(this)" style="width:16px;height:16px;accent-color:var(--primary)"> Tout sélectionner</label>
+                    <button class="btn btn-danger btn-small" onclick="deleteSelectedServices()" id="deleteSelectedServicesBtn" disabled><i data-lucide="trash-2"></i> Supprimer sélection</button>
+                    <span id="selectedServicesCount" style="font-size:0.8rem;color:var(--text-light)">0 sélectionné(s)</span>
                 </div>
                 <div style="padding:0"><div id="servicesTable" class="table-container"></div></div>
+            </div>
+        </div>
+
+        <!-- ══════════ POINT DE VENTE (POS) ══════════ -->
+        <div id="page-pos" class="page pos-fullscreen">
+            <!-- Top Bar -->
+            <div class="pos-topbar">
+                <button class="pos-topbar-btn" onclick="posToggleFullscreen()" title="Mode plein écran"><i data-lucide="maximize-2"></i></button>
+                <div class="pos-topbar-brand">
+                    <span class="pos-topbar-title"><i data-lucide="cash-register"></i> Point de Vente</span>
+                    <input type="text" id="posOperatorInput" class="pos-operator-input" placeholder="Caissier..." value="" style="display:none" onchange="posOperatorName=this.value.trim()">
+                </div>
+                <div class="pos-topbar-info">
+                    <span id="posSessionStatus" class="pos-session-badge closed"><i data-lucide="circle"></i> Session fermée</span>
+                    <span id="posTodayTotal" class="pos-today-total">0,000 TND <small>ventes</small></span>
+                    <button id="posToggleSessionBtn" class="pos-session-btn" onclick="posToggleSession()"><i data-lucide="play"></i> Ouvrir</button>
+                    <span id="posLowStockBadge" class="pos-lowstock-badge" style="display:none"></span>
+                    <span class="pos-topbar-sep"></span>
+                    <button class="pos-topbar-icon-btn" id="posTTCToggle" onclick="posToggleTTCMode()" title="Afficher prix TTC"><i data-lucide="toggle-left"></i></button>
+                    <button class="pos-topbar-icon-btn" id="posXReportBtn" onclick="posXReport()" title="Rapport X (mi-journée)" style="display:none"><i data-lucide="clipboard-list"></i></button>
+                    <button class="pos-topbar-icon-btn" id="posZReportBtn" onclick="posZReport()" title="Rapport Z (clôture)" style="display:none"><i data-lucide="receipt"></i></button>
+                    <button class="pos-topbar-icon-btn" id="posTodaySalesBtn" onclick="posToggleTodaySales()" title="Ventes du jour"><i data-lucide="list"></i></button>
+                    <button class="pos-topbar-icon-btn" onclick="posOpenFidelity()" title="Fidélité" style="color:#d97706"><i data-lucide="star"></i></button>
+                    <button class="pos-topbar-icon-btn" onclick="posSetFooter()" title="Pied de ticket"><i data-lucide="text" style="width:16px"></i></button>
+                    <button class="pos-topbar-icon-btn" id="posReprintBtn" onclick="posReprintLast()" title="Réimprimer dernier ticket" style="display:none"><i data-lucide="printer"></i></button>
+                </div>
+            </div>
+            <!-- Scan, toolbar & Categories (compact) -->
+            <div class="pos-toolbar-row" id="posToolbarRow">
+                <div class="pos-scan-box" style="flex:1;min-width:120px;max-width:260px">
+                    <i data-lucide="search" style="width:16px;flex-shrink:0;color:var(--text-light)"></i>
+                    <input type="text" id="posBarcodeInput" placeholder="Rechercher ou scanner..." autofocus oninput="posBarcodeSearch(this.value)">
+                    <kbd title="F2: focus recherche">F2</kbd>
+                </div>
+                <div class="pos-toolbar-actions">
+                    <button class="pos-cat-btn pos-tb-icon" onclick="posOpenCreateProduct()" title="Nouveau produit (F7)"><i data-lucide="package-plus"></i></button>
+                    <button class="pos-cat-btn pos-tb-icon" id="posCashMoveBtn" onclick="posAddCashMove()" title="Mouvement de caisse (F8)" style="display:none"><i data-lucide="wallet"></i></button>
+                </div>
+                <div class="pos-categories" id="posCategories">
+                    <button class="pos-cat-btn active" data-cat="all">Tout</button>
+                </div>
+            </div>
+            <!-- Quick add top sellers (compact) -->
+            <div id="posQuickGrid" class="pos-quick-grid" style="display:none">
+                <span class="pos-quick-header"><i data-lucide="trending-up" style="width:12px;height:12px"></i></span>
+                <div id="posQuickGridItems" class="pos-quick-items"></div>
+            </div>
+            <!-- Main POS Area -->
+            <div class="pos-layout">
+                <div class="pos-products" id="posProductsArea">
+                    <div class="pos-product-grid" id="posProductGrid">
+                        <div class="pos-empty">Chargement des produits...</div>
+                    </div>
+                </div>
+                <div class="pos-cart" id="posCartPanel">
+                    <div class="pos-cart-header">
+                        <span class="pos-cart-title">Panier</span>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span class="pos-cart-badge" id="posCartCount">0</span>
+                            <button class="pos-cart-header-btn" onclick="posSaveDraft()" title="Sauvegarder brouillon"><i data-lucide="save" style="width:14px;height:14px"></i></button>
+                            <button class="pos-cart-header-btn" onclick="posOpenDrafts()" title="Brouillons" id="posDraftsBtn"><i data-lucide="file-text" style="width:14px;height:14px"></i></button>
+                            <button class="pos-cart-header-btn" id="posHoldBtn" onclick="posHoldCart()" title="Mettre en attente"><i data-lucide="pause" style="width:14px;height:14px"></i></button>
+                            <span id="posHeldIndicator" style="display:none;font-size:0.7rem;color:#f59e0b;font-weight:600;cursor:pointer" onclick="posResumeCart()"><i data-lucide="rotate-ccw"></i> 1 en attente</span>
+                        </div>
+                    </div>
+                    <div class="pos-cart-items" id="posCartItems">
+                        <div class="pos-cart-empty">
+                            <i data-lucide="shopping-basket" style="width:40px;height:40px;opacity:0.3;margin-bottom:8px"></i><br>
+                            Panier vide<br><small>Scannez ou cliquez un produit</small>
+                        </div>
+                    </div>
+                    <div class="pos-cart-notes" id="posCartNotes" style="display:none;padding:6px 12px;border-top:1px solid var(--border)">
+                        <textarea id="posCartNoteInput" class="form-input" rows="1" placeholder="Note sur le ticket..." style="font-size:0.75rem;padding:4px 8px;resize:none"></textarea>
+                    </div>
+                    <div class="pos-cart-totals" id="posCartTotals" style="display:none">
+                        <div class="pos-total-row"><span>Sous-total</span><span id="posSubtotal">0,000</span></div>
+                        <div class="pos-total-row" id="posDiscountRow" style="display:none"><span>Remise</span><span id="posDiscountTotal" style="color:#dc2626">0,000</span></div>
+                        <div class="pos-total-row"><span>TVA</span><span id="posTaxTotal">0,000</span></div>
+                        <div class="pos-total-row pos-total-final"><span>Total TTC</span><span id="posGrandTotal" class="pos-grand-total">0,000</span></div>
+                    </div>
+                    <div class="pos-cart-actions">
+                        <button class="pos-btn pos-btn-secondary" onclick="posClearCart()" id="posClearBtn" disabled><i data-lucide="trash-2"></i> Vider</button>
+                        <button class="pos-btn pos-btn-secondary" onclick="posReprintLast()" id="posReprintCartBtn" title="Réimprimer dernier ticket" style="display:none;padding:12px 10px"><i data-lucide="printer"></i></button>
+                        <button class="pos-btn pos-btn-pay" onclick="posOpenPayment()" id="posPayBtn" disabled>
+                            <i data-lucide="credit-card"></i> <span>Payer</span>
+                            <span class="pos-pay-amount" id="posPayBtnAmount">0,000 TND</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ PAYMENT MODAL ══════════ -->
+        <div id="posPaymentModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:480px">
+                <div class="modal-header"><h2><i data-lucide="credit-card"></i> Paiement</h2><button class="modal-close" onclick="posClosePayment()"><i data-lucide="x"></i></button></div>
+                <div class="modal-body">
+                    <div style="margin-bottom:16px">
+                        <div style="font-size:1.5rem;font-weight:700;text-align:center;color:var(--primary);margin-bottom:8px" id="posPayTotal">0,000 TND</div>
+                        <div style="text-align:center;font-size:0.85rem;color:var(--text-light)">Total à payer</div>
+                    </div>
+                    <div class="form-section" style="margin-bottom:16px">
+                        <label class="section-title">Moyen de paiement</label>
+                        <div class="pos-pay-methods">
+                            <button class="btn pos-pay-method active" data-method="cash" onclick="posSelectPayMethod(this)"><i data-lucide="wallet"></i> Espèces</button>
+                            <button class="btn pos-pay-method" data-method="card" onclick="posSelectPayMethod(this)"><i data-lucide="credit-card"></i> Carte</button>
+                            <button class="btn pos-pay-method" data-method="mobile" onclick="posSelectPayMethod(this)"><i data-lucide="smartphone"></i> Mobile<br>Money</button>
+                            <button class="btn pos-pay-method" data-method="check" onclick="posSelectPayMethod(this)"><i data-lucide="file-text"></i> Chèque</button>
+                        </div>
+                        <button class="btn btn-secondary" onclick="posAddSplitPayment()" style="width:100%;margin-top:8px;font-size:0.8rem"><i data-lucide="layers"></i> Ajouter un moyen de paiement</button>
+                        <div id="posSplitPaymentsList" style="margin-top:8px"></div>
+                    </div>
+                    <div class="form-section" id="posCashSection">
+                        <label class="section-title">Montant reçu (pour ce moyen)</label>
+                        <input type="number" id="posAmountReceived" class="form-input" step="0.001" placeholder="Montant reçu..." oninput="posCalcChange()" style="font-size:1.2rem;font-weight:600">
+                        <div id="posChangeDisplay" style="margin-top:8px;font-size:1.1rem;font-weight:600;text-align:center;color:var(--success);display:none">Monnaie : <span id="posChangeAmount">0,000</span> TND</div>
+                    </div>
+                    <div class="form-section">
+                        <label class="section-title">Client (optionnel)</label>
+                        <div style="position:relative">
+                            <input type="text" id="posPayClient" class="form-input" placeholder="Nom du client..." autocomplete="off" oninput="posSearchClient(this.value)">
+                            <div id="posClientResults" class="pos-client-results" style="display:none"></div>
+                        </div>
+                        <div id="posFidelityDisplay" style="display:none;margin-top:4px;font-size:0.75rem;color:#d97706;font-weight:600"></div>
+                    </div>
+                    <div class="form-section" id="posAcompteSection" style="display:none">
+                        <label class="section-title">Acompte / Crédit</label>
+                        <div class="grid-2" style="gap:6px">
+                            <input type="number" id="posAcompteAmount" class="form-input" step="0.001" placeholder="Montant acompte..." style="font-size:0.9rem;padding:6px 10px">
+                            <button class="btn btn-secondary" onclick="posApplyAcompte()" style="font-size:0.8rem;padding:6px 10px">Appliquer</button>
+                        </div>
+                        <div id="posAcompteInfo" style="font-size:0.75rem;color:var(--text-light);margin-top:4px"></div>
+                    </div>
+                    <div class="form-section">
+                        <label class="section-title">Notes</label>
+                        <textarea id="posPayNotes" class="form-input" rows="2" placeholder="Optionnel"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="posClosePayment()">Annuler</button>
+                    <button class="btn btn-success" onclick="posCompleteSale()"><i data-lucide="check-circle"></i> Confirmer le paiement</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ POS SESSION MODAL ══════════ -->
+        <div id="posSessionModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:400px">
+                <div class="modal-header"><h2 id="posSessionModalTitle"><i data-lucide="cash-register"></i> <span id="posSessionModalTitleText">Ouvrir session</span></h2><button class="modal-close" onclick="posCloseSessionModal()"><i data-lucide="x"></i></button></div>
+                <div class="modal-body">
+                    <div id="posSessionCloseSummary" style="display:none;margin-bottom:16px;padding:12px;background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0">
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:2px 0"><span>Fond de caisse</span><span id="posSessOpeningBal">0,000 TND</span></div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:2px 0"><span>Ventes espèces</span><span id="posSessCashSales">0,000 TND</span></div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:2px 0"><span>Ventes carte</span><span id="posSessCardSales">0,000 TND</span></div>
+                        <div id="posSessCashMoves" style="display:none;font-size:0.8rem;padding:2px 0"></div>
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:2px 0"><span>Transactions</span><span id="posSessCount">0</span></div>
+                        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1rem;padding:4px 0;margin-top:4px;border-top:1px solid #bbf7d0"><span>Total attendu en caisse</span><span id="posSessExpectedTotal">0,000 TND</span></div>
+                    </div>
+                    <div class="form-section" id="posSessionOpenFields">
+                        <label class="section-title">Fond de caisse initial (TND)</label>
+                        <input type="number" id="posSessionOpeningBal" class="form-input" step="0.001" value="0" style="font-size:1.2rem;font-weight:600">
+                    </div>
+                    <div class="form-section" id="posSessionCloseFields" style="display:none">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Espèces en caisse</label>
+                                <input type="number" id="posSessionClosingCash" class="form-input" step="0.001" value="0" style="font-size:1.1rem">
+                            </div>
+                            <div class="form-group">
+                                <label>Total carte</label>
+                                <input type="number" id="posSessionClosingCard" class="form-input" step="0.001" value="0" style="font-size:1.1rem">
+                            </div>
+                        </div>
+                        <div id="posSessionCloseDiff" style="margin-top:8px;font-size:0.85rem;padding:8px 12px;border-radius:8px;display:none"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="posCloseSessionModal()">Annuler</button>
+                    <button class="btn btn-primary" id="posSessionConfirmBtn" onclick="posConfirmSession()">Confirmer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ RECEIPT MODAL ══════════ -->
+        <div id="posReceiptModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:380px">
+                <div class="modal-header">
+                    <h2><i data-lucide="receipt"></i> Ticket de caisse</h2>
+                    <button class="modal-close" onclick="posCloseReceipt()"><i data-lucide="x"></i></button>
+                </div>
+                <div class="modal-body" id="posReceiptContent" style="font-family:'Courier New',monospace;font-size:0.8rem;line-height:1.4;padding:16px;background:#fff;border-radius:8px"></div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="posCloseReceipt()">Fermer</button>
+                    <button class="btn btn-primary" onclick="posPrintReceipt()"><i data-lucide="printer"></i> Imprimer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ CREATE PRODUCT MODAL ══════════ -->
+        <div id="posCreateProductModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:420px">
+                <div class="modal-header"><h2><i data-lucide="package-plus"></i> Nouveau produit</h2><button class="modal-close" onclick="document.getElementById('posCreateProductModal').style.display='none'"><i data-lucide="x"></i></button></div>
+                <div class="modal-body">
+                    <div class="form-group"><label>Nom *</label><input type="text" id="posNewProdName" class="form-input" placeholder="Nom du produit"></div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Prix (TND)</label><input type="number" id="posNewProdPrice" class="form-input" step="0.001" value="0"></div>
+                        <div class="form-group"><label>TVA %</label><input type="number" id="posNewProdTVA" class="form-input" value="19"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Catégorie</label><input type="text" id="posNewProdCategory" class="form-input" placeholder="Ex: Alimentation"></div>
+                        <div class="form-group"><label>Code-barres</label><input type="text" id="posNewProdBarcode" class="form-input" placeholder="Optionnel"></div>
+                    </div>
+                    <div class="form-group"><label>Stock initial</label><input type="number" id="posNewProdStock" class="form-input" value="0"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="document.getElementById('posCreateProductModal').style.display='none'">Annuler</button>
+                    <button class="btn btn-primary" onclick="posCreateProduct()"><i data-lucide="check"></i> Créer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ TODAY SALES MODAL ══════════ -->
+        <div id="posTodaySalesModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:500px">
+                <div class="modal-header"><h2><i data-lucide="list"></i> Ventes du jour</h2><button class="modal-close" onclick="posCloseTodaySales()"><i data-lucide="x"></i></button></div>
+                <div class="modal-body" id="posTodaySalesContent" style="max-height:400px;overflow-y:auto;padding:8px 16px">
+                    <div style="text-align:center;padding:30px;color:var(--text-muted)">Chargement...</div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="posCloseTodaySales()">Fermer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ Z REPORT MODAL ══════════ -->
+        <div id="posZReportModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:380px">
+                <div class="modal-header"><h2><i data-lucide="receipt"></i> Rapport Z</h2><button class="modal-close" onclick="document.getElementById('posZReportModal').style.display='none'"><i data-lucide="x"></i></button></div>
+                <div class="modal-body" id="posZReportContent" style="font-family:'Courier New',monospace;font-size:0.8rem;line-height:1.4;padding:16px;background:#fff;border-radius:8px"></div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="document.getElementById('posZReportModal').style.display='none'">Fermer</button>
+                    <button class="btn btn-primary" onclick="posPrintZReport()"><i data-lucide="printer"></i> Imprimer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ FIDÉLITÉ MODAL ══════════ -->
+        <div id="posFidelityModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:450px">
+                <div class="modal-header"><h2><i data-lucide="star"></i> Programme Fidélité</h2><button class="modal-close" onclick="document.getElementById('posFidelityModal').style.display='none'"><i data-lucide="x"></i></button></div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Client</label>
+                        <input type="text" id="posFidClient" class="form-input" placeholder="Nom du client..." oninput="posRefreshFidelity()">
+                    </div>
+                    <div id="posFidelityContent" style="text-align:center;padding:20px;color:var(--text-muted)">Entrez un nom de client pour voir ses points</div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="document.getElementById('posFidelityModal').style.display='none'">Fermer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ DRAFTS MODAL ══════════ -->
+        <div id="posDraftsModal" class="modal-overlay" style="display:none">
+            <div class="modal" style="max-width:420px">
+                <div class="modal-header"><h2><i data-lucide="file-text"></i> Brouillons sauvegardés</h2><button class="modal-close" onclick="posCloseDrafts()"><i data-lucide="x"></i></button></div>
+                <div class="modal-body" id="posDraftsContent" style="max-height:350px;overflow-y:auto">
+                    <div style="text-align:center;padding:20px;color:var(--text-muted)">Aucun brouillon</div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="posCloseDrafts()">Fermer</button>
+                </div>
             </div>
         </div>
 
@@ -514,16 +831,26 @@
                 <div class="page-header-left"><h1>Mon Entreprise</h1><p>Informations pré-remplies automatiquement sur chaque document</p></div>
             </div>
             <div class="company-profile-card">
+                <div class="company-profile-icon">
+                    <i data-lucide="building" style="width:36px;height:36px;stroke-width:1.5"></i>
+                </div>
                 <h2 id="companyProfileName">Votre Entreprise</h2>
                 <p id="companyProfileMF">Matricule Fiscal: —</p>
             </div>
+
             <!-- Card 1: Branding (Logo, Cachet, Signature) -->
-            <div class="card" style="margin-bottom: 24px;">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="image"></i> Logo, Cachet &amp; Signature</div>
-                    <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:16px">
-                        Importez vos visuels ici. Ils seront automatiquement ajoutés à vos factures et devis.
-                    </p>
+            <div class="card" style="margin-bottom:24px">
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <h2><i data-lucide="image"></i> Logo, Cachet &amp; Signature</h2>
+                        <span class="card-desc">Importez vos visuels — ils seront automatiquement ajoutés à vos documents</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="card-info-box">
+                        <i data-lucide="info"></i>
+                        <span>Les images sont stockées localement et appliquées automatiquement sur tous vos documents PDF (factures, devis, bons).</span>
+                    </div>
                     <div class="upload-grid">
                         <div class="upload-box" id="companyLogoBox" onclick="document.getElementById('companyLogoInput').click()">
                             <input type="file" id="companyLogoInput" accept="image/*" onchange="handleCompanyImageUpload(this,'logo')">
@@ -556,29 +883,38 @@
                 </div>
             </div>
 
-            <!-- Card 2: Display Options (Logo, Stamp, Signature, etc.) -->
-            <div class="card" style="margin-bottom: 24px;">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="check-circle"></i> Éléments à afficher</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px;">
-                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
-                            <input type="checkbox" id="compShowLogo" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+            <!-- Card 2: Display Options -->
+            <div class="card" style="margin-bottom:24px">
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <h2><i data-lucide="check-circle"></i> Éléments à afficher</h2>
+                        <span class="card-desc">Choisissez les éléments visuels qui apparaissent sur vos documents PDF</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="card-info-box card-info-box-success">
+                        <i data-lucide="eye"></i>
+                        <span>Ces options contrôlent l'affichage sur le PDF uniquement. Les images importées ci-dessus restent enregistrées.</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
+                        <label class="checkbox-group" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;padding:10px 14px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--border-light);transition:var(--transition)">
+                            <input type="checkbox" id="compShowLogo" checked style="width:18px;height:18px;accent-color:var(--primary)">
                             <span>Logo</span>
                         </label>
-                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
-                            <input type="checkbox" id="compShowStamp" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                        <label class="checkbox-group" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;padding:10px 14px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--border-light);transition:var(--transition)">
+                            <input type="checkbox" id="compShowStamp" checked style="width:18px;height:18px;accent-color:var(--primary)">
                             <span>Cachet</span>
                         </label>
-                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
-                            <input type="checkbox" id="compShowSignature" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                        <label class="checkbox-group" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;padding:10px 14px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--border-light);transition:var(--transition)">
+                            <input type="checkbox" id="compShowSignature" checked style="width:18px;height:18px;accent-color:var(--primary)">
                             <span>Signature</span>
                         </label>
-                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
-                            <input type="checkbox" id="compShowQR" style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                        <label class="checkbox-group" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;padding:10px 14px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--border-light);transition:var(--transition)">
+                            <input type="checkbox" id="compShowQR" style="width:18px;height:18px;accent-color:var(--primary)">
                             <span>QR Code</span>
                         </label>
-                        <label class="checkbox-group" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-weight: 500;">
-                            <input type="checkbox" id="compShowAccent" checked style="accent-color: #4f46e5; width: 18px; height: 18px;">
+                        <label class="checkbox-group" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;padding:10px 14px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--border-light);transition:var(--transition)">
+                            <input type="checkbox" id="compShowAccent" checked style="width:18px;height:18px;accent-color:var(--primary)">
                             <span>Barre d'accent</span>
                         </label>
                     </div>
@@ -587,8 +923,17 @@
 
             <!-- Card 3: Business Info -->
             <div class="card">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="building"></i> Informations Générales</div>
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <h2><i data-lucide="building"></i> Informations Générales</h2>
+                        <span class="card-desc">Coordonnées fiscales et coordonnées de votre entreprise</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="card-info-box">
+                        <i data-lucide="info"></i>
+                        <span>Ces informations sont pré-remplies automatiquement sur chaque nouveau document. Remplissez-les une fois, elles s'appliquent partout.</span>
+                    </div>
                     <div class="grid-2">
                         <div class="form-group"><label>Raison Sociale *</label><input type="text" id="companyName" placeholder="SARL Mon Entreprise"></div>
                         <div class="form-group"><label>Matricule Fiscal</label><input type="text" id="companyMF" placeholder="XXXXXXX/XXX/XXX"></div>
@@ -600,7 +945,7 @@
                         <div class="form-group"><label>Banque / RIB</label><input type="text" id="companyBank" placeholder="Banque XYZ — RIB XXXXX"></div>
                     </div>
                 </div>
-                <div class="action-bar">
+                <div class="card-save-bar">
                     <button class="btn btn-primary" onclick="saveCompanySettings()"><i data-lucide="save"></i> Enregistrer les modifications</button>
                 </div>
             </div>
@@ -1068,6 +1413,30 @@
                             <h3>Annuaire Recettes</h3>
                             <p>Contacts services fiscaux</p>
                         </div>
+                        <div class="tool-card" onclick="openCurrencyConverter()">
+                            <div class="tool-icon"><i data-lucide="refresh-cw"></i></div>
+                            <div class="tool-info"><h4>Convertisseur de Devises</h4><p>Convertir les totaux des documents dans une devise de base</p></div>
+                        </div>
+                        <div class="tool-card" onclick="openPLReport()">
+                            <div class="tool-icon"><i data-lucide="bar-chart-3"></i></div>
+                            <div class="tool-info"><h4>Compte de Résultat (P&L)</h4><p>Revenus, dépenses et résultat net sur une période</p></div>
+                        </div>
+                        <div class="tool-card" onclick="openBalanceReport()">
+                            <div class="tool-icon"><i data-lucide="balance"></i></div>
+                            <div class="tool-info"><h4>Bilan Annuel</h4><p>Synthèse des actifs et passifs</p></div>
+                        </div>
+                        <div class="tool-card" onclick="openTVAAnnualReport()">
+                            <div class="tool-icon"><i data-lucide="receipt"></i></div>
+                            <div class="tool-info"><h4>Déclaration TVA Annuelle</h4><p>Récapitulatif TVA collectée et déductible sur 12 mois</p></div>
+                        </div>
+                        <div class="tool-card" onclick="openGrapheRelationnel()">
+                            <div class="tool-icon"><i data-lucide="share-2"></i></div>
+                            <div class="tool-info"><h4>Graphe Relationnel</h4><p>Patterns de vente croisée et comportement client</p></div>
+                        </div>
+                        <div class="tool-card" onclick="openScenarioSimulator()">
+                            <div class="tool-icon"><i data-lucide="git-compare"></i></div>
+                            <div class="tool-info"><h4>Simulateur de Scénarios</h4><p>Comparez l'impact fiscal de différentes stratégies</p></div>
+                        </div>
                     </div>
 
                     <!-- Hidden sections for tool interactions -->
@@ -1107,6 +1476,9 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);display:flex;gap:8px">
+                <button class="btn btn-secondary" onclick="openCSVImportModal()"><i data-lucide="upload"></i> Importer CSV</button>
             </div>
         </div>
 
@@ -1191,123 +1563,272 @@
                 <div class="page-header-left"><h1>Paramètres</h1><p>Configuration complète de l'application</p></div>
             </div>
 
-            <!-- 1. Serial Numbers -->
-            <div class="card">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="list"></i> Numérotation des Documents</div>
-                    <div class="grid-4">
-                        <div class="form-group"><label>Préfixe Factures</label><input type="text" id="prefixFacture" value="FAC" maxlength="10" oninput="updateSerialPreview()"></div>
-                        <div class="form-group"><label>Préfixe Devis</label><input type="text" id="prefixDevis" value="DEV" maxlength="10" oninput="updateSerialPreview()"></div>
-                        <div class="form-group"><label>Préfixe Bons Commande</label><input type="text" id="prefixBon" value="BC" maxlength="10" oninput="updateSerialPreview()"></div>
-                        <div class="form-group"><label>Préfixe Avoir</label><input type="text" id="prefixAvoir" value="AV" maxlength="10" oninput="updateSerialPreview()"></div>
-                    </div>
-                    <div class="grid-4" style="margin-top:14px">
-                        <div class="form-group"><label>Préfixe Livraison (BL)</label><input type="text" id="prefixBL" value="BL" maxlength="10" oninput="updateSerialPreview()"></div>
-                        <div class="form-group"><label>Préfixe d'Achat (BA)</label><input type="text" id="prefixBA" value="BA" maxlength="10" oninput="updateSerialPreview()"></div>
-                        <div class="form-group"><label>Préfixe Sortie (BS)</label><input type="text" id="prefixBS" value="BS" maxlength="10" oninput="updateSerialPreview()"></div>
-                        <div class="form-group"><label>Préfixe Entrée (BE)</label><input type="text" id="prefixBE" value="BE" maxlength="10" oninput="updateSerialPreview()"></div>
-                    </div>
-                    <div class="serial-preview-box"><h4>Aperçu du prochain numéro :</h4><div id="serialPreview">FAC-2026-001</div></div>
-                    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
-                        <button class="btn btn-primary" onclick="saveSerialSettings()"><i data-lucide="save"></i> Enregistrer les préfixes</button>
-                        <button class="btn btn-warning" onclick="openResetCounterModal()"><i data-lucide="refresh-cw"></i> Réinitialiser le compteur</button>
-                    </div>
+            <div class="settings-layout">
+                <!-- Sidebar navigation -->
+                <div class="settings-sidebar">
+                    <button class="settings-sidebar-btn active" data-target="settings-general" onclick="switchSettingsTab('settings-general', this)">
+                        <i data-lucide="sliders"></i> Général
+                    </button>
+                    <button class="settings-sidebar-btn" data-target="settings-documents" onclick="switchSettingsTab('settings-documents', this)">
+                        <i data-lucide="file-text"></i> Documents
+                    </button>
+                    <button class="settings-sidebar-btn" data-target="settings-appearance" onclick="switchSettingsTab('settings-appearance', this)">
+                        <i data-lucide="palette"></i> Apparence
+                    </button>
+                    <button class="settings-sidebar-btn" data-target="settings-backup" onclick="switchSettingsTab('settings-backup', this)">
+                        <i data-lucide="hard-drive"></i> Sauvegarde
+                    </button>
+                    <button class="settings-sidebar-btn" data-target="settings-automation" onclick="switchSettingsTab('settings-automation', this)">
+                        <i data-lucide="repeat"></i> Automatisation
+                    </button>
                 </div>
-            </div>
 
-            <!-- 2. Number Format -->
-            <div class="card">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="list"></i> Format des Nombres</div>
-                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:0.85rem;color:#166534">
-                        <i data-lucide="info"></i> Les calculs internes sont toujours effectués avec la précision maximale. Ce paramètre contrôle uniquement l'<strong>affichage</strong> et l'<strong>arrondi final</strong> des montants sur vos documents. Une ligne d'ajustement est ajoutée si l'arrondi introduit un écart.
-                    </div>
-                    <div class="grid-2">
-                        <div class="form-group"><label>Décimales affichées</label><select id="settingDecimalPlaces" onchange="updateFormatPreview()"><option value="2">2 décimales</option><option value="3" selected>3 décimales</option></select></div>
-                        <div class="form-group"><label>Méthode d'arrondi</label><select id="settingRoundingMethod" onchange="updateFormatPreview()"><option value="half_up" selected>Arrondi standard</option><option value="ceil">Toujours vers le haut</option><option value="floor">Toujours vers le bas</option></select></div>
-                    </div>
-                    <div id="formatPreviewBox" style="background:var(--bg-secondary);border-radius:8px;padding:12px 16px;margin-top:12px"><strong>Aperçu :</strong> 1234.5678 TND → <span id="formatPreviewValue" style="font-weight:700;color:var(--primary)">1 234.568 TND</span></div>
-                    <button class="btn btn-primary" style="margin-top:14px" onclick="saveFormatSettings()"><i data-lucide="save"></i> Enregistrer</button>
-                </div>
-            </div>
+                <!-- Content -->
+                <div class="settings-content">
 
-            <!-- 3. Document Visual Theme -->
-            <div class="card">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="palette"></i> Thème Visuel des Documents</div>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
-                        <button class="btn theme-preset-btn" data-theme="classic"   onclick="applyPresetTheme('classic')"><i data-lucide="scroll"></i> Classique</button>
-                        <button class="btn theme-preset-btn" data-theme="modern"    onclick="applyPresetTheme('modern')"><i data-lucide="sparkles"></i> Moderne</button>
-                        <button class="btn theme-preset-btn" data-theme="executive" onclick="applyPresetTheme('executive')"><i data-lucide="crown"></i> Exécutif</button>
-                        <button class="btn theme-preset-btn" data-theme="tunisian"  onclick="applyPresetTheme('tunisian')"><i data-lucide="flag"></i> Tunisien</button>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                        <div>
-                            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:12px"><i data-lucide="palette"></i> Couleurs</h4>
-                            <div class="grid-2">
-                                <div class="form-group"><label>Couleur principale</label><div class="color-picker-wrapper"><input type="color" id="themeColorPrimary" value="#0f172a" onchange="updateDocumentThemePreview()"><span id="themeColorPrimaryHex">#0f172a</span></div></div>
-                                <div class="form-group"><label>Couleur secondaire</label><div class="color-picker-wrapper"><input type="color" id="themeColorSecondary" value="#3b82f6" onchange="updateDocumentThemePreview()"><span id="themeColorSecondaryHex">#3b82f6</span></div></div>
-                                <div class="form-group"><label>Fond</label><div class="color-picker-wrapper"><input type="color" id="themeColorBg" value="#ffffff" onchange="updateDocumentThemePreview()"><span>#ffffff</span></div></div>
-                                <div class="form-group"><label>Surface / Rayures</label><div class="color-picker-wrapper"><input type="color" id="themeColorSurface" value="#f0f9ff" onchange="updateDocumentThemePreview()"><span>#f0f9ff</span></div></div>
-                                <div class="form-group" style="grid-column:1/-1"><label>Bordures</label><div class="color-picker-wrapper"><input type="color" id="themeColorBorder" value="#bfdbfe" onchange="updateDocumentThemePreview()"><span>#bfdbfe</span></div></div>
+                    <!-- ═══════ GÉNÉRAL ═══════ -->
+                    <div id="settings-general" class="settings-section active">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="list"></i> Format des Nombres</h2>
+                                    <span class="card-desc">Précision d'affichage et méthode d'arrondi</span>
+                                </div>
                             </div>
-                            <h4 style="font-size:0.85rem;font-weight:600;margin:16px 0 12px"><i data-lucide="edit-3"></i> Typographie</h4>
-                            <div class="form-group"><label>Police des titres</label><select id="themeHeaderFont" onchange="updateDocumentThemePreview()"><option value="'Inter', 'Segoe UI', sans-serif">Inter / Segoe UI</option><option value="'Times New Roman', Times, serif">Times New Roman</option><option value="'Georgia', serif">Georgia</option></select></div>
-                            <div class="form-group"><label>Police du corps</label><select id="themeBodyFont" onchange="updateDocumentThemePreview()"><option value="'Inter', 'Segoe UI', sans-serif">Inter / Segoe UI</option><option value="'Lato', 'Helvetica Neue', sans-serif">Lato / Helvetica</option><option value="'Times New Roman', Times, serif">Times New Roman</option></select></div>
-                            <div class="form-group"><label>Taille de base</label><select id="themeFontSize" onchange="updateDocumentThemePreview()"><option value="12px">Petite</option><option value="13px" selected>Normale</option><option value="14px">Grande</option></select></div>
+                            <div class="card-body">
+                                <div class="card-info-box">
+                                    <i data-lucide="info"></i>
+                                    <span>Les calculs internes sont toujours effectués avec la précision maximale. Ce paramètre contrôle uniquement l'<strong>affichage</strong> et l'<strong>arrondi final</strong> des montants.</span>
+                                </div>
+                                <div class="grid-2">
+                                    <div class="form-group"><label>Décimales affichées</label><select id="settingDecimalPlaces" onchange="updateFormatPreview()"><option value="2">2 décimales</option><option value="3" selected>3 décimales</option></select></div>
+                                    <div class="form-group"><label>Méthode d'arrondi</label><select id="settingRoundingMethod" onchange="updateFormatPreview()"><option value="half_up" selected>Arrondi standard</option><option value="ceil">Toujours vers le haut</option><option value="floor">Toujours vers le bas</option></select></div>
+                                </div>
+                                <div id="formatPreviewBox" style="background:var(--gray-50);border-radius:8px;padding:12px 16px;margin-top:12px"><strong>Aperçu :</strong> 1234.5678 TND → <span id="formatPreviewValue" style="font-weight:700;color:var(--primary)">1 234.568 TND</span></div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="saveFormatSettings()"><i data-lucide="save"></i> Enregistrer</button>
+                            </div>
                         </div>
-                        <div>
-                            <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:12px"><i data-lucide="layout"></i> Mise en page</h4>
-                            <div class="form-group"><label>Alignement de l'en-tête</label><select id="themeHeaderStyle" onchange="updateDocumentThemePreview()"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
-                            <div class="form-group"><label>Style du tableau</label><select id="themeTableStyle" onchange="updateDocumentThemePreview()"><option value="bordered">Bordé</option><option value="striped">Rayé</option><option value="minimal">Minimal</option></select></div>
-                            <div class="form-group"><label>Mise en page du pied</label><select id="themeFooterLayout" onchange="updateDocumentThemePreview()"><option value="simple">Simple</option><option value="two-columns">Deux colonnes</option><option value="with-bank">Avec coordonnées bancaires</option></select></div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="folder"></i> Dossier de sortie PDF</h2>
+                                    <span class="card-desc">Emplacement par défaut des fichiers PDF générés</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Chemin d'enregistrement</label>
+                                    <div style="display:flex;gap:10px;align-items:center">
+                                        <input type="text" id="pdfOutputFolder" readonly style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--gray-50);font-family:inherit;font-size:0.875rem">
+                                        <button class="btn btn-secondary" onclick="selectPdfOutputFolder()"><i data-lucide="folder-open"></i> Parcourir</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="savePdfOutputFolder()"><i data-lucide="save"></i> Enregistrer</button>
+                            </div>
                         </div>
                     </div>
-                    <div style="margin-top:24px"><h4 style="font-size:0.875rem;font-weight:600;margin-bottom:12px"><i data-lucide="eye"></i> Aperçu en direct</h4><div id="docThemePreview"></div></div>
-                    <button class="btn btn-primary" style="margin-top:16px" onclick="saveDocumentTheme()"><i data-lucide="save"></i> Enregistrer le thème</button>
-                </div>
-            </div>
 
-            <!-- 4. Legacy per-type titles -->
-            <div class="card">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="palette"></i> Personnalisation des Titres</div>
-                    <div class="grid-2">
-                        <div class="form-group"><label>Police principale</label><select id="docFontFamily" onchange="updateThemePreview()"><option value="'Segoe UI', sans-serif">Segoe UI</option><option value="'Times New Roman', serif">Times New Roman</option><option value="Arial, sans-serif">Arial</option></select></div>
-                        <div class="form-group"><label>Taille de base</label><select id="docFontSize" onchange="updateThemePreview()"><option value="12px">12px</option><option value="14px" selected>14px</option><option value="16px">16px</option></select></div>
+                    <!-- ═══════ DOCUMENTS ═══════ -->
+                    <div id="settings-documents" class="settings-section">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="list"></i> Numérotation des Documents</h2>
+                                    <span class="card-desc">Préfixes personnalisés par type de document</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-info-box card-info-box-success">
+                                    <i data-lucide="info"></i>
+                                    <span>Les préfixes sont combinés avec l'année et un compteur automatique. Exemple : <strong>FAC-2026-001</strong></span>
+                                </div>
+                                <div class="grid-4">
+                                    <div class="form-group"><label><i data-lucide="file-text" style="width:14px;height:14px"></i> Factures</label><input type="text" id="prefixFacture" value="FAC" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="clipboard-list" style="width:14px;height:14px"></i> Devis</label><input type="text" id="prefixDevis" value="DEV" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="shopping-cart" style="width:14px;height:14px"></i> Bons Commande</label><input type="text" id="prefixBon" value="BC" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="undo-2" style="width:14px;height:14px"></i> Avoir</label><input type="text" id="prefixAvoir" value="AV" maxlength="10" oninput="updateSerialPreview()"></div>
+                                </div>
+                                <div class="grid-4" style="margin-top:14px">
+                                    <div class="form-group"><label><i data-lucide="truck" style="width:14px;height:14px"></i> Livraison (BL)</label><input type="text" id="prefixBL" value="BL" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="inbox" style="width:14px;height:14px"></i> Achat (BA)</label><input type="text" id="prefixBA" value="BA" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="upload" style="width:14px;height:14px"></i> Sortie (BS)</label><input type="text" id="prefixBS" value="BS" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="package" style="width:14px;height:14px"></i> Entrée (BE)</label><input type="text" id="prefixBE" value="BE" maxlength="10" oninput="updateSerialPreview()"></div>
+                                </div>
+                                <div class="serial-preview-box"><h4>Aperçu du prochain numéro</h4><div id="serialPreview">FAC-2026-001</div></div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="saveSerialSettings()"><i data-lucide="save"></i> Enregistrer les préfixes</button>
+                                <button class="btn btn-warning" onclick="openResetCounterModal()"><i data-lucide="refresh-cw"></i> Réinitialiser le compteur</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="theme-type-grid" style="margin-top:20px">
-                        <div class="theme-type-card"><div class="theme-type-header" style="background:#1e3a8a"><span><i data-lucide="file-text"></i></span><span>FACTURE</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleFacture" value="FACTURE" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorFacture" value="#1e3a8a" onchange="updateThemePreview()"><span id="colorFactureHex">#1e3a8a</span></div></div></div></div>
-                        <div class="theme-type-card"><div class="theme-type-header" style="background:#92400e"><span><i data-lucide="clipboard-list"></i></span><span>DEVIS</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleDevis" value="DEVIS" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorDevis" value="#92400e" onchange="updateThemePreview()"><span id="colorDevisHex">#92400e</span></div></div></div></div>
-                        <div class="theme-type-card"><div class="theme-type-header" style="background:#065f46"><span><i data-lucide="shopping-cart"></i></span><span>BON</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleBon" value="BON DE COMMANDE" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorBon" value="#065f46" onchange="updateThemePreview()"><span id="colorBonHex">#065f46</span></div></div></div></div>
-                    </div>
-                    <div id="themePreview" style="margin-top:20px;padding:16px;background:var(--bg-secondary);border-radius:8px"></div>
-                    <div style="margin-top:16px;display:flex;gap:10px">
-                        <button class="btn btn-primary" onclick="saveThemeSettings()"><i data-lucide="save"></i> Enregistrer</button>
-                        <button class="btn btn-secondary" onclick="resetThemeDefaults()"><i data-lucide="refresh-cw"></i> Réinitialiser</button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- 5. Backup -->
-            <div class="card">
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="settings"></i> Sauvegarde automatique</div>
-                    <div class="form-group" style="margin-bottom:16px"><label class="checkbox-group"><input type="checkbox" id="backupEnabled" style="width:16px;height:16px;accent-color:var(--primary)"><span>Activer la sauvegarde automatique</span></label></div>
-                    <div class="grid-3">
-                        <div class="form-group"><label>Fréquence</label><select id="backupFrequency"><option value="daily">Quotidienne</option><option value="weekly">Hebdomadaire</option><option value="monthly">Mensuelle</option></select></div>
-                        <div class="form-group"><label>Heure</label><input type="time" id="backupTime" value="02:00"></div>
-                        <div class="form-group"><label>Conserver</label><input type="number" id="backupKeep" value="10" min="1" max="50"></div>
+                    <!-- ═══════ APPARENCE ═══════ -->
+                    <div id="settings-appearance" class="settings-section">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="palette"></i> Thème Visuel des Documents</h2>
+                                    <span class="card-desc">Personnalisez l'apparence de vos factures, devis et bons</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-info-box">
+                                    <i data-lucide="sparkles"></i>
+                                    <span>Choisissez un thème prédéfini ou personnalisez chaque élément ci-dessous. L'aperçu en direct vous montre le résultat.</span>
+                                </div>
+                                <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:12px">Thèmes prédéfinis</h4>
+                                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
+                                    <button class="btn theme-preset-btn" data-theme="classic"   onclick="applyPresetTheme('classic')"><i data-lucide="scroll"></i> Classique</button>
+                                    <button class="btn theme-preset-btn" data-theme="modern"    onclick="applyPresetTheme('modern')"><i data-lucide="sparkles"></i> Moderne</button>
+                                    <button class="btn theme-preset-btn" data-theme="executive" onclick="applyPresetTheme('executive')"><i data-lucide="crown"></i> Exécutif</button>
+                                    <button class="btn theme-preset-btn" data-theme="tunisian"  onclick="applyPresetTheme('tunisian')"><i data-lucide="flag"></i> Tunisien</button>
+                                </div>
+                                <div class="card-info-box" style="margin-bottom:20px;background:#f8fafc;border-color:var(--border)">
+                                    <i data-lucide="edit-3"></i>
+                                    <span>Personnalisation avancée</span>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                                    <div>
+                                        <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:12px"><i data-lucide="palette"></i> Couleurs</h4>
+                                        <div class="grid-2">
+                                            <div class="form-group"><label>Couleur principale</label><div class="color-picker-wrapper"><input type="color" id="themeColorPrimary" value="#0f172a" onchange="updateDocumentThemePreview()"><span id="themeColorPrimaryHex">#0f172a</span></div></div>
+                                            <div class="form-group"><label>Couleur secondaire</label><div class="color-picker-wrapper"><input type="color" id="themeColorSecondary" value="#3b82f6" onchange="updateDocumentThemePreview()"><span id="themeColorSecondaryHex">#3b82f6</span></div></div>
+                                            <div class="form-group"><label>Fond</label><div class="color-picker-wrapper"><input type="color" id="themeColorBg" value="#ffffff" onchange="updateDocumentThemePreview()"><span>#ffffff</span></div></div>
+                                            <div class="form-group"><label>Surface / Rayures</label><div class="color-picker-wrapper"><input type="color" id="themeColorSurface" value="#f0f9ff" onchange="updateDocumentThemePreview()"><span>#f0f9ff</span></div></div>
+                                            <div class="form-group" style="grid-column:1/-1"><label>Bordures</label><div class="color-picker-wrapper"><input type="color" id="themeColorBorder" value="#bfdbfe" onchange="updateDocumentThemePreview()"><span>#bfdbfe</span></div></div>
+                                        </div>
+                                        <h4 style="font-size:0.85rem;font-weight:600;margin:16px 0 12px"><i data-lucide="edit-3"></i> Typographie</h4>
+                                        <div class="form-group"><label>Police des titres</label><select id="themeHeaderFont" onchange="updateDocumentThemePreview()"><option value="'Inter', 'Segoe UI', sans-serif">Inter / Segoe UI</option><option value="'Times New Roman', Times, serif">Times New Roman</option><option value="'Georgia', serif">Georgia</option></select></div>
+                                        <div class="form-group"><label>Police du corps</label><select id="themeBodyFont" onchange="updateDocumentThemePreview()"><option value="'Inter', 'Segoe UI', sans-serif">Inter / Segoe UI</option><option value="'Lato', 'Helvetica Neue', sans-serif">Lato / Helvetica</option><option value="'Times New Roman', Times, serif">Times New Roman</option></select></div>
+                                        <div class="form-group"><label>Taille de base</label><select id="themeFontSize" onchange="updateDocumentThemePreview()"><option value="12px">Petite</option><option value="13px" selected>Normale</option><option value="14px">Grande</option></select></div>
+                                    </div>
+                                    <div>
+                                        <h4 style="font-size:0.85rem;font-weight:600;margin-bottom:12px"><i data-lucide="layout"></i> Mise en page</h4>
+                                        <div class="form-group"><label>Alignement de l'en-tête</label><select id="themeHeaderStyle" onchange="updateDocumentThemePreview()"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
+                                        <div class="form-group"><label>Style du tableau</label><select id="themeTableStyle" onchange="updateDocumentThemePreview()"><option value="bordered">Bordé</option><option value="striped">Rayé</option><option value="minimal">Minimal</option></select></div>
+                                        <div class="form-group"><label>Pied de page</label><select id="themeFooterLayout" onchange="updateDocumentThemePreview()"><option value="simple">Simple</option><option value="two-columns">Deux colonnes</option><option value="with-bank">Avec coordonnées bancaires</option></select></div>
+                                    </div>
+                                </div>
+                                <div style="margin-top:24px"><h4 style="font-size:0.875rem;font-weight:600;margin-bottom:12px"><i data-lucide="eye"></i> Aperçu en direct</h4><div id="docThemePreview"></div></div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="saveDocumentTheme()"><i data-lucide="save"></i> Enregistrer le thème</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="type"></i> Personnalisation des Titres</h2>
+                                    <span class="card-desc">Texte et couleur du titre pour chaque type de document</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-info-box card-info-box-success">
+                                    <i data-lucide="info"></i>
+                                    <span>Configurez le texte affiché en haut de chaque document et la couleur associée.</span>
+                                </div>
+                                <div class="grid-2">
+                                    <div class="form-group"><label>Police principale</label><select id="docFontFamily" onchange="updateThemePreview()"><option value="'Segoe UI', sans-serif">Segoe UI</option><option value="'Times New Roman', serif">Times New Roman</option><option value="Arial, sans-serif">Arial</option></select></div>
+                                    <div class="form-group"><label>Taille de base</label><select id="docFontSize" onchange="updateThemePreview()"><option value="12px">12px</option><option value="14px" selected>14px</option><option value="16px">16px</option></select></div>
+                                </div>
+                                <div class="theme-type-grid" style="margin-top:20px">
+                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#1e3a8a"><span><i data-lucide="file-text"></i></span><span>FACTURE</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleFacture" value="FACTURE" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorFacture" value="#1e3a8a" onchange="updateThemePreview()"><span id="colorFactureHex">#1e3a8a</span></div></div></div></div>
+                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#92400e"><span><i data-lucide="clipboard-list"></i></span><span>DEVIS</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleDevis" value="DEVIS" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorDevis" value="#92400e" onchange="updateThemePreview()"><span id="colorDevisHex">#92400e</span></div></div></div></div>
+                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#065f46"><span><i data-lucide="shopping-cart"></i></span><span>BON</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleBon" value="BON DE COMMANDE" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorBon" value="#065f46" onchange="updateThemePreview()"><span id="colorBonHex">#065f46</span></div></div></div></div>
+                                </div>
+                                <div id="themePreview" style="margin-top:20px;padding:16px;background:var(--gray-50);border-radius:8px"></div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="saveThemeSettings()"><i data-lucide="save"></i> Enregistrer</button>
+                                <button class="btn btn-secondary" onclick="resetThemeDefaults()"><i data-lucide="refresh-cw"></i> Réinitialiser</button>
+                            </div>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" onclick="saveBackupSettings()">Enregistrer</button>
-                </div>
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="package"></i> Sauvegarde manuelle</div>
-                    <button class="btn btn-success" onclick="createManualBackup()"><i data-lucide="inbox"></i> Créer une sauvegarde</button>
-                </div>
-                <div class="form-section">
-                    <div class="section-title"><i data-lucide="clipboard-list"></i> Sauvegardes disponibles</div>
-                    <div id="backupList"></div>
+
+                    <!-- ═══════ SAUVEGARDE ═══════ -->
+                    <div id="settings-backup" class="settings-section">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="settings"></i> Sauvegarde automatique</h2>
+                                    <span class="card-desc">Planifiez des sauvegardes régulières de vos données</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group" style="margin-bottom:16px">
+                                    <label class="checkbox-group" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.9rem;font-weight:500">
+                                        <input type="checkbox" id="backupEnabled" style="width:18px;height:18px;accent-color:var(--primary)">
+                                        <span>Activer la sauvegarde automatique</span>
+                                    </label>
+                                </div>
+                                <div class="grid-3">
+                                    <div class="form-group"><label>Fréquence</label><select id="backupFrequency"><option value="daily">Quotidienne</option><option value="weekly">Hebdomadaire</option><option value="monthly">Mensuelle</option></select></div>
+                                    <div class="form-group"><label>Heure d'exécution</label><input type="time" id="backupTime" value="02:00"></div>
+                                    <div class="form-group"><label>Sauvegardes à conserver</label><input type="number" id="backupKeep" value="10" min="1" max="50"></div>
+                                </div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="saveBackupSettings()"><i data-lucide="save"></i> Enregistrer</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="package"></i> Sauvegarde manuelle</h2>
+                                    <span class="card-desc">Créez une sauvegarde ponctuelle ou générez un rapport</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+                                    <button class="btn btn-success" onclick="createManualBackup()"><i data-lucide="inbox"></i> Créer une sauvegarde</button>
+                                    <button class="btn btn-secondary" onclick="generateBackupReport()"><i data-lucide="printer"></i> Rapport de sauvegarde</button>
+                                </div>
+                                <label class="checkbox-group" style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+                                    <input type="checkbox" id="autoBackupOnSave" onchange="toggleAutoBackupOnSave(this)" style="width:16px;height:16px;accent-color:var(--primary)">
+                                    <span>Sauvegarde automatique après chaque enregistrement</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="clipboard-list"></i> Sauvegardes disponibles</h2>
+                                    <span class="card-desc">Liste des sauvegardes existantes</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="backupList"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══════ AUTOMATISATION ═══════ -->
+                    <div id="settings-automation" class="settings-section">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="repeat"></i> Facturations Récurrentes</h2>
+                                    <span class="card-desc">Générez automatiquement des factures selon un planning</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-info-box card-info-box-success">
+                                    <i data-lucide="info"></i>
+                                    <span>Les factures récurrentes sont créées automatiquement par le planificateur selon le planning défini (quotidien, hebdomadaire, mensuel, annuel).</span>
+                                </div>
+                                <div id="recurringInvoicesList"></div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="openRecurringModal()"><i data-lucide="plus-circle"></i> Ajouter une récurrence</button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -1365,7 +1886,24 @@
                 <div id="expensesTable" class="table-container"></div>
             </div>
         </div>
-    </div> <!-- END page-container -->
+        <!-- ══════════ AUDIT LOG ══════════ -->
+        <div id="page-audit-log" class="page">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1><i data-lucide="history"></i> Journal d'Activité</h1>
+                    <p>Trace de toutes les opérations effectuées</p>
+                </div>
+                <button class="btn btn-danger" onclick="clearActivityLog()"><i data-lucide="trash-2"></i> Vider le journal</button>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2><i data-lucide="list"></i> Événements récents</h2>
+                    <div class="search-box"><input type="text" id="searchAuditLog" placeholder="Rechercher..." onkeyup="filterAuditLog()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
+                </div>
+                <div id="auditLogTable" class="table-container"></div>
+            </div>
+        </div>
+        </div> <!-- END page-container -->
 </main>
 </div>
 
@@ -1399,7 +1937,7 @@
                 </div>
                 <div class="form-group" style="margin-top:12px">
                     <label>Pièce justificative (PDF/Image)</label>
-                    <div style="display:flex;gap:12px;align-items:center;background:#f8fafc;padding:12px;border-radius:8px;border:1px dashed #cbd5e1">
+                    <div id="expDropZone" style="display:flex;gap:12px;align-items:center;background:#f8fafc;padding:12px;border-radius:8px;border:2px dashed #cbd5e1;transition:all 0.2s">
                         <input type="file" id="expAttachment" accept="image/*,application/pdf" style="display:none" onchange="handleExpenseAttachment(this)">
                         <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('expAttachment').click()"><i data-lucide="paperclip"></i> Choisir un fichier</button>
                         <span id="expAttachmentName" style="font-size:0.8rem;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Aucun fichier sélectionné</span>
@@ -1516,12 +2054,17 @@
 
 <!-- ═══════════ CLIENT MODAL ═══════════ -->
 <div id="clientModal" class="modal-overlay">
-    <div class="modal"><div class="modal-header"><h2><i data-lucide="plus-circle"></i> Nouveau Client</h2><button class="modal-close" onclick="closeClientModal()">×</button></div><div class="modal-body"><div class="grid-2"><div class="form-group"><label>Nom *</label><input type="text" id="newClientName"></div><div class="form-group"><label>MF</label><input type="text" id="newClientMF"></div></div><div class="form-group"><label>Adresse</label><input type="text" id="newClientAddress"></div><div class="grid-2"><div class="form-group"><label>Téléphone</label><input type="tel" id="newClientPhone"></div><div class="form-group"><label>Email</label><input type="email" id="newClientEmail"></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeClientModal()">Annuler</button><button class="btn btn-primary" onclick="saveNewClient()"><i data-lucide="save"></i> Enregistrer</button></div></div>
+    <div class="modal" style="max-width:600px"><div class="modal-header"><h2><i data-lucide="plus-circle"></i> Nouveau Client</h2><button class="modal-close" onclick="closeClientModal()">×</button></div><div class="modal-body"><div class="grid-2"><div class="form-group"><label>Nom *</label><input type="text" id="newClientName"></div><div class="form-group"><label>MF</label><input type="text" id="newClientMF"></div></div><div class="form-group"><label>Adresse</label><input type="text" id="newClientAddress"></div><div id="clientMapContainer" style="height:200px;border-radius:8px;margin-top:12px;display:none"></div><div class="grid-2"><div class="form-group"><label>Téléphone</label><input type="tel" id="newClientPhone"></div><div class="form-group"><label>Email</label><input type="email" id="newClientEmail"></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeClientModal()">Annuler</button><button class="btn btn-primary" onclick="saveNewClient()"><i data-lucide="save"></i> Enregistrer</button></div></div>
 </div>
 
 <!-- ═══════════ SERVICE MODAL ═══════════ -->
 <div id="serviceModal" class="modal-overlay">
-    <div class="modal"><div class="modal-header"><h2 id="serviceModalTitle"><i data-lucide="plus-circle"></i> Nouveau Service</h2><button class="modal-close" onclick="closeServiceModal()">×</button></div><div class="modal-body"><div class="form-group"><label>Nom *</label><input type="text" id="serviceName"></div><div class="form-group"><label>Description</label><input type="text" id="serviceDescription"></div><div class="grid-2"><div class="form-group"><label>Prix HT</label><input type="number" id="servicePrice" step="0.001"></div><div class="form-group"><label>TVA %</label><select id="serviceTva"><option value="19">19%</option><option value="13">13%</option><option value="7">7%</option><option value="0">0%</option></select></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeServiceModal()">Annuler</button><button class="btn btn-primary" onclick="saveService()"><i data-lucide="save"></i> Enregistrer</button></div></div>
+    <div class="modal"><div class="modal-header"><h2 id="serviceModalTitle"><i data-lucide="plus-circle"></i> Nouveau Service</h2><button class="modal-close" onclick="closeServiceModal()">×</button></div><div class="modal-body"><div class="form-group"><label>Nom *</label><input type="text" id="serviceName"></div><div class="form-group"><label>Description</label><input type="text" id="serviceDescription"></div><div class="grid-2"><div class="form-group"><label>Prix HT</label><input type="number" id="servicePrice" step="0.001"></div><div class="form-group"><label>TVA %</label><select id="serviceTva"><option value="19">19%</option><option value="13">13%</option><option value="7">7%</option><option value="0">0%</option></select></div></div><div class="form-group"><label>Catégorie</label>
+    <select id="svCategory">
+        <option value="">—</option><option>Service</option><option>Produit</option>
+        <option>Abonnement</option><option>Consulting</option><option>Autre</option>
+    </select>
+</div><div class="form-group"><label>Code-barres</label><input type="text" id="svBarcode" placeholder="Optionnel — pour scanner au POS"></div><div class="grid-2"><div class="form-group"><label>Stock initial</label><input type="number" id="svStock" value="0" min="0" step="1"><small style="color:var(--text-light);font-size:0.75rem">0 = non suivi (min_stock = 0)</small></div><div class="form-group"><label>Alerte stock bas</label><input type="number" id="svMinStock" value="0" min="0" step="1"><small style="color:var(--text-light);font-size:0.75rem">0 = désactiver le suivi de stock</small></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeServiceModal()">Annuler</button><button class="btn btn-primary" onclick="saveService()"><i data-lucide="save"></i> Enregistrer</button></div></div>
 </div>
 
 <!-- ═══════════ CONFIRM MODAL ═══════════ -->
@@ -1529,6 +2072,10 @@
     <div class="modal" style="max-width:400px"><div class="modal-header"><h2 id="confirmTitle">Confirmation</h2><button class="modal-close" onclick="closeConfirm()">×</button></div><div class="modal-body"><p id="confirmMessage"></p></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeConfirm()">Annuler</button><button class="btn btn-danger" id="confirmBtn" onclick="executeConfirm()">Confirmer</button></div></div>
 </div>
 
+<script src="i18n.js"></script>
+<script src="app-core.js"></script>
+<script src="app-auth.js"></script>
+<script src="app-features.js"></script>
 <script src="app.js"></script>
 <script src="retenue-builder.js"></script>
 <script src="contract-builder.js" type="module"></script>
@@ -1756,6 +2303,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         </div>
+<!-- ═══════════ CURRENCY CONVERTER MODAL ═══════════ -->
+<div id="currencyConverterModal" class="modal-overlay">
+    <div class="modal" style="max-width:600px">
+        <div class="modal-header"><h2><i data-lucide="refresh-cw"></i> Convertisseur de Devises</h2><button class="modal-close" onclick="closeCurrencyConverter()">×</button></div>
+        <div class="modal-body">
+            <div class="grid-2" style="margin-bottom:16px">
+                <div class="form-group"><label>Devise source</label><select id="ccSourceCurrency"><option>TND</option><option>EUR</option><option>USD</option></select></div>
+                <div class="form-group"><label>Taux de conversion</label><input type="number" id="ccRate" step="0.001" value="1.000"></div>
+            </div>
+            <div class="form-group"><label>Période</label><select id="ccPeriod"><option value="all">Toute l'année</option><option value="month">Ce mois</option><option value="year">Cette année</option></select></div>
+            <button class="btn btn-primary" onclick="runCurrencyConversion()" style="width:100%;margin-bottom:16px"><i data-lucide="calculator"></i> Calculer</button>
+            <div id="ccResults" class="table-container"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeCurrencyConverter()">Fermer</button>
+        </div>
+    </div>
+</div>
+
 <!-- ═══════════ NOTES MODAL ═══════════ -->
 <div id="noteModal" class="modal-overlay">
     <div class="modal" style="max-width:500px">
@@ -1778,6 +2344,235 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
 </div>
+<!-- ═══════════ RECURRING INVOICE MODAL ═══════════ -->
+<div id="recurringModal" class="modal-overlay">
+    <div class="modal" style="max-width:600px">
+        <div class="modal-header"><h2><i data-lucide="repeat"></i> <span id="recurringModalTitle">Nouvelle Récurrence</span></h2><button class="modal-close" onclick="closeModal('recurringModal')">✕</button></div>
+        <div class="modal-body">
+            <form id="recurringForm">
+                <div class="form-group"><label>Type de document</label>
+                    <select id="recDocType">
+                        <option value="facture">Facture</option>
+                        <option value="devis">Devis</option>
+                        <option value="bon">Bon de Commande</option>
+                        <option value="avoir">Avoir</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Client *</label>
+                    <select id="recClientId"><option value="">Sélectionner un client</option></select>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group"><label>Fréquence</label>
+                        <select id="recFrequency">
+                            <option value="weekly">Hebdomadaire</option>
+                            <option value="monthly" selected>Mensuelle</option>
+                            <option value="quarterly">Trimestrielle</option>
+                            <option value="yearly">Annuelle</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Jour du mois</label>
+                        <select id="recDayOfMonth">
+                            <option value="1">1</option><option value="5">5</option><option value="10">10</option>
+                            <option value="15" selected>15</option><option value="20">20</option><option value="25">25</option>
+                            <option value="28">28 (Fin)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>Description article (une ligne par article, format: <code>Description | Qté | Prix | TVA%</code>)</label>
+                    <textarea id="recItemsTemplate" rows="4" style="font-family:monospace;font-size:0.85rem" placeholder="Prestation mensuelle | 1 | 500 | 19"></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group"><label>Devise</label>
+                        <select id="recCurrency"><option value="TND">TND</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
+                    </div>
+                    <div class="form-group"><label>Mode de paiement</label>
+                        <select id="recPaymentMode">
+                            <option>Virement bancaire</option><option>Chèque</option><option>Espèces</option><option>Carte</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('recurringModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="saveRecurringInvoice()"><i data-lucide="save"></i> Enregistrer</button>
+        </div>
+    </div>
+</div>
+<!-- ═══════════ CSV IMPORT MODAL ═══════════ -->
+<div id="csvImportModal" class="modal-overlay">
+    <div class="modal" style="max-width:650px">
+        <div class="modal-header"><h2><i data-lucide="upload"></i> Importer un fichier CSV</h2><button class="modal-close" onclick="closeModal('csvImportModal')">✕</button></div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom:16px">
+                <label>Type d'import</label>
+                <select id="csvImportType" onchange="csvImportTypeChanged()">
+                    <option value="clients">Clients</option>
+                    <option value="services">Services & Produits</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:16px">
+                <label>Fichier CSV</label>
+                <input type="file" id="csvFileInput" accept=".csv" onchange="previewCSV(this)">
+            </div>
+            <div id="csvTemplateInfo" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;font-size:0.85rem;margin-bottom:16px">
+                <strong>Format attendu (Clients) :</strong><br>
+                <code>nom, mf, adresse, telephone, email</code>
+            </div>
+            <div id="csvPreviewTable" class="table-container" style="max-height:250px;overflow-y:auto"></div>
+            <div id="csvImportResult" style="margin-top:12px"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('csvImportModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="confirmCSVImport()" id="csvImportBtn" disabled><i data-lucide="upload"></i> Importer</button>
+        </div>
+    </div>
+</div>
+<!-- ═══════════ BATCH EMAIL MODAL ═══════════ -->
+<div id="batchEmailModal" class="modal-overlay">
+    <div class="modal" style="max-width:550px">
+        <div class="modal-header"><h2><i data-lucide="mail"></i> Envoyer par Email</h2><button class="modal-close" onclick="closeModal('batchEmailModal')">×</button></div>
+        <div class="modal-body">
+            <div style="margin-bottom:16px;padding:12px;background:#f0f9ff;border-radius:8px;font-size:0.85rem">
+                <strong><span id="batchEmailCount">0</span> document(s)</strong> vont être envoyés
+            </div>
+            <div class="form-group"><label>Objet</label><input type="text" id="batchEmailSubject" value="Vos documents"></div>
+            <div class="form-group"><label>Message</label><textarea id="batchEmailBody" rows="4" placeholder="Message optionnel..."></textarea></div>
+            <div id="batchEmailProgress" style="display:none">
+                <div style="background:#e5e7eb;border-radius:8px;height:8px;overflow:hidden;margin:12px 0">
+                    <div id="batchEmailProgressBar" style="background:var(--primary);height:8px;width:0%;transition:width 0.3s"></div>
+                </div>
+                <div id="batchEmailStatus" style="font-size:0.85rem;color:var(--text-light);text-align:center"></div>
+            </div>
+            <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+            <div style="display:flex;gap:10px;align-items:center">
+                <input type="text" id="newTemplateName" placeholder="Nom du modèle..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.85rem">
+                <button class="btn btn-secondary btn-small" onclick="saveCurrentAsEmailTemplate()"><i data-lucide="save"></i> Sauvegarder</button>
+                <button class="btn btn-secondary btn-small" onclick="openEmailTemplateManager()"><i data-lucide="file-text"></i> Modèles</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('batchEmailModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="sendBatchEmails()" id="sendBatchBtn"><i data-lucide="send"></i> Envoyer</button>
+        </div>
+    </div>
+</div>
+<!-- ═══════════ TEMPLATE MODAL ═══════════ -->
+<div id="templateModal" class="modal-overlay">
+    <div class="modal" style="max-width:550px">
+        <div class="modal-header"><h2><i data-lucide="file-text"></i> Modèles de document</h2><button class="modal-close" onclick="closeModal('templateModal')">×</button></div>
+        <div class="modal-body">
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+                <input type="text" id="templateNameInput" placeholder="Nom du modèle..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem">
+                <button class="btn btn-primary" onclick="saveCurrentAsTemplate()"><i data-lucide="save"></i> Sauvegarder</button>
+            </div>
+            <div id="templateList" class="table-container"></div>
+        </div>
+    </div>
+</div>
+<!-- ═══════════ CLIENT IMPORT MODAL ═══════════ -->
+<div id="clientImportModal" class="modal-overlay">
+    <div class="modal" style="max-width:600px">
+        <div class="modal-header"><h2><i data-lucide="upload"></i> Importer des clients</h2><button class="modal-close" onclick="closeModal('clientImportModal')">×</button></div>
+        <div class="modal-body">
+            <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:16px">Sélectionnez un fichier Excel (.xlsx) avec les colonnes: Nom, MF, Adresse, Téléphone, Email</p>
+            <div class="form-group"><input type="file" id="clientImportFile" accept=".xlsx,.xls" onchange="previewClientImport(this)"></div>
+            <div id="clientImportPreview" class="table-container" style="max-height:250px;overflow-y:auto"></div>
+            <div id="clientImportMapping" style="margin-top:12px;display:none">
+                <div class="grid-2">
+                    <div class="form-group"><label>Colonne Nom</label><select id="mapName"></select></div>
+                    <div class="form-group"><label>Colonne MF</label><select id="mapMF"></select></div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group"><label>Colonne Adresse</label><select id="mapAddress"></select></div>
+                    <div class="form-group"><label>Colonne Téléphone</label><select id="mapPhone"></select></div>
+                </div>
+                <div class="form-group"><label>Colonne Email</label><select id="mapEmail"></select></div>
+            </div>
+            <div id="clientImportResult" style="margin-top:12px"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('clientImportModal')">Annuler</button>
+            <button class="btn btn-primary" onclick="confirmClientImport()" id="confirmClientImportBtn" disabled><i data-lucide="upload"></i> Importer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ EMAIL TEMPLATE MODAL ═══════════ -->
+<div id="emailTemplateModal" class="modal-overlay">
+    <div class="modal" style="max-width:450px">
+        <div class="modal-header"><h2><i data-lucide="file-text"></i> Modèles d'email</h2><button class="modal-close" onclick="closeModal('emailTemplateModal')">×</button></div>
+        <div class="modal-body"><div id="emailTemplateList"></div></div>
+        <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('emailTemplateModal')">Fermer</button></div>
+    </div>
+</div>
+<!-- ═══════════ GRAPHE RELATIONNEL MODAL ═══════════ -->
+<div id="grapheModal" class="modal-overlay">
+    <div class="modal" style="max-width:800px">
+        <div class="modal-header"><h2><i data-lucide="share-2"></i> Graphe Relationnel</h2><button class="modal-close" onclick="closeModal('grapheModal')">×</button></div>
+        <div class="modal-body">
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+                <div class="form-group" style="flex:1"><label>Support minimum</label><select id="graphMinSupport"><option value="0.02">2%</option><option value="0.05" selected>5%</option><option value="0.10">10%</option><option value="0.15">15%</option></select></div>
+                <div class="form-group" style="flex:1"><label>Confiance minimum</label><select id="graphMinConfidence"><option value="0.2">20%</option><option value="0.3" selected>30%</option><option value="0.5">50%</option><option value="0.7">70%</option></select></div>
+                <div style="display:flex;align-items:flex-end">
+                    <button class="btn btn-primary" onclick="runGrapheAnalysis()"><i data-lucide="search"></i> Analyser</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+                <button class="btn btn-small btn-secondary" onclick="showGraphTab('associations')" id="graphTabAssociations" style="background:var(--primary);color:white">Associations d'articles</button>
+                <button class="btn btn-small btn-secondary" onclick="showGraphTab('payment')" id="graphTabPayment">Comportement de paiement</button>
+                <button class="btn btn-small btn-secondary" onclick="showGraphTab('clients')" id="graphTabClients">Récurrence client</button>
+            </div>
+            <div id="graphResults" class="table-container" style="max-height:400px;overflow-y:auto">
+                <p style="color:var(--text-light);text-align:center;padding:40px 0">Cliquez sur "Analyser" pour découvrir les patterns cachés dans vos données</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('grapheModal')">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ SIMULATEUR DE SCÉNARIOS MODAL ═══════════ -->
+<div id="simulatorModal" class="modal-overlay">
+    <div class="modal" style="max-width:900px">
+        <div class="modal-header"><h2><i data-lucide="git-compare"></i> Simulateur de Scénarios Fiscaux</h2><button class="modal-close" onclick="closeModal('simulatorModal')">×</button></div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom:16px">
+                <label>Document source</label>
+                <select id="simDocSelect" onchange="loadSimDocument()"><option value="">— Sélectionner un document —</option></select>
+            </div>
+            <div id="simComparison" style="display:none">
+                <div class="grid-3" style="gap:16px;margin-bottom:16px">
+                    <div style="background:var(--gray-50);border-radius:8px;padding:16px;border:1px solid var(--border)">
+                        <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px;color:var(--text-light)">Original</div>
+                        <div id="simOriginalSummary"></div>
+                    </div>
+                    <div style="background:#f0f9ff;border-radius:8px;padding:16px;border:1px solid #bae6fd">
+                        <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px;color:var(--primary)">Simulation</div>
+                        <div class="form-group"><label>Type</label><select id="simType" onchange="recalcSimulation()"><option value="facture">Facture</option><option value="devis">Devis</option><option value="avoir">Avoir</option><option value="bon">Bon de commande</option></select></div>
+                        <div class="form-group"><label>Remise %</label><input type="number" id="simDiscount" step="1" min="0" max="100" value="0" oninput="recalcSimulation()"></div>
+                        <div class="form-group"><label>TVA</label><select id="simTvaOverride" onchange="recalcSimulation()"><option value="">Taux d'origine</option><option value="19">19%</option><option value="13">13%</option><option value="7">7%</option><option value="0">0%</option></select></div>
+                        <div class="form-group"><label>Devise</label><select id="simCurrency" onchange="recalcSimulation()"><option>TND</option><option>EUR</option><option>USD</option></select></div>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:8px"><input type="checkbox" id="simTimbre" onchange="recalcSimulation()" checked> Timbre fiscal</label>
+                    </div>
+                    <div style="background:#f0fdf4;border-radius:8px;padding:16px;border:1px solid #bbf7d0">
+                        <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px;color:#16a34a">Impact fiscal</div>
+                        <div id="simImpact"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('simulatorModal')">Fermer</button>
+            <button class="btn btn-primary" onclick="applySimulation()" id="simApplyBtn" disabled><i data-lucide="save"></i> Appliquer le scénario</button>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="leaflet.css">
 <script src="lucide.min.js"></script>
+<script src="leaflet.js"></script>
+<script src="apriori.js"></script>
 </body>
 </html>

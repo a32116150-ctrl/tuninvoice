@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.6.3-blue?style=for-the-badge" alt="Version"/>
+   <img src="https://img.shields.io/badge/version-3.0.0-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -25,7 +25,7 @@ De la génération de factures conformes à l'exportation XML pour la plateforme
 
 ---
 
-## ✨ Fonctionnalités Majeures (v2.6.3)
+## ✨ Fonctionnalités Majeures (v3.0.0)
 
 ### 🇹🇳 Conformité Fiscale Tunisienne
 - **Export TEJ XML** : Génération de fichiers réglementaires pour la **Retenue à la Source (RS)** et les **Factures Électroniques**.
@@ -44,11 +44,22 @@ Une suite complète d'assistants pour vous simplifier la vie :
 - **Générateurs** : Lettres de relance (mise en demeure), PV d'assemblée générale (modèles types).
 - **Vérificateur & Recherche RNE** : Validation algorithmique du Matricule Fiscal et **interrogation en direct** des registres publics du RNE Tunisie (Dénomination, Statut, Forme Juridique).
 - **Assistant Déclaration TVA** : Génération d'un récapitulatif mensuel TVA collectée/déductible avec calcul automatique du solde.
+- **Rapports Financiers** : Compte de Résultat (P&L) avec revenus vs dépenses et résultat net, Bilan Annuel (actifs/passifs), Déclaration TVA Annuelle mois par mois.
+- **Convertisseur de Devises** : Agrège les totaux des documents par devise et convertit à un taux défini.
+- **Graphe Relationnel** : Découverte automatique des patterns de vente croisée (algorithme Apriori), analyse du comportement de paiement par article, et récurrence client.
+- **Simulateur de Scénarios Fiscaux** : Comparez l'impact fiscal de différentes stratégies (changement de type, taux TVA, remise, timbre) avant d'éditer le document.
 - **Ressources** : Calendrier fiscal tunisien et annuaire complet des Recettes des Finances.
 
 ### 👥 Ressources Humaines & Paie
 - **Gestion du Personnel** : Base de données employés avec suivi des contrats (CDI, CDD, CIVP).
 - **Bulletins de Paie** : Génération automatique de fiches de paie avec calcul des cotisations CNSS (@ 9.18%).
+
+### 📊 Tableau de Bord & Analytics
+- **Dashboard Amélioré** : Graphique d'évolution mensuelle des revenus et dépenses + classement Top 5 clients.
+- **Rapports Financiers** : P&L (Compte de Résultat), Bilan Annuel, Déclaration TVA Annuelle — accessibles depuis la page Outils.
+- **Convertisseur de Devises** : Outil de conversion multi-devises avec filtrage par période.
+- **Graphe Relationnel** : Data mining embarqué (Apriori) pour détecter les associations d'articles, le comportement de paiement et la récurrence client.
+- **Simulateur de Scénarios** : Outil de simulation "what-if" pour comparer l'impact fiscal de différentes configurations documentaires.
 
 ### 🗒️ Notes & Productivité
 - **Notes Adhésives** : Notes colorées avec épinglage, accessibles depuis le menu latéral et le tableau de bord.
@@ -77,24 +88,31 @@ Une suite complète d'assistants pour vous simplifier la vie :
 
 ---
 
-## 🚀 Quoi de neuf dans la v2.6.3 ?
+## 🚀 Quoi de neuf dans la v3.0.0 ?
 
-- **Stabilité Auto-Updater Mac** : Amélioration de la détection des fichiers DMG/ZIP et correction de l'interface utilisateur pour guider l'installation manuelle sur macOS.
-- **Auto-Updater Mac Robuste** : Nouveau système de mise à jour pour macOS avec détection intelligente du cache.
-- **Nouveaux Documents** : Support complet pour les Bons de Livraison (BL), Bons d'Achat (BA), Bons de Sortie (BS), et Bons d'Entrée (BE).
-- **Gestion des Avoirs** : Nouvelle logique de Facture d'Avoir avec impact négatif sur le chiffre d'affaires et réduction automatique de la dette client.
-- **Recherche RNE Live** : Intégration de l'API publique du Registre National des Entreprises pour récupérer les données clients instantanément via leur MF.
-- **WhatsApp Pro** : Icône officielle WhatsApp et interface de partage améliorée.
-- **Optimisation Financière** : Tous les calculs de revenus et impayés prennent désormais en compte les avoirs et les nouveaux types de documents.
-- **Refonte Design Premium** : Interface utilisateur entièrement repensée avec un système de design CSS (ombres, dégradés, micro-interactions, animations de page, icônes Lucide cohérentes) pour une expérience haut de gamme.
-- **Icônes Lucide** : Remplacement complet des émojis par des icônes SVG vectorielles pour une apparence professionnelle et cohérente.
-- **Thème Claire/Sombre** : Nouveau bouton de basculement dans la barre supérieure pour passer entre le thème par défaut et le thème clair.
-- **Notes Adhésives** : Nouveau module de notes sticky avec code couleur, épinglage et widget sur le tableau de bord.
-- **Opérations par Lot** : Sélection multiple et actions groupées (supprimer, marquer payé, exporter PDF) sur la liste des documents.
-- **Pipeline Devis→Facture** : Nouvelle colonne "Pipeline" indiquant le statut de conversion des documents.
-- **BA → Dépense** : Conversion en un clic des Bons d'Achat en dépenses comptables.
-- **Assistant Déclaration TVA** : Nouvel outil dans la section Outils pour générer un récapitulatif mensuel TVA collectée/déductible avec calcul du solde.
-- **Stabilité** : Correction des bugs d'affichage de version et amélioration des performances de la base de données.
+- **Refonte Complète de la Page Paramètres** : Navigation latérale avec onglets persistants, cartes améliorées avec descriptions et infobulles contextuelles, transitions animées entre sections.
+- **Refonte de la Page Mon Entreprise** : Même design que les Paramètres — cartes avec en-têtes + descriptions, boîtes d'info contextuelles, barre de sauvegarde dédiée, icône Lucide `building`.
+- **Correction Critique — Séquence de Numérotation** : Le compteur n'est plus consommé à l'ouverture du formulaire ou au changement de type. Incrémenté uniquement à la sauvegarde réelle. Permet la saisie manuelle du numéro si nécessaire.
+- **Point de Vente (POS) — Caisse Enregistreuse Complète** : Grille produits, scan code-barres, panier, paiement multiple (Espèces/Carte/Mobile/Chèque), gestion de stock, sessions de caisse, ticket 80mm.
+- **Rapport X (Mi-Journée)** : Résumé intermédiaire des ventes sans fermeture de session — fond, ventes, transactions, mouvements de caisse. `F5`.
+- **Override Prix** : Double-clic sur le total d'une ligne dans le panier pour modifier le prix unitaire. Badge "PRIX MODIFIÉ".
+- **Création Produit Rapide** : Nouveau bouton dans la barre d'outils du POS — modal avec nom, prix, TVA, catégorie, code-barres, stock. `F7`.
+- **Favoris** : Étoile ☆/★ sur chaque fiche produit. "⭐ Favoris" dans les catégories. Stocké dans localStorage. `F6`.
+- **Split Tender (Paiement Multiple)** : Répartissez le total sur plusieurs moyens de paiement avec montants modifiables. Enregistré dans les notes du document.
+- **Mouvements de Caisse** : Apports/retraits d'argent pendant la session. Inclus dans le Rapport X et le résumé de clôture. `F8`.
+- **Remboursement** : Depuis les ventes du jour — inverse le stock, crée un document négatif. Badge "REMBOURSÉ".
+- **Fidélité** : 1 point par 10 TND d'achat. Stocké dans localStorage. Affiché sur le ticket et dans une modale dédiée. Bouton ⭐ dans la barre supérieure.
+- **Multi-Caissier** : Champ de saisie du nom de l'opérateur dans la barre supérieure. Imprimé sur le ticket.
+- **Recherche de Clients CRM** : Autocomplétion des clients depuis la base de données dans la modale de paiement.
+- **Top Ventes** : Grille des 10 produits les plus vendus aujourd'hui pour ajout rapide.
+- **Brouillons Multiples** : Sauvegardez plusieurs paniers dans localStorage avec nom, restaurez-les, supprimez-les.
+- **Notes sur le Ticket** : Champ de texte dans le panier pour ajouter une note sur le ticket de caisse.
+- **Acompte / Crédit** : Paiement partiel avec suivi du reste à payer dans les notes du document.
+- **Image Produit** : Colonne `image` dans la table services. Affichage de la vignette sur les fiches produits du POS.
+- **Pied de Ticket Personnalisé** : Message personnalisable affiché en bas du ticket de caisse.
+- **Interface Tactile** : Tous les boutons, contrôles et éléments du POS optimisés pour le tactile (zones de触碰 ≥44px, retours visuels `:active`, `touch-action: manipulation`).
+- **Raccourcis Clavier** : `F1` plein écran, `F2` scan, `F3` TTC, `F4` ventes, `F5` Rapport X, `F6` Favoris, `F7` Nouveau produit, `F8` Mouvement de caisse.
+- **Nettoyage** : Suppression du module orphelin `Themes.js`.
 
 ---
 

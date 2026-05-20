@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     authResetPasswordMasterKey: (d) => invoke('auth:resetPasswordMasterKey', d),
 
     // ── DOCUMENTS ────────────────────────────────────────────────────
-    getDocuments:        (userId)  => invoke('docs:getAll', userId),
+    getDocuments:        (params)  => invoke('docs:getAll', params),
     getDocumentsByType:  (params)  => invoke('docs:getByType', params),
     getDocument:         (id)      => invoke('docs:getById', id),
     saveDocument:        (data)    => invoke('docs:save', data),
@@ -84,6 +84,10 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     exportExcelDocuments: (params) => invoke('export:excel:documents', params),
     exportExcelClients:   (params) => invoke('export:excel:clients', params),
     exportExcelRetenues:  (params) => invoke('export:excel:retenues', params),
+    exportXLSX:          (params) => invoke('export:xlsx', params),
+
+    // ── CSV ──────────────────────────────────────────────────────────
+    exportCSVDocument:    (params) => invoke('export:csv:document', params),
 
     // ── BACKUP ───────────────────────────────────────────────────────
     getBackupSettings:  ()     => invoke('backup:settings:get'),
@@ -91,11 +95,13 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     createManualBackup: ()     => invoke('backup:create:manual'),
     getBackupList:      ()     => invoke('backup:list'),
     restoreBackup:      (path) => invoke('backup:restore', path),
+    generateBackupReport: (userId) => invoke('backup:report', userId),
 
     // ── PDF ──────────────────────────────────────────────────────────
     savePDF:           (params) => invoke('pdf:save', params),
     printPDF:          (params) => invoke('pdf:print', params),
     generatePDFBuffer: (params) => invoke('pdf:generateBuffer', params),
+    generateDocumentPDF: (params) => invoke('docs:generatePDF', params),
 
     // ── CONTRACTS ────────────────────────────────────────────────────
     getContracts:   (userId) => invoke('contracts:getAll', userId),
@@ -132,6 +138,10 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     saveNote:    (data)   => invoke('notes:save', data),
     deleteNote:  (id)     => invoke('notes:delete', id),
 
+    // ── ACTIVITY LOG ─────────────────────────────────────────────────
+    getActivityLog:  (params) => invoke('activity:getAll', params),
+    clearActivityLog:(userId) => invoke('activity:clear', userId),
+
     // ── REMINDERS ────────────────────────────────────────────────────
     getReminders:    (userId) => invoke('reminders:getAll', userId),
     saveReminder:    (data)   => invoke('reminders:save', data),
@@ -154,9 +164,43 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     generateFiscalSummary:  (params) => invoke('tools:fiscalSummary', params),
     searchRNE:              (mf)     => invoke('tools:searchRNE', mf),
 
+    // ── RECURRING INVOICES ───────────────────────────────────────────
+    getRecurringInvoices: (userId) => invoke('recurring:getAll', userId),
+    saveRecurringInvoice: (data)   => invoke('recurring:save', data),
+    deleteRecurringInvoice: (id)   => invoke('recurring:delete', id),
+
+    // ── XLSX IMPORT ──────────────────────────────────────────────────
+    importXLSX: (params) => invoke('import:xlsx', params),
+
     // ── TEJ EXPORT ───────────────────────────────────────────────────
     getTEJData: (params) => invoke('export:tej:getData', params),
     exportTEJ: (params) => invoke('export:tej:generate', params),
+
+    // ── EMAIL ──────────────────────────────────────────────────────────
+    sendEmail: (params) => invoke('email:send', params),
+
+    // ── SHORTCUTS (from main process) ─────────────────────────────────
+    onShortcut: (channel, cb) => { ipcRenderer.on(`shortcut:${channel}`, (_, payload) => cb(payload)); },
+
+    // ── DOCUMENT TEMPLATES ───────────────────────────────────────────
+    getTemplates:   (userId) => invoke('templates:getAll', userId),
+    saveTemplate:   (data)   => invoke('templates:save', data),
+    deleteTemplate: (id)     => invoke('templates:delete', id),
+
+    // ── POS (Point of Sale) ─────────────────────────────────────────
+    getPOSProducts:      (userId)     => invoke('pos:getProducts', userId),
+    getPOSProductByBarcode: (params)  => invoke('pos:getProductByBarcode', params),
+    savePOSSale:         (data)       => invoke('pos:saveSale', data),
+    getPOSSales:         (params)     => invoke('pos:getSales', params),
+    getTodayPOSSales:    (userId)     => invoke('pos:getTodaySales', userId),
+    getPOSSale:          (id)         => invoke('pos:getSaleById', id),
+    deletePOSSale:       (id)         => invoke('pos:deleteSale', id),
+    updatePOSStock:      (params)     => invoke('pos:updateStock', params),
+    openPOSSession:      (params)     => invoke('pos:openSession', params),
+    closePOSSession:     (params)     => invoke('pos:closeSession', params),
+    getActivePOSSession: (userId)     => invoke('pos:getActiveSession', userId),
+    getPOSSessions:      (userId)     => invoke('pos:getSessions', userId),
+    getPOSLowStock:      (userId)     => invoke('pos:getLowStock', userId),
 
     // ── FILE SYSTEM ──────────────────────────────────────────────────
     openFolder:   (path) => invoke('fs:openFolder', path),
