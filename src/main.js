@@ -187,28 +187,31 @@ autoUpdater.on('update-available', (info) => {
 autoUpdater.on('update-not-available', (info) => sendUpdate('not-available', { version: info.version }));
 autoUpdater.on('download-progress', (p) => {
     sendUpdate('progress', { percent: Math.round(p.percent), speed: p.bytesPerSecond, transferred: p.transferred, total: p.total });
-    if (mainWindow && process.platform === 'win32') mainWindow.setProgressBar(p.percent / 100);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        const fraction = p.percent / 100;
+        if (process.platform === 'win32') mainWindow.setProgressBar(fraction);
+        else if (process.platform === 'darwin') app.dock.setProgressBar(fraction);
+    }
 });
 autoUpdater.on('update-downloaded', (info) => {
-    if (mainWindow && process.platform === 'win32') mainWindow.setProgressBar(-1);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        if (process.platform === 'win32') mainWindow.setProgressBar(-1);
+        else if (process.platform === 'darwin') app.dock.setProgressBar(-1);
+    }
     sendUpdate('downloaded', { version: info.version });
 
     if (process.platform === 'darwin') {
         try {
-            // Try multiple ways to find the downloaded DMG
-            const cacheDir = path.join(app.getPath('userData'), 'pending'); // electron-updater cache location
-
-            // Find the DMG file — try info first, then scan cache
-            let downloadedPath = info.downloadedFile || (info.files && info.files[0] && info.files[0].path);
+            // Find the downloaded DMG — try info props first, then scan temp
+            let downloadedPath = info.downloadedFile || (info.files && info.files[0] && info.files[0].path) || info.path;
 
             if (!downloadedPath || !fs.existsSync(downloadedPath)) {
-                // Scan the cache directory for the DMG
-                if (fs.existsSync(cacheDir)) {
-                    const files = fs.readdirSync(cacheDir)
-                        .filter(f => f.endsWith('.dmg'))
-                        .map(f => path.join(cacheDir, f));
-                    if (files.length > 0) downloadedPath = files[0];
-                }
+                const tempDir = app.getPath('temp');
+                const files = fs.readdirSync(tempDir)
+                    .filter(f => f.endsWith('.dmg') && f.toLowerCase().includes('factarlou'))
+                    .sort((a, b) => fs.statSync(path.join(tempDir, b)).mtimeMs - fs.statSync(path.join(tempDir, a)).mtimeMs)
+                    .map(f => path.join(tempDir, f));
+                if (files.length > 0) downloadedPath = files[0];
             }
 
             if (!downloadedPath || !fs.existsSync(downloadedPath)) {
@@ -282,7 +285,15 @@ autoUpdater.on('update-downloaded', (info) => {
 });
 autoUpdater.on('error', (err) => { sendUpdate('error', { message: err.message }); console.error('[updater]', err); });
 
-ipcMain.handle('updater:check', async () => { try { const r = await autoUpdater.checkForUpdates(); return { success: true, version: r?.updateInfo?.version }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('updater:check', async () => {
+    try {
+        const r = await autoUpdater.checkForUpdates();
+        const currentVersion = app.getVersion();
+        const latestVersion = r?.updateInfo?.version;
+        const hasUpdate = !!(latestVersion && currentVersion !== '0.0.0' && latestVersion !== currentVersion);
+        return { success: true, version: latestVersion, hasUpdate, currentVersion };
+    } catch (e) { return { success: false, error: e.message }; }
+});
 ipcMain.handle('updater:install', () => {
     setImmediate(() => {
         app.removeAllListeners("window-all-closed");

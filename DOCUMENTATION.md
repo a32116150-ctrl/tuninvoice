@@ -220,7 +220,15 @@ Data is stored in the user's system application folder (`userData`).
 This ensures that even when the app is updated, your data remains untouched and safe.
 
 ### Auto-Update System
-The app is integrated with **GitHub Releases**. Every time a new version is published, the app detects it, downloads it in the background, and prompts the user to restart to apply the latest fiscal updates or new features.
+The app is integrated with **GitHub Releases** via `electron-updater`. Every time a new version is published, the app detects it (check runs 3 seconds after startup), downloads it in the background, and prompts the user to restart to apply the latest updates.
+
+**Update flow by platform:**
+- **Windows**: Update is auto-downloaded, user clicks "Redémarrer maintenant" → `quitAndInstall` runs the installer silently and relaunches the app.
+- **macOS**: Update is auto-downloaded to the system temp directory, the DMG is copied to `~/Downloads` with clear instructions. User manually drags the app to Applications.
+
+**Manual check**: Available in Settings → "Vérifier les mises à jour". Correctly detects whether a newer version actually exists (v3.1.0+).
+
+**Error handling**: Update failures (network, GitHub downtime) are shown as visible error toasts in the UI. Download progress is displayed in the Windows taskbar and macOS dock icon.
 
 ### Backup System
 Backups now include both the SQLite database and the `attachments/` directory (receipt scans, uploaded images). Restoring a backup automatically restores attachments to their original location.

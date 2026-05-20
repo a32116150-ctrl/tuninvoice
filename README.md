@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-   <img src="https://img.shields.io/badge/version-3.0.0-blue?style=for-the-badge" alt="Version"/>
+   <img src="https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -25,7 +25,7 @@ De la génération de factures conformes à l'exportation XML pour la plateforme
 
 ---
 
-## ✨ Fonctionnalités Majeures (v3.0.0)
+## ✨ Fonctionnalités Majeures (v3.1.0)
 
 ### 🇹🇳 Conformité Fiscale Tunisienne
 - **Export TEJ XML** : Génération de fichiers réglementaires pour la **Retenue à la Source (RS)** et les **Factures Électroniques**.
@@ -113,6 +113,16 @@ Une suite complète d'assistants pour vous simplifier la vie :
 - **Interface Tactile** : Tous les boutons, contrôles et éléments du POS optimisés pour le tactile (zones de触碰 ≥44px, retours visuels `:active`, `touch-action: manipulation`).
 - **Raccourcis Clavier** : `F1` plein écran, `F2` scan, `F3` TTC, `F4` ventes, `F5` Rapport X, `F6` Favoris, `F7` Nouveau produit, `F8` Mouvement de caisse.
 - **Nettoyage** : Suppression du module orphelin `Themes.js`.
+
+---
+
+## 🚀 Quoi de neuf dans la v3.1.0 ?
+
+- **Moteur de Mise à Jour Fiabilisé** : Correction du chemin de cache macOS — le fichier DMG téléchargé est maintenant correctement localisé dans le dossier temporaire système au lieu de `Application Support`.
+- **Barre de Progression macOS** : La progression du téléchargement est maintenant visible dans le dock de l'application macOS (icône avec cercle de progression).
+- **Vérification Manuelle Précise** : Le bouton "Vérifier les mises à jour" dans les Paramètres distingue correctement une vraie mise à jour disponible d'une version identique — plus de faux positifs.
+- **Notifications d'Erreur Visibles** : Les échecs de mise à jour (réseau, GitHub indisponible) sont maintenant signalés par un toast d'erreur dans l'interface.
+- **Recherche DMG Robustesse** : Scan intelligent du dossier temporaire par date de modification pour trouver le fichier DMG même en cas de changement de structure de cache.
 
 ---
 

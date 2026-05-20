@@ -752,3 +752,27 @@ Premium UI/UX overhaul (CSS + icon consolidation) using Open Design's generated 
 - **POS Sessions**: `pos_sessions` tracks cash/card totals and transaction counts. The `addPosSaleToSession()` method accumulates these; `closeSession()` stores final closing amounts. Session open/close is user-driven (manual).
 - **Client-Side Mining**: All data mining (Apriori, payment analysis, client patterns) runs on the `allDocuments` global array already in memory. No IPC or SQL needed. For larger datasets (>10K documents), consider running in a Web Worker to avoid blocking the UI.
 - **Simulator Document Creation**: The `applySimulation()` function calls `window.electronAPI.saveDocument()` directly via existing IPC. If new fields are added to the document schema in the future, update the `docData` object in `applySimulation()` and ensure the simulator form includes toggles for them.
+
+---
+
+## v3.1.0 — Auto-Updater Reliability (2026-05-20)
+
+### 1. Fix: macOS DMG Cache Path (`src/main.js`)
+- **Bug**: The post-download DMG scanning used `app.getPath('userData')` (`~/Library/Application Support/Factarlou/pending/`) but `electron-updater` stores downloads in `app.getPath('temp')`.
+- **Fix**: Replaced `app.getPath('userData')` scan with a robust recursive scan of `app.getPath('temp')` for `.dmg` files containing `factarlou` (case-insensitive), sorted by modification time (newest first).
+
+### 2. Fix: False-Positive Update Toast (`src/renderer/app-features.js`)
+- **Bug**: `manualCheckUpdate()` called `checkForUpdates()` which returns the latest available version regardless of whether it differs from the current version. The renderer always showed "Mise à jour trouvée" even when already up-to-date.
+- **Fix**: `updater:check` IPC handler now compares `currentVersion` with `latestVersion` and returns a `hasUpdate` boolean. Renderer checks `r.hasUpdate` before showing the success toast.
+
+### 3. Fix: Silent Updater Errors (`src/renderer/app-features.js`)
+- **Bug**: The `error` event in `initUpdaterListener()` only called `console.warn`, giving the user no feedback when a check or download failed.
+- **Fix**: Added `showToast('Erreur de mise à jour: ...', 'error', 5000)` to display a visible error toast.
+
+### 4. Enhancement: macOS Dock Progress Bar (`src/main.js`)
+- **Before**: `setProgressBar()` was only called on Windows.
+- **After**: Added `app.dock.setProgressBar(fraction)` on macOS for visual download progress in the dock icon.
+
+### 5. Enhancement: Destroyed Window Guard (`src/main.js`)
+- **Before**: `mainWindow.setProgressBar()` could throw if the window was destroyed between the event firing and the handler executing.
+- **After**: Added `!mainWindow.isDestroyed()` guard before any window/dock operations.

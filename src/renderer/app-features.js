@@ -2517,6 +2517,7 @@ function initUpdaterListener() {
         }
         if (event === 'error') {
             console.warn('[updater]', message);
+            showToast('Erreur de mise à jour: ' + (message || 'inconnue'), 'error', 5000);
         }
     });
 }
@@ -2572,8 +2573,9 @@ async function manualCheckUpdate() {
     showToast('Vérification des mises à jour…', 'info', 2500);
     try {
         const r = await window.electronAPI.checkForUpdates();
-        if (r.success && r.version) showToast(`Mise à jour ${r.version} trouvée, téléchargement…`, 'success');
-        else showToast("Vous avez déjà la dernière version.", 'info');
+        if (r.hasUpdate) showToast(`Mise à jour ${r.version} disponible, téléchargement…`, 'success');
+        else if (r.success) showToast("Vous avez déjà la dernière version.", 'info');
+        else showToast(r.error || 'Échec de la vérification', 'warning');
     } catch { showToast('Impossible de vérifier les mises à jour.', 'warning'); }
 }
 

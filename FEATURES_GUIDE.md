@@ -142,7 +142,13 @@ Factarlou est une application **Offline-First** (priorité au local) :
 ---
 
 ## 🛠️ Mise à jour Automatique
-Factarlou se met à jour tout seul. Dès qu'une nouvelle fonctionnalité ou une correction fiscale est disponible, l'application vous propose de l'installer au prochain redémarrage.
+Factarlou se met à jour tout seul. Dès qu'une nouvelle fonctionnalité ou une correction fiscale est disponible, l'application vous propose de l'installer.
+
+- **Windows** : Redémarrage automatique après téléchargement.
+- **macOS** : Le fichier DMG est copié dans vos Téléchargements avec des instructions claires.
+- **Barre de progression** : La progression apparaît dans la barre des tâches (Windows) ou le dock (macOS).
+- **Vérification manuelle** : Disponible dans Paramètres → "Vérifier les mises à jour".
+- **Notifications d'erreur** : Les échecs de connexion sont signalés par une notification dans l'interface.
 
 ## ⌨️ Raccourcis Clavier
 | Raccourci | Action |
