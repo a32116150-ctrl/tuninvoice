@@ -143,7 +143,7 @@ Interface de caisse complète adaptée aux commerces et marchés :
 - **Import/Export CSV** : Clients et services
 - **Import/Export Excel (XLSX)** : Documents, clients, services
 - **Carte Client** : Leaflet/OpenStreetMap
-- **Multi-Langue** : Français, English, العربية avec RTL
+
 
 ### ⚙️ Paramètres & Mon Entreprise
 
@@ -180,7 +180,7 @@ Interface de caisse complète adaptée aux commerces et marchés :
 | Icônes | Lucide SVG |
 | Validation | `src/validate.js` |
 | Math/TVA | `src/math-utils.js` |
-| i18n | Moteur maison (Français, English, العربية) avec RTL |
+| i18n | Français uniquement |
 | Data Mining | Algorithme Apriori en JS pur |
 | Cartographie | Leaflet.js + OpenStreetMap |
 | Graphiques | Canvas API vanilla (sans dépendance) |

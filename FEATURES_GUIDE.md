@@ -110,7 +110,7 @@ Interface de caisse complète pour commerces et marchés :
 - Tri par colonnes, pagination
 - Import/Export CSV et Excel
 - Carte client Leaflet
-- Multi-langue (FR/EN/AR)
+
 
 ---
 

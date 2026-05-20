@@ -236,7 +236,7 @@ Interface de caisse complète adaptée aux commerces et marchés :
 - Pagination (50 docs/page)
 - Tri par colonnes avec indicateurs ▲/▼
 - Fil d'Ariane contextuel
-- Multi-langue : Français, English, العربية (avec RTL)
+
 - Persistance du thème (clair/sombre)
 - Persistance de la dernière page et du dernier type de document
 
@@ -286,7 +286,7 @@ Interface de caisse complète adaptée aux commerces et marchés :
 | Icônes | Lucide SVG |
 | Validation | `src/validate.js` |
 | Math/TVA | `src/math-utils.js` |
-| i18n | Moteur maison (fr, en, ar) |
+| i18n | Français uniquement |
 | Data Mining | Apriori JS pur (`apriori.js`) |
 | Cartographie | Leaflet.js + OpenStreetMap |
 | Graphiques | Canvas API vanilla |
@@ -363,7 +363,7 @@ tuniinvoice-desktop/
       app-features.js          # Toutes les fonctionnalités
       apriori.js               # Algorithme Apriori
       i18n.js                  # Moteur de traduction
-      locales/                 # Fichiers de traduction (fr, en, ar)
+      locales/                 # Fichiers de traduction (fr)
       builders/
         invoice-builder.js     # Constructeur HTML factures
       retenue-builder.js       # Constructeur HTML retenues/paie
