@@ -60,8 +60,11 @@ class AppDatabase {
         tryAlter(`ALTER TABLE services ADD COLUMN unit TEXT DEFAULT 'unité'`);
         tryAlter(`ALTER TABLE services ADD COLUMN barcode TEXT`);
         tryAlter(`ALTER TABLE services ADD COLUMN stock INTEGER DEFAULT 0`);
-        tryAlter(`ALTER TABLE services ADD COLUMN min_stock INTEGER DEFAULT 0`);
-        tryAlter(`ALTER TABLE services ADD COLUMN image TEXT`);
+        try {
+            const svcCols = this.db.prepare('PRAGMA table_info(services)').all().map(c => c.name);
+            if (!svcCols.includes('min_stock')) this.db.exec("ALTER TABLE services ADD COLUMN min_stock INTEGER DEFAULT 0");
+            if (!svcCols.includes('image')) this.db.exec("ALTER TABLE services ADD COLUMN image TEXT");
+        } catch (e) { console.error('[migration] services columns:', e.message); }
         tryAlter(`ALTER TABLE contracts ADD COLUMN signed_at TEXT`);
         tryAlter(`ALTER TABLE contracts ADD COLUMN pdf_path TEXT`);
         // Retenue official fields
@@ -70,8 +73,13 @@ class AppDatabase {
         tryAlter(`ALTER TABLE retenues ADD COLUMN beneficiaire_code_cat TEXT`);
         tryAlter(`ALTER TABLE retenues ADD COLUMN beneficiaire_n_etab TEXT`);
         tryAlter(`ALTER TABLE documents ADD COLUMN custom_fields TEXT DEFAULT '[]'`);
-        tryAlter(`ALTER TABLE documents ADD COLUMN is_pos INTEGER DEFAULT 0`);
-        tryAlter(`ALTER TABLE documents ADD COLUMN pos_session_id TEXT`);
+        try {
+            const docCols = this.db.prepare('PRAGMA table_info(documents)').all().map(c => c.name);
+            if (!docCols.includes('is_pos')) this.db.exec("ALTER TABLE documents ADD COLUMN is_pos INTEGER DEFAULT 0");
+            if (!docCols.includes('pos_session_id')) this.db.exec("ALTER TABLE documents ADD COLUMN pos_session_id TEXT");
+            if (!docCols.includes('company_bank')) this.db.exec("ALTER TABLE documents ADD COLUMN company_bank TEXT");
+            if (!docCols.includes('company_rib')) this.db.exec("ALTER TABLE documents ADD COLUMN company_rib TEXT");
+        } catch (e) { console.error('[migration] documents columns:', e.message); }
         
         // ── Expenses table schema migration ─────────────────────────
         // Migrate old expenses table (with `amount` column) to new schema
@@ -144,7 +152,7 @@ class AppDatabase {
     initTables() {
         this.db.exec(`CREATE TABLE IF NOT EXISTS document_themes (user_id TEXT PRIMARY KEY, font_family TEXT DEFAULT "'Segoe UI', sans-serif", font_size TEXT DEFAULT '14px', title_facture_text TEXT DEFAULT 'FACTURE', title_facture_color TEXT DEFAULT '#1e3a8a', title_devis_text TEXT DEFAULT 'DEVIS', title_devis_color TEXT DEFAULT '#92400e', title_bon_text TEXT DEFAULT 'BON DE COMMANDE', title_bon_color TEXT DEFAULT '#065f46')`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, master_key_hash TEXT, company TEXT, mf TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-        this.db.exec(`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, date TEXT NOT NULL, due_date TEXT, expiry_date TEXT, currency TEXT DEFAULT 'TND', payment_mode TEXT, payment_status TEXT DEFAULT 'unpaid', paid_amount REAL DEFAULT 0, paid_date TEXT, company_name TEXT, company_mf TEXT, company_address TEXT, company_phone TEXT, company_email TEXT, company_rc TEXT, client_id TEXT, client_name TEXT NOT NULL, client_mf TEXT, client_address TEXT, client_phone TEXT, client_email TEXT, items_json TEXT NOT NULL DEFAULT '[]', apply_timbre INTEGER DEFAULT 0, timbre_amount REAL DEFAULT 0, rounding_adjustment REAL DEFAULT 0, discount_percent REAL DEFAULT 0, discount_amount REAL DEFAULT 0, total_ht REAL NOT NULL DEFAULT 0, total_ttc REAL NOT NULL DEFAULT 0, logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, internal_notes TEXT, reference_doc TEXT DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+        this.db.exec(`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, date TEXT NOT NULL, due_date TEXT, expiry_date TEXT, currency TEXT DEFAULT 'TND', payment_mode TEXT, payment_status TEXT DEFAULT 'unpaid', paid_amount REAL DEFAULT 0, paid_date TEXT, company_name TEXT, company_mf TEXT, company_address TEXT, company_phone TEXT, company_email TEXT, company_rc TEXT, client_id TEXT, client_name TEXT NOT NULL, client_mf TEXT, client_address TEXT, client_phone TEXT, client_email TEXT, items_json TEXT NOT NULL DEFAULT '[]', apply_timbre INTEGER DEFAULT 0, timbre_amount REAL DEFAULT 0, rounding_adjustment REAL DEFAULT 0, discount_percent REAL DEFAULT 0, discount_amount REAL DEFAULT 0, total_ht REAL NOT NULL DEFAULT 0, total_ttc REAL NOT NULL DEFAULT 0, logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, internal_notes TEXT, reference_doc TEXT DEFAULT NULL, is_pos INTEGER DEFAULT 0, pos_session_id TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         
         this.db.exec(`CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, mf TEXT, address TEXT, phone TEXT, email TEXT, notes TEXT, tags TEXT, credit_limit REAL DEFAULT 0, category TEXT DEFAULT 'standard', rib TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS companies (user_id TEXT PRIMARY KEY, name TEXT, mf TEXT, address TEXT, phone TEXT, email TEXT, rc TEXT, website TEXT, bank TEXT, rib TEXT, logo_image TEXT, stamp_image TEXT, signature_image TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
@@ -163,8 +171,10 @@ class AppDatabase {
         this.db.exec(`CREATE TABLE IF NOT EXISTS activity_log (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, action TEXT NOT NULL, entity_type TEXT, entity_id TEXT, entity_label TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT, content TEXT, color TEXT DEFAULT '#fef9c3', pinned INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT, due_date TEXT NOT NULL, due_time TEXT DEFAULT '09:00', entity_type TEXT, entity_id TEXT, done INTEGER DEFAULT 0, notified INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+        this.db.exec(`CREATE TABLE IF NOT EXISTS relances (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, invoice_id TEXT NOT NULL, attempt INTEGER DEFAULT 1, method TEXT DEFAULT 'pdf', recipient_email TEXT, sent_at DATETIME DEFAULT CURRENT_TIMESTAMP, notes TEXT)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS retenues (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, number TEXT NOT NULL, year INTEGER NOT NULL, month INTEGER NOT NULL, date TEXT NOT NULL, retenuer_name TEXT NOT NULL, retenuer_mf TEXT, retenuer_address TEXT, retenuer_rc TEXT, retenuer_rep TEXT, retenuer_code_tva TEXT, retenuer_code_cat TEXT, retenuer_n_etab TEXT, beneficiaire_name TEXT NOT NULL, beneficiaire_mf TEXT, beneficiaire_address TEXT, beneficiaire_rib TEXT, beneficiaire_cin TEXT, beneficiaire_code_tva TEXT, beneficiaire_code_cat TEXT, beneficiaire_n_etab TEXT, facture_id TEXT, facture_number TEXT, facture_date TEXT, montant_brut REAL NOT NULL, taux_retenue REAL NOT NULL DEFAULT 1.5, montant_retenue REAL NOT NULL, nature_revenu TEXT DEFAULT 'Honoraires et commissions', base_legale TEXT DEFAULT "Art. 52 du Code de l'IRPP et de l'IS", logo_image TEXT, stamp_image TEXT, signature_image TEXT, notes TEXT, status TEXT DEFAULT 'emis', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         
+        this.db.exec(`CREATE TABLE IF NOT EXISTS exchange_rates (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, currency TEXT NOT NULL, rate REAL DEFAULT 1.0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS expenses (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -213,7 +223,16 @@ class AppDatabase {
     }
 
     getDatabasePath() { return this.dbPath; }
-    restore(backupPath) { this.db.close(); fs.copyFileSync(backupPath, this.dbPath); this.db = new Database(this.dbPath); this.db.pragma('journal_mode = WAL'); this.db.pragma('foreign_keys = ON'); this.initTables(); }
+    restore(backupPath) {
+        const header = Buffer.alloc(16);
+        const fd = fs.openSync(backupPath, 'r');
+        fs.readSync(fd, header, 0, 16, 0);
+        fs.closeSync(fd);
+        if (header.toString('utf8', 0, 16) !== 'SQLite format 3\0') {
+            throw new Error('Fichier de sauvegarde invalide');
+        }
+        this.db.close(); fs.copyFileSync(backupPath, this.dbPath); this.db = new Database(this.dbPath); this.db.pragma('journal_mode = WAL'); this.db.pragma('foreign_keys = ON'); this.initTables();
+    }
 
     // ==================== AUTH ====================
     registerUser({ name, email, password, company, mf }) {
@@ -317,11 +336,11 @@ class AppDatabase {
         const id = docData.id || uuidv4();
         const number = docData.number || this.getNextDocumentNumber(docData.userId, docData.type, new Date().getFullYear());
         const existing = this.db.prepare('SELECT id FROM documents WHERE id=?').get(id);
-        const vals = [docData.type, number, docData.date, docData.dueDate||null, docData.expiryDate||null, docData.currency||'TND', docData.paymentMode||null, docData.paymentStatus||'unpaid', docData.paidAmount||0, docData.paidDate||null, docData.companyName||null, docData.companyMF||null, docData.companyAddress||null, docData.companyPhone||null, docData.companyEmail||null, docData.companyRC||null, docData.clientId||null, docData.clientName, docData.clientMF||null, docData.clientAddress||null, docData.clientPhone||null, docData.clientEmail||null, JSON.stringify(docData.items || []), docData.applyTimbre?1:0, docData.timbreAmount||0, docData.roundingAdjustment||0, docData.discountPercent||0, docData.discountAmount||0, docData.totalHT||0, docData.totalTTC||0, docData.logoImage||null, docData.stampImage||null, docData.signatureImage||null,             docData.notes||null, docData.referenceDoc || null, docData.internalNotes||null, JSON.stringify(docData.customFields||[]), docData.isPos?1:0, docData.posSessionId||null];
+        const vals = [docData.type, number, docData.date, docData.dueDate||null, docData.expiryDate||null, docData.currency||'TND', docData.paymentMode||null, docData.paymentStatus||'unpaid', docData.paidAmount||0, docData.paidDate||null, docData.companyName||null, docData.companyMF||null, docData.companyAddress||null, docData.companyPhone||null, docData.companyEmail||null, docData.companyRC||null, docData.companyBank||null, docData.companyRIB||null, docData.clientId||null, docData.clientName, docData.clientMF||null, docData.clientAddress||null, docData.clientPhone||null, docData.clientEmail||null, JSON.stringify(docData.items || []), docData.applyTimbre?1:0, docData.timbreAmount||0, docData.roundingAdjustment||0, docData.discountPercent||0, docData.discountAmount||0, docData.totalHT||0, docData.totalTTC||0, docData.logoImage||null, docData.stampImage||null, docData.signatureImage||null,             docData.notes||null, docData.referenceDoc || null, docData.internalNotes||null, JSON.stringify(docData.customFields||[]), docData.isPos?1:0, docData.posSessionId||null];
         if (existing) {
-            this.db.prepare(`UPDATE documents SET type=?,number=?,date=?,due_date=?,expiry_date=?,currency=?,payment_mode=?,payment_status=?,paid_amount=?,paid_date=?,company_name=?,company_mf=?,company_address=?,company_phone=?,company_email=?,company_rc=?,client_id=?,client_name=?,client_mf=?,client_address=?,client_phone=?,client_email=?,items_json=?,apply_timbre=?,timbre_amount=?,rounding_adjustment=?,discount_percent=?,discount_amount=?,total_ht=?,total_ttc=?,logo_image=?,stamp_image=?,signature_image=?,notes=?,reference_doc=?,internal_notes=?,custom_fields=?,is_pos=?,pos_session_id=? WHERE id=?`).run(...vals, id);
+            this.db.prepare(`UPDATE documents SET type=?,number=?,date=?,due_date=?,expiry_date=?,currency=?,payment_mode=?,payment_status=?,paid_amount=?,paid_date=?,company_name=?,company_mf=?,company_address=?,company_phone=?,company_email=?,company_rc=?,company_bank=?,company_rib=?,client_id=?,client_name=?,client_mf=?,client_address=?,client_phone=?,client_email=?,items_json=?,apply_timbre=?,timbre_amount=?,rounding_adjustment=?,discount_percent=?,discount_amount=?,total_ht=?,total_ttc=?,logo_image=?,stamp_image=?,signature_image=?,notes=?,reference_doc=?,internal_notes=?,custom_fields=?,is_pos=?,pos_session_id=? WHERE id=?`).run(...vals, id);
         } else {
-            this.db.prepare(`INSERT INTO documents (id,user_id,type,number,date,due_date,expiry_date,currency,payment_mode,payment_status,paid_amount,paid_date,company_name,company_mf,company_address,company_phone,company_email,company_rc,client_id,client_name,client_mf,client_address,client_phone,client_email,items_json,apply_timbre,timbre_amount,rounding_adjustment,discount_percent,discount_amount,total_ht,total_ttc,logo_image,stamp_image,signature_image,notes,reference_doc,internal_notes,custom_fields,is_pos,pos_session_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, docData.userId, ...vals);
+            this.db.prepare(`INSERT INTO documents (id,user_id,type,number,date,due_date,expiry_date,currency,payment_mode,payment_status,paid_amount,paid_date,company_name,company_mf,company_address,company_phone,company_email,company_rc,company_bank,company_rib,client_id,client_name,client_mf,client_address,client_phone,client_email,items_json,apply_timbre,timbre_amount,rounding_adjustment,discount_percent,discount_amount,total_ht,total_ttc,logo_image,stamp_image,signature_image,notes,reference_doc,internal_notes,custom_fields,is_pos,pos_session_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, docData.userId, ...vals);
         }
         this.logActivity(docData.userId, existing?'update_document':'create_document', 'document', id, `${(docData.type||'').toUpperCase()} N° ${number}`);
         return this.getDocumentById(id);
@@ -353,7 +372,7 @@ class AppDatabase {
     }
     formatDocument(doc) {
         return {
-            id: doc.id, userId: doc.user_id, type: doc.type, number: doc.number, date: doc.date, dueDate: doc.due_date, expiryDate: doc.expiry_date, currency: doc.currency, paymentMode: doc.payment_mode, paymentStatus: doc.payment_status||'unpaid', paidAmount: doc.paid_amount||0, paidDate: doc.paid_date, companyName: doc.company_name, companyMF: doc.company_mf, companyAddress: doc.company_address, companyPhone: doc.company_phone, companyEmail: doc.company_email, companyRC: doc.company_rc, clientId: doc.client_id, clientName: doc.client_name, clientMF: doc.client_mf, clientAddress: doc.client_address, clientPhone: doc.client_phone, clientEmail: doc.client_email, items: (()=>{try{return JSON.parse(doc.items_json);}catch{return[];}})(), customFields: (()=>{try{return JSON.parse(doc.custom_fields||'[]');}catch{return[];}})(), applyTimbre: doc.apply_timbre===1, timbreAmount: doc.timbre_amount||0, roundingAdjustment: doc.rounding_adjustment||0, discountPercent: doc.discount_percent||0, discountAmount: doc.discount_amount||0, totalHT: doc.total_ht||0, totalTTC: doc.total_ttc||0, logoImage: doc.logo_image, stampImage: doc.stamp_image, signatureImage: doc.signature_image, notes: doc.notes, referenceDoc: doc.reference_doc, createdAt: doc.created_at, isPos: doc.is_pos===1, posSessionId: doc.pos_session_id
+            id: doc.id, userId: doc.user_id, type: doc.type, number: doc.number, date: doc.date, dueDate: doc.due_date, expiryDate: doc.expiry_date, currency: doc.currency, paymentMode: doc.payment_mode, paymentStatus: doc.payment_status||'unpaid', paidAmount: doc.paid_amount||0, paidDate: doc.paid_date, companyName: doc.company_name, companyMF: doc.company_mf, companyAddress: doc.company_address, companyPhone: doc.company_phone, companyEmail: doc.company_email, companyRC: doc.company_rc, companyBank: doc.company_bank, companyRIB: doc.company_rib, clientId: doc.client_id, clientName: doc.client_name, clientMF: doc.client_mf, clientAddress: doc.client_address, clientPhone: doc.client_phone, clientEmail: doc.client_email, items: (()=>{try{return JSON.parse(doc.items_json);}catch{return[];}})(), customFields: (()=>{try{return JSON.parse(doc.custom_fields||'[]');}catch{return[];}})(), applyTimbre: doc.apply_timbre===1, timbreAmount: doc.timbre_amount||0, roundingAdjustment: doc.rounding_adjustment||0, discountPercent: doc.discount_percent||0, discountAmount: doc.discount_amount||0, totalHT: doc.total_ht||0, totalTTC: doc.total_ttc||0, logoImage: doc.logo_image, stampImage: doc.stamp_image, signatureImage: doc.signature_image, notes: doc.notes, referenceDoc: doc.reference_doc, createdAt: doc.created_at, isPos: doc.is_pos===1, posSessionId: doc.pos_session_id
         };
     }
 
@@ -831,6 +850,40 @@ class AppDatabase {
     deleteReminder(id) { this.db.prepare('DELETE FROM reminders WHERE id=?').run(id); }
     formatReminder(r) {
         return { id: r.id, userId: r.user_id, title: r.title, description: r.description, dueDate: r.due_date, dueTime: r.due_time, entityType: r.entity_type, entityId: r.entity_id, done: r.done===1, notified: r.notified===1, createdAt: r.created_at };
+    }
+
+    // ==================== RELANCES (history) ====================
+    saveRelance(data) {
+        const id = data.id || uuidv4();
+        this.db.prepare(`INSERT INTO relances (id,user_id,invoice_id,attempt,method,recipient_email,notes) VALUES (?,?,?,?,?,?,?)`).run(id, data.userId, data.invoiceId, data.attempt||1, data.method||'pdf', data.recipientEmail||null, data.notes||null);
+        return this.db.prepare('SELECT * FROM relances WHERE id=?').get(id);
+    }
+    getRelancesByInvoice(invoiceId) {
+        return this.db.prepare('SELECT * FROM relances WHERE invoice_id=? ORDER BY sent_at ASC').all(invoiceId).map(r => this.formatRelance(r));
+    }
+    getRelanceAttemptCount(invoiceId) {
+        const row = this.db.prepare('SELECT MAX(attempt) as max_attempt FROM relances WHERE invoice_id=?').get(invoiceId);
+        return row?.max_attempt || 0;
+    }
+    formatRelance(r) {
+        return { id: r.id, userId: r.user_id, invoiceId: r.invoice_id, attempt: r.attempt, method: r.method, recipientEmail: r.recipient_email, sentAt: r.sent_at, notes: r.notes };
+    }
+
+    // ==================== EXCHANGE RATES ====================
+    getExchangeRates(userId) {
+        return this.db.prepare('SELECT * FROM exchange_rates WHERE user_id=? ORDER BY currency').all(userId);
+    }
+    saveExchangeRate(data) {
+        const existing = this.db.prepare('SELECT id FROM exchange_rates WHERE user_id=? AND currency=?').get(data.userId, data.currency);
+        if (existing) {
+            this.db.prepare('UPDATE exchange_rates SET rate=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(data.rate, existing.id);
+        } else {
+            this.db.prepare('INSERT INTO exchange_rates (id,user_id,currency,rate) VALUES (?,?,?,?)').run(uuidv4(), data.userId, data.currency, data.rate);
+        }
+        return this.db.prepare('SELECT * FROM exchange_rates WHERE user_id=? AND currency=?').get(data.userId, data.currency);
+    }
+    deleteExchangeRate(userId, currency) {
+        this.db.prepare('DELETE FROM exchange_rates WHERE user_id=? AND currency=?').run(userId, currency);
     }
 
     // ==================== ACTIVITY LOG ====================

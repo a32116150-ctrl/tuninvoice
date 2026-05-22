@@ -97,10 +97,40 @@ async function loadDashboard() {
         renderTopClients(stats.topClients || []);
         renderRecentActivity(stats.recentActivity || []);
         renderDashboardNotes();
+        autoCreateOverdueReminders();
     } catch (e) {
         console.error('Dashboard error:', e);
         showToast('Erreur tableau de bord', 'error');
     }
+}
+
+// Auto-create reminders for unpaid invoices past due date
+async function autoCreateOverdueReminders() {
+    if (!currentUser) return;
+    try {
+        const allDocs = await window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 });
+        const docs = allDocs.rows || [];
+        const today = new Date().toISOString().split('T')[0];
+        for (const doc of docs) {
+            if (doc.type !== 'facture' || doc.paymentStatus === 'paid') continue;
+            if (!doc.dueDate || doc.dueDate >= today) continue;
+            // Check if a reminder already exists for this invoice
+            const existing = await window.electronAPI.getReminders(currentUser.id);
+            const already = existing.some(r => r.entityType === 'facture' && r.entityId === doc.id && !r.done);
+            if (already) continue;
+            // Create reminder 3 days after due date
+            const reminderDate = new Date(doc.dueDate);
+            reminderDate.setDate(reminderDate.getDate() + 1);
+            const title = `Facture ${doc.number} — ${doc.clientName} (${formatAmount(doc.totalTTC - (doc.paidAmount || 0))} TND)`;
+            await window.electronAPI.saveReminder({
+                userId: currentUser.id, title,
+                dueDate: reminderDate.toISOString().split('T')[0],
+                dueTime: '09:00',
+                entityType: 'facture',
+                entityId: doc.id
+            });
+        }
+    } catch {}
 }
 
 function renderRecentDocs(docs) {
@@ -115,9 +145,10 @@ function renderRecentDocs(docs) {
             <td style="font-weight:600">${formatAmount(doc.totalTTC)} ${doc.currency}</td>
             <td>${renderPaymentBadge(doc)}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="viewDocument('${doc.id}')"     title="Aperçu">👁️</button>
-                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir">🔄</button>` : ''}
-                <button class="btn-icon btn-edit"   onclick="editExistingDoc('${doc.id}')"  title="Modifier">✏️</button>
+                <button class="btn-icon btn-view"   onclick="viewDocument('${doc.id}')"     title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
+                <button class="btn-icon btn-edit"   onclick="editExistingDoc('${doc.id}')"  title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>
+                <button class="btn-icon" style="color:#3b82f6" onclick="emailSingleDoc('${doc.id}')" title="Email"><i data-lucide="mail" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-pdf"    onclick="downloadDocPDF('${doc.id}')"   title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -125,6 +156,7 @@ function renderRecentDocs(docs) {
                 <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`).join('')}
     </tbody></table>`;
+    if (window.lucide) lucide.createIcons();
 }
 
 function renderPaymentBadge(doc) {
@@ -449,6 +481,14 @@ async function initNewDocument() {
     document.getElementById('docDate').valueAsDate = new Date();
     const due = new Date(); due.setDate(due.getDate() + 30);
     document.getElementById('docDueDate').valueAsDate = due;
+    // Apply default currency from user settings
+    try {
+        const settings = await window.electronAPI.getSettings(currentUser.id);
+        if (settings?.currency_default) {
+            const currEl = document.getElementById('docCurrency');
+            if (currEl) currEl.value = settings.currency_default;
+        }
+    } catch {}
     const docNumInput = document.getElementById('docNumber');
     try {
         const number = await window.electronAPI.peekNextDocNumber({ userId: currentUser.id, type: currentDocType, year: new Date().getFullYear() });
@@ -459,6 +499,7 @@ async function initNewDocument() {
         docNumInput.dataset.manualInit = '1';
         docNumInput.addEventListener('input', () => { docNumberManuallySet = true; });
     }
+    restoreDraft();
     await loadCompanyIntoForm();
     await loadClientsDropdown();
     await loadServicesDropdown();
@@ -467,7 +508,8 @@ async function initNewDocument() {
     saveBtn.innerHTML = getDocTypeLabel(currentDocType);
     saveBtn.onclick = saveAndDownloadPDF;
     editingDocId = null;
-    restoreDraft();
+    resetDocDirty();
+    watchDocFormDirty();
     initNaturalDateInputs();
     initMFAutoComplete();
     updateBreadcrumb(getDocTypeLabel(currentDocType) + ' — Nouveau');
@@ -483,6 +525,8 @@ async function loadCompanyIntoForm() {
         document.getElementById('docCompanyPhone').value = c.phone || '';
         document.getElementById('docCompanyEmail').value = c.email || '';
         document.getElementById('docCompanyRC').value = c.rc || '';
+        document.getElementById('docCompanyBank').value = c.bank || '';
+        document.getElementById('docCompanyRIB').value = c.rib || '';
         if (c.logo_image) logoImage = c.logo_image;
         if (c.stamp_image) stampImage = c.stamp_image;
         if (c.signature_image) signatureImage = c.signature_image;
@@ -572,13 +616,19 @@ function addItem(data) {
     document.getElementById('itemsBody').appendChild(tr);
     initItemDrag(tr);
     document.getElementById(`desc${itemCount}`).focus();
+    updateItemCount();
     calculateTotals();
     if (window.lucide) lucide.createIcons();
 }
 
+function updateItemCount() {
+    const el = document.getElementById('itemCountDisplay');
+    if (el) el.textContent = document.getElementById('itemsBody')?.children.length || 0;
+}
+
 function removeItem(btn) {
     if (document.getElementById('itemsBody').children.length <= 1) { showToast('Au moins une ligne requise', 'warning'); return; }
-    btn.closest('tr').remove(); renumberItems(); calculateTotals();
+    btn.closest('tr').remove(); renumberItems(); calculateTotals(); updateItemCount();
 }
 
 function renumberItems() {
@@ -608,6 +658,7 @@ function calculateTotals() {
         else if (tva === 7) tva7 += line * 0.07;
     }
     const discountPct = parseFloat(document.getElementById('discountPercent')?.value) || 0;
+    const originalHTRaw = totalHTRaw;
     if (discountPct > 0) {
         const f = 1 - discountPct / 100;
         totalHTRaw *= f;
@@ -636,6 +687,18 @@ function calculateTotals() {
     setRow('tva7Row', 'tva7Amount', tva7, currency);
     setRow('timbreRow', 'timbreTotal', timbreAmount, currency);
 
+    const discountRow = document.getElementById('discountRow');
+    const discountAmtEl = document.getElementById('discountAmount');
+    const discountLabel = document.getElementById('discountLabel');
+    if (discountPct > 0) {
+        discountRow.classList.remove('hidden');
+        const discountVal = originalHTRaw - totalHTRaw;
+        discountAmtEl.textContent = '−' + formatAmount(discountVal) + ' ' + currency;
+        discountLabel.textContent = discountPct;
+    } else {
+        discountRow.classList.add('hidden');
+    }
+
     // Rounding adjustment row
     const adjRow = document.getElementById('roundingAdjRow');
     const adjAmt = document.getElementById('roundingAdjAmount');
@@ -649,6 +712,22 @@ function calculateTotals() {
     }
 
     document.getElementById('totalTTC').textContent = formatAmount(totalTTCRounded) + ' ' + currency;
+    updateEquivalent(currency, totalTTCRounded);
+}
+
+function updateEquivalent(docCurrency, total) {
+    const row = document.getElementById('equivRow');
+    const amt = document.getElementById('equivAmount');
+    if (!row || !amt) return;
+    if (docCurrency === 'TND') { row.style.display = 'none'; return; }
+    // Show equivalent in TND using stored rate
+    const rateEl = document.getElementById('rate' + docCurrency);
+    if (!rateEl) { row.style.display = 'none'; return; }
+    const rate = parseFloat(rateEl.value);
+    if (!rate || rate <= 0) { row.style.display = 'none'; return; }
+    const equiv = total / rate;
+    row.style.display = 'flex';
+    amt.textContent = formatAmount(equiv) + ' TND';
 }
 
 function setRow(rowId, amtId, value, currency) {
@@ -770,7 +849,7 @@ function openClientModal(clientId = null) {
     if (clientId) {
         const client = allClients.find(c => c.id == clientId);
         if (client) {
-            if (title) title.innerHTML = '✏️ Modifier Client';
+            if (title) title.innerHTML = '<i data-lucide="edit" class="lucide-sm"></i> Modifier Client';
             document.getElementById('newClientName').value = client.name || '';
             document.getElementById('newClientMF').value = client.mf || '';
             document.getElementById('newClientAddress').value = client.address || '';
@@ -779,7 +858,7 @@ function openClientModal(clientId = null) {
             setTimeout(() => geocodeAddress(document.getElementById('newClientAddress').value), 300);
         }
     } else {
-        if (title) title.innerHTML = '➕ Nouveau Client';
+        if (title) title.innerHTML = '<i data-lucide="plus-circle" class="lucide-sm"></i> Nouveau Client';
     }
 
     modal.classList.add('active');
@@ -1124,9 +1203,11 @@ function buildThemedInvoicePreview(d) {
             <div style="color:${c.textLight};font-size:13px"># ${escapeHtml(d.docNumber)} | ${formatDate(d.docDate)}</div>
             <div style="font-size:18px;font-weight:700;margin-top:12px;color:${c.secondary}">${escapeHtml(d.companyName)}</div>
             <div style="font-size:12px;color:${c.textLight}">${d.companyAddress ? escapeHtml(d.companyAddress) : ''} ${d.companyMF ? '| MF: ' + escapeHtml(d.companyMF) : ''}</div>
+            ${d.companyBank ? `<div style="font-size:12px;color:${c.textLight}">Banque: ${escapeHtml(d.companyBank)}</div>` : ''}
+            ${d.companyRIB ? `<div style="font-size:12px;color:${c.textLight}">RIB: ${escapeHtml(d.companyRIB)}</div>` : ''}
         </div>`;
     } else {
-        const left = `<div>${logoHtml}<div style="font-size:18px;font-weight:700;color:${c.secondary};font-family:${f.header}">${escapeHtml(d.companyName)}</div><div style="font-size:12px;color:${c.textLight};margin-top:6px">${d.companyAddress ? `<div>${escapeHtml(d.companyAddress)}</div>` : ''} ${d.companyPhone ? `<div>📞 ${escapeHtml(d.companyPhone)}</div>` : ''} ${d.companyMF ? `<div>MF: ${escapeHtml(d.companyMF)}</div>` : ''}</div></div>`;
+        const left = `<div>${logoHtml}<div style="font-size:18px;font-weight:700;color:${c.secondary};font-family:${f.header}">${escapeHtml(d.companyName)}</div><div style="font-size:12px;color:${c.textLight};margin-top:6px">${d.companyAddress ? `<div>${escapeHtml(d.companyAddress)}</div>` : ''} ${d.companyPhone ? `<div>Tél: ${escapeHtml(d.companyPhone)}</div>` : ''} ${d.companyMF ? `<div>MF: ${escapeHtml(d.companyMF)}</div>` : ''} ${d.companyBank ? `<div>Banque: ${escapeHtml(d.companyBank)}</div>` : ''} ${d.companyRIB ? `<div>RIB: ${escapeHtml(d.companyRIB)}</div>` : ''}</div></div>`;
         const right = `<div style="text-align:right"><div style="font-family:${f.header};font-size:30px;font-weight:800;color:${c.primary}">${escapeHtml(d.typeLabel)}</div><div style="width:50px;height:3px;background:${c.primary};margin:10px 0 12px auto"></div><div style="font-size:13px;color:${c.textLight}"><div><strong style="color:${c.text}">#</strong> ${escapeHtml(d.docNumber)}</div><div><strong style="color:${c.text}">Date:</strong> ${formatDate(d.docDate)}</div>${d.docDueDate ? `<div><strong style="color:${c.text}">Échéance:</strong> ${formatDate(d.docDueDate)}</div>` : ''} ${d.paymentMode ? `<div><strong style="color:${c.text}">Paiement:</strong> ${escapeHtml(d.paymentMode)}</div>` : ''}</div></div>`;
         headerHtml = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px">${t.headerStyle === 'right' ? right + left : left + right}</div>`;
     }
@@ -1142,8 +1223,8 @@ function buildThemedInvoicePreview(d) {
             <div style="font-weight:600;font-size:15px;color:${c.text}">${escapeHtml(d.clientName)}</div>
             <div style="font-size:12px;color:${c.textLight};margin-top:4px">
                 ${d.clientAddress ? `<div>${escapeHtml(d.clientAddress)}</div>` : ''}
-                ${d.clientPhone ? `<div>📞 ${escapeHtml(d.clientPhone)}</div>` : ''}
-                ${d.clientEmail ? `<div>✉ ${escapeHtml(d.clientEmail)}</div>` : ''}
+                ${d.clientPhone ? `<div>Tél: ${escapeHtml(d.clientPhone)}</div>` : ''}
+                ${d.clientEmail ? `<div>Email: ${escapeHtml(d.clientEmail)}</div>` : ''}
                 ${d.clientMF ? `<div>MF: ${escapeHtml(d.clientMF)}</div>` : ''}
             </div>
         </div>
@@ -1179,6 +1260,35 @@ function buildThemedInvoicePreview(d) {
     </div>`;
 }
 
+let _docFormDirty = false;
+function markDocDirty() { _docFormDirty = true; }
+function resetDocDirty() { _docFormDirty = false; }
+function watchDocFormDirty() {
+    const form = document.querySelector('.document-form');
+    if (!form) return;
+    form.querySelectorAll('input, select, textarea').forEach(el => {
+        el.removeEventListener('input', markDocDirty);
+        el.removeEventListener('change', markDocDirty);
+        el.addEventListener('input', markDocDirty);
+        el.addEventListener('change', markDocDirty);
+    });
+}
+window.addEventListener('beforeunload', (e) => {
+    if (_docFormDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+// Intercept navigation to check for unsaved changes
+document.addEventListener('click', (e) => {
+    const navItem = e.target.closest('.nav-item');
+    if (navItem && _docFormDirty && document.getElementById('page-new-document')?.classList.contains('active')) {
+        if (!confirm('Vous avez des modifications non enregistrées. Quitter quand même ?')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        resetDocDirty();
+    }
+});
+
 async function saveAndDownloadPDF() {
     if (!validateDocumentForm()) return;
     showLoading('Enregistrement...');
@@ -1209,7 +1319,7 @@ async function saveAndDownloadPDF() {
                     }
                 }, 500);
             }
-            resetDocumentForm(); navigateTo('documents');
+            resetDocDirty(); resetDocumentForm(); navigateTo('documents');
         }
     } catch { showToast("Erreur lors de l'enregistrement", 'error'); }
     finally { hideLoading(); }
@@ -1394,6 +1504,7 @@ function collectDocumentData() {
         companyName: get('docCompanyName'), companyMF: get('docCompanyMF'),
         companyAddress: get('docCompanyAddress'), companyPhone: get('docCompanyPhone'),
         companyEmail: get('docCompanyEmail'), companyRC: get('docCompanyRC'),
+        companyBank: get('docCompanyBank'), companyRIB: get('docCompanyRIB'),
         clientName: get('docClientName'), clientMF: get('docClientMF'),
         clientAddress: get('docClientAddress'), clientPhone: get('docClientPhone'), clientEmail: get('docClientEmail'),
         items,
@@ -1403,14 +1514,23 @@ function collectDocumentData() {
         logoImage, stampImage, signatureImage,
         notes: get('docNotes'),
         internalNotes: document.getElementById('docInternalNotes')?.value || '',
-        customFields: collectCustomFields()
+        customFields: collectCustomFields(),
+        recurring: document.getElementById('docRecurring')?.checked || false,
+        recurringFrequency: document.getElementById('docRecurring')?.checked ? document.getElementById('recurringFrequency')?.value || 'monthly' : null,
+        recurringEndDate: document.getElementById('docRecurring')?.checked ? document.getElementById('recurringEndDate')?.value || null : null
     };
+}
+function toggleRecurringFields() {
+    const opts = document.getElementById('recurringOptions');
+    opts.style.display = document.getElementById('docRecurring').checked ? 'flex' : 'none';
 }
 
 function resetDocumentForm() {
     ['docClientName', 'docClientMF', 'docClientAddress', 'docClientPhone', 'docClientEmail', 'docNotes'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('docInternalNotes').value = '';
     document.getElementById('applyTimbre').checked = false;
+    const recCb = document.getElementById('docRecurring');
+    if (recCb) { recCb.checked = false; document.getElementById('recurringOptions').style.display = 'none'; }
     document.getElementById('itemsBody').innerHTML = '';
     itemCount = 0; editingDocId = null;
     clearDraft();
@@ -1490,11 +1610,13 @@ function renderDocumentsTable(docs) {
                 ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
                 ${doc.type !== 'ticket' ? `<button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>` : ''}
                 <button class="btn-icon"             onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6"><i data-lucide="clipboard-list" class="lucide-sm"></i></button>
+                <button class="btn-icon" style="color:#3b82f6"  onclick="emailSingleDoc('${doc.id}')"        title="Email"><i data-lucide="mail" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"           title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 </button>
                 ${doc.type === 'facture' ? `<button class="btn-icon btn-payment" onclick="openPaymentModal('${doc.id}')" title="Paiement" style="color:#10b981"><i data-lucide="coins" class="lucide-sm"></i></button>` : ''}
+                ${doc.type === 'facture' ? `<button class="btn-icon" onclick="convertToAvoir('${doc.id}')" title="Convertir en Avoir" style="color:#f59e0b"><i data-lucide="undo-2" class="lucide-sm"></i></button>` : ''}
                 ${doc.type === 'ba' ? `<button class="btn-icon" onclick="convertBAToExpense('${doc.id}')" title="Convertir en dépense" style="color:#8b5cf6"><i data-lucide="shopping-cart" class="lucide-sm"></i></button>` : ''}
                 <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`).join('')}
@@ -1567,12 +1689,23 @@ async function batchExportPDF() {
 let _selectedDocIds = new Set();
 
 function updateSelectedCount() {
-    _selectedDocIds = new Set();
-    document.querySelectorAll('.doc-select:checked').forEach(cb => {
-        _selectedDocIds.add(parseInt(cb.value));
-    });
-    const count = _selectedDocIds.size;
+    const count = document.querySelectorAll('.doc-select:checked').length;
+    document.getElementById('batchDeleteBtn').disabled = count === 0;
+    document.getElementById('batchPaidBtn').disabled = count === 0;
+    document.getElementById('batchPdfBtn').disabled = count === 0;
     document.getElementById('batchEmailBtn').disabled = count === 0;
+}
+
+async function emailSingleDoc(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    if (!doc.clientEmail) { showToast('Ce document n\'a pas d\'email client', 'warning'); return; }
+    // Select it and open batch email modal
+    document.querySelectorAll('.doc-select').forEach(cb => cb.checked = false);
+    const cb = document.querySelector(`.doc-select[value="${docId}"]`);
+    if (cb) cb.checked = true;
+    updateSelectedCount();
+    await emailSelectedDocs();
 }
 
 async function emailSelectedDocs() {
@@ -1581,8 +1714,21 @@ async function emailSelectedDocs() {
     const docs = allDocuments.filter(d => ids.includes(String(d.id)));
     if (!docs.length) return;
     document.getElementById('batchEmailCount').textContent = docs.length;
-    document.getElementById('batchEmailSubject').value = docs.length === 1 && docs[0].number ? 'Facture ' + docs[0].number : 'Vos documents';
-    document.getElementById('batchEmailBody').value = '';
+    // Load saved templates with variable substitution
+    let defaultSubject = '', defaultBody = '';
+    try {
+        const settings = currentUser ? await window.electronAPI.getSettings(currentUser.id) : null;
+        if (settings) {
+            defaultSubject = settings.email_default_subject || '';
+            defaultBody = settings.email_default_body || '';
+        }
+    } catch {}
+    const first = docs[0];
+    const currency = first?.currency || 'TND';
+    if (!defaultSubject) defaultSubject = docs.length === 1 && first?.number ? 'Facture ' + first.number : 'Vos documents';
+    if (!defaultBody) defaultBody = '';
+    document.getElementById('batchEmailSubject').value = applyEmailTemplateVars(defaultSubject, first, currency);
+    document.getElementById('batchEmailBody').value = applyEmailTemplateVars(defaultBody, first, currency);
     document.getElementById('batchEmailProgress').style.display = 'none';
     document.getElementById('sendBatchBtn').disabled = false;
     document.getElementById('sendBatchBtn').innerHTML = '<i data-lucide="send"></i> Envoyer';
@@ -1595,8 +1741,17 @@ async function sendBatchEmails() {
     if (!ids.length) return;
     const docs = allDocuments.filter(d => ids.includes(String(d.id)));
     if (!docs.length) return;
-    const subject = document.getElementById('batchEmailSubject').value || 'Documents';
-    const body = document.getElementById('batchEmailBody').value || '';
+    // Get raw template text (before variable substitution for first doc)
+    let rawSubject = '', rawBody = '';
+    try {
+        const settings = currentUser ? await window.electronAPI.getSettings(currentUser.id) : null;
+        if (settings) {
+            rawSubject = settings.email_default_subject || '';
+            rawBody = settings.email_default_body || '';
+        }
+    } catch {}
+    if (!rawSubject) rawSubject = 'Documents';
+    if (!rawBody) rawBody = '';
 
     document.getElementById('sendBatchBtn').disabled = true;
     document.getElementById('sendBatchBtn').innerHTML = '<i data-lucide="loader" class="spin"></i> Envoi...';
@@ -1608,6 +1763,9 @@ async function sendBatchEmails() {
         const doc = docs[i];
         try {
             if (doc.clientEmail) {
+                const currency = doc.currency || 'TND';
+                const subj = applyEmailTemplateVars(rawSubject, doc, currency);
+                const bod = applyEmailTemplateVars(rawBody, doc, currency);
                 const pdfResult = await window.electronAPI.generateDocumentPDF({
                     doc: doc,
                     company: { name: doc.companyName || '' },
@@ -1620,8 +1778,8 @@ async function sendBatchEmails() {
                     const emailResult = await window.electronAPI.sendEmail({
                         userId: currentUser.id,
                         to: doc.clientEmail,
-                        subject,
-                        body,
+                        subject: subj,
+                        body: bod,
                         attachments: [{ path: pdfResult.path, filename: doc.number + '.pdf' }]
                     });
                     if (emailResult.success) sent++;
@@ -1746,11 +1904,14 @@ function filterDocuments() {
     const search = document.getElementById('searchDocs').value.toLowerCase();
     const type = document.getElementById('filterType').value;
     const status = document.getElementById('filterPaymentStatus')?.value || '';
+    const dateFrom = document.getElementById('filterDateFrom')?.value;
+    const dateTo = document.getElementById('filterDateTo')?.value;
     const filtered = allDocuments.filter(doc => {
         const matchSearch = !search || doc.number.toLowerCase().includes(search) || doc.clientName.toLowerCase().includes(search);
         const matchType = !type || doc.type === type;
         const matchStatus = !status || doc.paymentStatus === status;
-        return matchSearch && matchType && matchStatus;
+        const matchDate = (!dateFrom || doc.date >= dateFrom) && (!dateTo || doc.date <= dateTo);
+        return matchSearch && matchType && matchStatus && matchDate;
     });
     renderDocumentsTable(filtered);
 }
@@ -1771,6 +1932,67 @@ async function viewDocument(docId) {
     if (editBtn) {
         editBtn.onclick = () => { closePreview(); editExistingDoc(docId); };
     }
+    renderPipelineTimeline(doc);
+    renderRelanceHistory(doc);
+}
+
+async function renderRelanceHistory(doc) {
+    const container = document.getElementById('pipelineTimeline');
+    const nodes = document.getElementById('pipelineNodes');
+    if (!container || !nodes) return;
+    if (doc.type !== 'facture') return;
+    try {
+        const relances = await window.electronAPI.getRelancesByInvoice(doc.id);
+        if (!relances || !relances.length) return;
+        container.style.display = 'block';
+        const html = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:0.8rem">' +
+            relances.map(r => {
+                const icon = r.method === 'email' ? 'mail' : 'file-text';
+                const label = r.method === 'email' ? 'Email' : 'PDF';
+                return `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;background:#fef3c7;color:#92400e"><i data-lucide="${icon}" style="width:10px;height:10px"></i> Relance N°${r.attempt} (${label}) ${r.sentAt ? new Date(r.sentAt).toLocaleDateString('fr-FR') : ''}</span>`;
+            }).join('') + '</div>';
+        nodes.insertAdjacentHTML('beforeend', html);
+        if (window.lucide) lucide.createIcons();
+    } catch {}
+}
+
+function renderPipelineTimeline(doc) {
+    const container = document.getElementById('pipelineTimeline');
+    const nodes = document.getElementById('pipelineNodes');
+    if (!container || !nodes) return;
+    const chain = [];
+    // Walk backwards to find ancestors
+    let current = doc;
+    const visited = new Set();
+    while (current && current.reference_doc && !visited.has(current.id)) {
+        visited.add(current.id);
+        const parent = allDocuments.find(d => d.id === current.reference_doc);
+        if (parent) { chain.unshift(parent); current = parent; }
+        else break;
+    }
+    chain.push(doc);
+    // Walk forwards to find descendants
+    let searchId = doc.id;
+    const visited2 = new Set();
+    for (let i = 0; i < 10; i++) {
+        if (visited2.has(searchId)) break;
+        visited2.add(searchId);
+        const child = allDocuments.find(d => d.reference_doc === searchId);
+        if (child && !visited2.has(child.id)) { chain.push(child); searchId = child.id; }
+        else break;
+    }
+    if (chain.length <= 1) { container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    nodes.innerHTML = chain.map((d, i) => {
+        const isCurrent = d.id === doc.id;
+        const arrow = i < chain.length - 1 ? `<span style="color:var(--text-muted);font-size:1rem;margin:0 2px">→</span>` : '';
+        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:${isCurrent?'var(--primary)':'var(--gray-100)'};color:${isCurrent?'white':'var(--text)'};font-weight:${isCurrent?'600':'400'};font-size:0.8rem;white-space:nowrap"><i data-lucide="${getDocTypeIcon(d.type)}" style="width:12px;height:12px"></i> ${d.number}</span>${arrow}`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+function getDocTypeIcon(type) {
+    const map = { facture: 'file-text', devis: 'clipboard-list', bon: 'shopping-cart', bl: 'truck', ba: 'inbox', bs: 'upload', be: 'package', avoir: 'undo-2', ticket: 'receipt' };
+    return map[type] || 'file';
 }
 
 async function createRetenueFromInvoice(doc) {
@@ -1819,9 +2041,16 @@ function populateFormWithDoc(doc) {
     document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === doc.type);
     updateDocType();
     const internalNotesEl = document.getElementById('docInternalNotes'); if (internalNotesEl) internalNotesEl.value = doc.internalNotes || '';
-    const fields = { docCompanyName: doc.companyName, docCompanyMF: doc.companyMF, docCompanyAddress: doc.companyAddress, docCompanyPhone: doc.companyPhone, docCompanyEmail: doc.companyEmail, docCompanyRC: doc.companyRC, docClientName: doc.clientName, docClientMF: doc.clientMF, docClientAddress: doc.clientAddress, docClientPhone: doc.clientPhone, docClientEmail: doc.clientEmail, docNumber: doc.number, docDate: doc.date, docDueDate: doc.dueDate, docCurrency: doc.currency || 'TND', docPayment: doc.paymentMode || 'Virement bancaire', docNotes: doc.notes };
+    const fields = { docCompanyName: doc.companyName, docCompanyMF: doc.companyMF, docCompanyAddress: doc.companyAddress, docCompanyPhone: doc.companyPhone, docCompanyEmail: doc.companyEmail, docCompanyRC: doc.companyRC, docCompanyBank: doc.companyBank, docCompanyRIB: doc.companyRIB, docClientName: doc.clientName, docClientMF: doc.clientMF, docClientAddress: doc.clientAddress, docClientPhone: doc.clientPhone, docClientEmail: doc.clientEmail, docNumber: doc.number, docDate: doc.date, docDueDate: doc.dueDate, docCurrency: doc.currency || 'TND', docPayment: doc.paymentMode || 'Virement bancaire', docNotes: doc.notes };
     Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
     document.getElementById('applyTimbre').checked = doc.applyTimbre || false;
+    const recCb = document.getElementById('docRecurring');
+    if (recCb) {
+        recCb.checked = doc.recurring || false;
+        document.getElementById('recurringOptions').style.display = doc.recurring ? 'flex' : 'none';
+        if (doc.recurringFrequency) document.getElementById('recurringFrequency').value = doc.recurringFrequency;
+        if (doc.recurringEndDate) document.getElementById('recurringEndDate').value = doc.recurringEndDate;
+    }
     logoImage = doc.logoImage || logoImage || null;
     stampImage = doc.stampImage || stampImage || null;
     signatureImage = doc.signatureImage || signatureImage || null;
@@ -1842,6 +2071,32 @@ async function convertToInvoice(docId) {
         } catch { showToast('Erreur de conversion', 'error'); }
         finally { hideLoading(); }
     }, 'Convertir', 'btn-primary');
+}
+
+async function convertToAvoir(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    showConfirm('Avoir', `Créer un avoir pour ${doc.number} ?`, async () => {
+        showLoading('Création de l\'avoir...');
+        try {
+            const result = await window.electronAPI.convertDocument({ sourceId: docId, targetType: 'avoir', userId: currentUser.id, year: new Date().getFullYear() });
+            if (result.success) { showToast('Avoir créé depuis ' + doc.number, 'success'); await loadDocuments(); navigateTo('documents'); }
+        } catch { showToast('Erreur de création', 'error'); }
+        finally { hideLoading(); }
+    }, 'Créer l\'avoir', 'btn-primary');
+}
+
+async function duplicateDocument(docId) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    showConfirm('Dupliquer', `Créer une copie de ${doc.number} ?`, async () => {
+        showLoading('Duplication...');
+        try {
+            const result = await window.electronAPI.duplicateDocument({ docId, userId: currentUser.id });
+            if (result.success) { showToast('Document dupliqué', 'success'); await loadDocuments(); navigateTo('documents'); }
+        } catch { showToast('Erreur de duplication', 'error'); }
+        finally { hideLoading(); }
+    }, 'Dupliquer', 'btn-primary');
 }
 
 async function confirmDeleteDoc(docId) {
@@ -2078,7 +2333,7 @@ let currentCompanySettings = null;
 async function loadCompanyPage() {
     try {
         const c = await window.electronAPI.getCompany(currentUser.id) || {};
-        const fields = { companyName: c.name || currentUser.company || '', companyMF: c.mf || currentUser.mf || '', companyAddress: c.address || '', companyPhone: c.phone || '', companyEmail: c.email || '', companyRC: c.rc || '', companyWebsite: c.website || '', companyBank: c.bank || '' };
+        const fields = { companyName: c.name || currentUser.company || '', companyMF: c.mf || currentUser.mf || '', companyAddress: c.address || '', companyPhone: c.phone || '', companyEmail: c.email || '', companyRC: c.rc || '', companyWebsite: c.website || '', companyBank: c.bank || '', companyRIB: c.rib || '' };
         Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val; });
         document.getElementById('companyProfileName').textContent = c.name || currentUser.company || 'Votre Entreprise';
         document.getElementById('companyProfileMF').textContent = (c.mf || currentUser.mf) ? `Matricule Fiscal: ${c.mf || currentUser.mf}` : 'Matricule Fiscal: —';
@@ -2111,7 +2366,7 @@ async function saveCompanySettings() {
     const settings = {
         userId: currentUser.id, name: get('companyName'), mf: get('companyMF'), address: get('companyAddress'),
         phone: get('companyPhone'), email: get('companyEmail'), rc: get('companyRC'), website: get('companyWebsite'),
-        bank: get('companyBank'), logoImage, stampImage, signatureImage,
+        bank: get('companyBank'), rib: get('companyRIB'), logoImage, stampImage, signatureImage,
         show_logo: isChecked('compShowLogo'), show_stamp: isChecked('compShowStamp'),
         show_signature: isChecked('compShowSignature'), show_qr: isChecked('compShowQR'), show_accent: isChecked('compShowAccent')
     };
@@ -2195,6 +2450,178 @@ async function restoreBackup(backupPath) {
     }, 'Restaurer', 'btn-warning');
 }
 
+// ==================== SMTP / EMAIL TEMPLATES ====================
+const SMTP_PROVIDERS = {
+    gmail:     { host: 'smtp.gmail.com',       port: 587, secure: false },
+    outlook:   { host: 'smtp-mail.outlook.com', port: 587, secure: false },
+    yahoo:     { host: 'smtp.mail.yahoo.com',   port: 465, secure: true  },
+    laposte:   { host: 'smtp.tunet.tn',         port: 587, secure: false },
+};
+function applySmtpProvider() {
+    const sel = document.getElementById('smtpProvider');
+    const cfg = SMTP_PROVIDERS[sel.value];
+    if (!cfg) return;
+    document.getElementById('smtpHost').value = cfg.host;
+    document.getElementById('smtpPort').value = cfg.port;
+    document.getElementById('smtpSecure').checked = cfg.secure;
+}
+async function loadSmtpConfig() {
+    if (!currentUser) return;
+    try {
+        const settings = await window.electronAPI.getSettings(currentUser.id);
+        if (settings) {
+            const h = document.getElementById('smtpHost'); if (h && settings.smtp_host) h.value = settings.smtp_host;
+            const p = document.getElementById('smtpPort'); if (p && settings.smtp_port) p.value = settings.smtp_port;
+            const u = document.getElementById('smtpUser'); if (u && settings.smtp_user) u.value = settings.smtp_user;
+            const pw = document.getElementById('smtpPass'); if (pw && settings.smtp_pass) pw.value = settings.smtp_pass;
+            const s = document.getElementById('smtpSecure'); if (s) s.checked = settings.smtp_secure === 1;
+            const subj = document.getElementById('emailDefaultSubject');
+            if (subj && settings.email_default_subject) subj.value = settings.email_default_subject;
+            const body = document.getElementById('emailDefaultBody');
+            if (body && settings.email_default_body) body.value = settings.email_default_body;
+            const sel = document.getElementById('smtpProvider');
+            if (sel && settings.smtp_host) {
+                const match = Object.entries(SMTP_PROVIDERS).find(([,v]) =>
+                    v.host === settings.smtp_host && v.port === settings.smtp_port
+                );
+                if (match) sel.value = match[0];
+            }
+        }
+    } catch {}
+}
+async function saveSmtpConfig() {
+    if (!currentUser) return;
+    const settings = {
+        smtp_host: document.getElementById('smtpHost').value.trim(),
+        smtp_port: parseInt(document.getElementById('smtpPort').value) || 587,
+        smtp_user: document.getElementById('smtpUser').value.trim(),
+        smtp_pass: document.getElementById('smtpPass').value,
+        smtp_secure: document.getElementById('smtpSecure').checked ? 1 : 0
+    };
+    if (!settings.smtp_host || !settings.smtp_user || !settings.smtp_pass) {
+        showToast('Veuillez remplir tous les champs obligatoires', 'warning'); return;
+    }
+    showLoading('Enregistrement...');
+    try {
+        const result = await window.electronAPI.updateSettings({ userId: currentUser.id, settings });
+        if (result.success) { showToast('Configuration SMTP enregistrée', 'success'); }
+        else showToast('Erreur: ' + result.error, 'error');
+    } catch { showToast('Erreur de communication', 'error'); }
+    finally { hideLoading(); }
+}
+async function testSmtpConfig() {
+    const host = document.getElementById('smtpHost').value.trim();
+    const port = parseInt(document.getElementById('smtpPort').value) || 587;
+    const user = document.getElementById('smtpUser').value.trim();
+    const pass = document.getElementById('smtpPass').value;
+    const secure = document.getElementById('smtpSecure').checked;
+    if (!host || !user || !pass) { showToast('Remplissez d\'abord les champs SMTP', 'warning'); return; }
+    showLoading('Test de connexion...');
+    try {
+        const result = await window.electronAPI.testSmtpConnection({ host, port, user, pass, secure });
+        if (result.success) showToast('Connexion SMTP réussie ✓', 'success');
+        else showToast('Échec: ' + (result.error || 'Connexion refusée'), 'error');
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+    finally { hideLoading(); }
+}
+function getDefaultEmailSubject(doc) {
+    return 'Votre document ' + (doc?.number || '');
+}
+function getDefaultEmailBody(doc, currency) {
+    return 'Bonjour,\n\nVeuillez trouver ci-joint le document ' + (doc?.number || '') + ' d\'un montant de ' + (doc?.totalTTC || '0') + ' ' + (currency || 'TND') + '.\n\nCordialement,\n' + (doc?.companyName || '');
+}
+function applyEmailTemplateVars(text, doc, currency) {
+    if (!text) return text;
+    return text
+        .replace(/\{\{clientName\}\}/g, doc?.clientName || '')
+        .replace(/\{\{docNumber\}\}/g, doc?.number || '')
+        .replace(/\{\{totalTTC\}\}/g, (doc?.totalTTC || 0).toFixed(3))
+        .replace(/\{\{currency\}\}/g, currency || 'TND')
+        .replace(/\{\{companyName\}\}/g, doc?.companyName || '')
+        .replace(/\{\{dueDate\}\}/g, doc?.dueDate || '')
+        .replace(/\{\{date\}\}/g, doc?.date || '');
+}
+async function saveEmailTemplates() {
+    if (!currentUser) return;
+    const settings = {
+        email_default_subject: document.getElementById('emailDefaultSubject').value.trim(),
+        email_default_body: document.getElementById('emailDefaultBody').value
+    };
+    try {
+        const result = await window.electronAPI.updateSettings({ userId: currentUser.id, settings });
+        if (result.success) showToast('Modèles d\'email enregistrés', 'success');
+        else showToast('Erreur: ' + result.error, 'error');
+    } catch { showToast('Erreur de communication', 'error'); }
+}
+
+// ==================== EXCHANGE RATES ====================
+async function loadExchangeRates() {
+    if (!currentUser) return;
+    try {
+        const rates = await window.electronAPI.getExchangeRates(currentUser.id);
+        ['EUR', 'USD'].forEach(cur => {
+            const el = document.getElementById('rate' + cur);
+            const display = document.getElementById('rate' + cur + 'Display');
+            if (!el || !display) return;
+            const saved = rates.find(r => r.currency === cur);
+            if (saved) { el.value = saved.rate; display.textContent = saved.rate; }
+            else { display.textContent = el.value; }
+        });
+    } catch {}
+}
+async function saveExchangeRates() {
+    if (!currentUser) return;
+    showLoading('Enregistrement...');
+    try {
+        const defaultCurrency = document.getElementById('settingDefaultCurrency').value;
+        await window.electronAPI.updateSettings({ userId: currentUser.id, settings: { currency_default: defaultCurrency } });
+        for (const cur of ['EUR', 'USD']) {
+            const el = document.getElementById('rate' + cur);
+            if (el) {
+                const rate = parseFloat(el.value);
+                if (rate > 0) await window.electronAPI.saveExchangeRate({ userId: currentUser.id, currency: cur, rate });
+            }
+        }
+        showToast('Taux de change enregistrés', 'success');
+    } catch { showToast('Erreur', 'error'); }
+    finally { hideLoading(); }
+}
+async function addExchangeRate() {
+    const cur = document.getElementById('newRateCurrency').value.trim().toUpperCase();
+    const rate = parseFloat(document.getElementById('newRateValue').value);
+    if (!cur || !rate || rate <= 0) { showToast('Entrez un code devise et un taux valide', 'warning'); return; }
+    if (!currentUser) return;
+    try {
+        await window.electronAPI.saveExchangeRate({ userId: currentUser.id, currency: cur, rate });
+        showToast('Taux ajouté', 'success');
+        document.getElementById('newRateCurrency').value = '';
+        document.getElementById('newRateValue').value = '';
+        await loadExchangeRates();
+    } catch { showToast('Erreur', 'error'); }
+}
+async function deleteExchangeRate(currency) {
+    if (!currentUser) return;
+    showConfirm('Supprimer', `Supprimer le taux pour ${currency} ?`, async () => {
+        try {
+            await window.electronAPI.deleteExchangeRate({ userId: currentUser.id, currency });
+            showToast('Taux supprimé', 'success');
+            await loadExchangeRates();
+        } catch { showToast('Erreur', 'error'); }
+    });
+}
+
+// Hook: load settings when settings page is opened
+const _origLoadSettings = loadSettings;
+loadSettings = async function() {
+    if (_origLoadSettings) await _origLoadSettings.apply(this, arguments);
+    await loadSmtpConfig();
+    await loadExchangeRates();
+    // Load default currency
+    try {
+        const settings = currentUser ? await window.electronAPI.getSettings(currentUser.id) : null;
+        if (settings?.currency_default) document.getElementById('settingDefaultCurrency').value = settings.currency_default;
+    } catch {}
+};
 
 // ==================== THEME SETTINGS (legacy per-type colours) ====================
 let currentTheme = {
@@ -3519,19 +3946,61 @@ async function openRelanceGenerator() {
     document.getElementById('fiscalPeriodSelect').style.display = 'none';
 }
 
-async function generateRelancePDF() {
+async function getRelanceAttempt(docId) {
+    try { return await window.electronAPI.getRelanceAttemptCount(docId); } catch { return 0; }
+}
+async function updateRelanceAttemptInfo() {
     const docId = document.getElementById('relanceDocSelect').value;
-    if (!docId) { showToast('Sélectionnez une facture', 'warning'); return; }
+    const info = document.getElementById('relanceAttemptInfo');
+    if (!docId) { info.textContent = ''; return; }
+    const count = await getRelanceAttempt(docId);
+    info.textContent = count > 0 ? `Relancé ${count} fois` : 'Première relance';
+}
+async function doRelance(docId, method) {
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc) return;
+    const attempt = (await getRelanceAttempt(docId)) + 1;
     showLoading('Génération de la lettre...');
     try {
-        const result = await window.electronAPI.generateRelanceLetter({ docId, userId: currentUser.id, attempt: 1 });
+        const result = await window.electronAPI.generateRelanceLetter({ docId, userId: currentUser.id, attempt });
         if (result.success && result.html) {
-            const filename = `relance_${docId}_${Date.now()}.pdf`;
-            const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
-            if (pdfResult.success) showToast('Lettre de relance enregistrée', 'success');
+            if (method === 'email') {
+                if (!doc.clientEmail) { showToast('Ce client n\'a pas d\'email', 'warning'); hideLoading(); return; }
+                const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename: `relance_${doc.number}_${Date.now()}.pdf` });
+                if (!pdfResult.success) { showToast('Erreur génération PDF', 'error'); hideLoading(); return; }
+                const emailResult = await window.electronAPI.sendEmail({
+                    userId: currentUser.id,
+                    to: doc.clientEmail,
+                    subject: `Relance ${attempt === 1 ? '' : 'N°' + attempt + ' '}— Facture ${doc.number}`,
+                    body: `Veuillez trouver ci-joint la lettre de relance concernant la facture ${doc.number}.`,
+                    attachments: [{ path: pdfResult.path, filename: `relance_${doc.number}.pdf` }]
+                });
+                if (!emailResult.success) { showToast('Erreur envoi email: ' + (emailResult.error || ''), 'error'); hideLoading(); return; }
+                try { await window.electronAPI.saveRelance({ userId: currentUser.id, invoiceId: docId, attempt, method: 'email', recipientEmail: doc.clientEmail }); } catch {}
+                showToast(`Relance N°${attempt} envoyée à ${doc.clientEmail}`, 'success');
+            } else {
+                const filename = `relance_${doc.number}_${Date.now()}.pdf`;
+                const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
+                if (pdfResult.success) {
+                    try { await window.electronAPI.saveRelance({ userId: currentUser.id, invoiceId: docId, attempt, method: 'pdf' }); } catch {}
+                    showToast(`Lettre de relance N°${attempt} enregistrée`, 'success');
+                } else showToast('Erreur génération PDF', 'error');
+            }
         } else showToast('Erreur génération', 'error');
     } catch (e) { showToast(e.message, 'error'); }
     finally { hideLoading(); document.getElementById('relanceFactureSelect').style.display = 'none'; }
+}
+async function generateRelancePDF() {
+    const docId = document.getElementById('relanceDocSelect').value;
+    if (!docId) { showToast('Sélectionnez une facture', 'warning'); return; }
+    await doRelance(docId, 'pdf');
+}
+async function sendRelanceEmail() {
+    const docId = document.getElementById('relanceDocSelect').value;
+    if (!docId) { showToast('Sélectionnez une facture', 'warning'); return; }
+    const doc = allDocuments.find(d => d.id === docId);
+    if (!doc || !doc.clientEmail) { showToast('Cette facture n\'a pas d\'email client', 'warning'); return; }
+    await doRelance(docId, 'email');
 }
 
 async function openFiscalSummary() {
@@ -3731,10 +4200,18 @@ async function handleExpenseAttachment(input) {
     } catch (e) { showToast('Erreur pièce jointe', 'error'); }
 }
 
+function updateExpenseHT() {
+    const ttc = parseFloat(document.getElementById('expAmountTTC')?.value) || 0;
+    const rate = parseFloat(document.getElementById('expTvaRate')?.value) || 19;
+    const ht = ttc / (1 + rate / 100);
+    document.getElementById('expAmountHT').value = ht.toFixed(3);
+}
+
 async function saveExpense() {
     const vendor = document.getElementById('expVendor')?.value.trim();
     const date = document.getElementById('expDate')?.value;
     const amount = parseFloat(document.getElementById('expAmountTTC')?.value) || 0;
+    const tvaRate = parseFloat(document.getElementById('expTvaRate')?.value) || 19;
 
     if (!vendor || !date || amount <= 0) {
         showToast('Veuillez remplir les champs obligatoires (*)', 'warning');
@@ -3749,7 +4226,8 @@ async function saveExpense() {
             vendor,
             date,
             amountTTC: amount,
-            amountHT: amount / 1.19,
+            amountHT: amount / (1 + tvaRate / 100),
+            tvaRate,
             retenueSource: parseFloat(document.getElementById('expRetenue')?.value) || 0,
             category: document.getElementById('expCategory')?.value || 'Autre',
             reference: document.getElementById('expRef')?.value.trim() || '',

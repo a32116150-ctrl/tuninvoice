@@ -96,8 +96,10 @@ Interface de caisse complète adaptée aux commerces et marchés :
 **Pipeline & Conversion**
 - Suivi Devis → Facture → BL avec référence automatique
 - Colonne "Pipeline" dans la liste des documents
+- **Timeline visuelle** dans l'aperçu document : chaîne ascendante (documents sources) et descendante (avoirs, conversions) avec badges Lucide
 - BA → Dépense en un clic
 - Duplication de document
+- Conversion Facture → Avoir en un clic
 
 **Numérotation Intelligente**
 - Compteur consommé uniquement à la sauvegarde réelle (pas à l'ouverture)
@@ -125,6 +127,11 @@ Interface de caisse complète adaptée aux commerces et marchés :
 - Enregistrer & Nouveau
 - Dates en langage naturel : "aujourd'hui", "demain", "+30d", "fin de mois"
 - Auto-complétion client au MF/nom
+- **Champ Remise (%)** sur le formulaire
+- **Filtres par plage de dates** dans la barre d'outils
+- **Duplication** de document en un clic
+- **Compteur d'articles** en direct sur le formulaire
+- **Garde modifications non sauvegardées**
 
 ### 🇹🇳 Conformité Fiscale Tunisienne
 
@@ -225,9 +232,18 @@ Interface de caisse complète adaptée aux commerces et marchés :
 
 **Factures Récurrentes**
 - CRUD complet avec interface utilisateur
+- Case "Récurrente" + fréquence + date de fin directement sur le formulaire de document
 - Génération automatique via cron (toutes les 60min)
 - Fréquences : hebdomadaire, mensuelle, trimestrielle, annuelle
 - Templates d'articles en JSON
+
+**Email & Relances**
+- Configuration SMTP dans l'onglet Email des Paramètres
+- Variables template : `{{clientName}}`, `{{docNumber}}`, `{{totalTTC}}`, `{{currency}}`, `{{companyName}}`, `{{dueDate}}`, `{{date}}`
+- Envoi d'email depuis la liste des documents (bouton individuel)
+- Relances client : génération PDF ou envoi email avec historique des tentatives
+- Rappels automatiques pour factures impayées au chargement du tableau de bord
+- Badges de relance dans l'aperçu document
 
 **Fonctionnalités de Recherche**
 - Recherche sur toutes les pages (documents, clients, services, dépenses)
@@ -245,17 +261,19 @@ Interface de caisse complète adaptée aux commerces et marchés :
 ### ⚙️ Paramètres
 
 **Interface Redessinée** (v3.0.0)
-- Barre latérale verticale avec 5 onglets
+- Barre latérale verticale avec 7 onglets
 - Persistance de l'onglet actif (localStorage)
 - Cartes structurées avec en-tête + description + barre de sauvegarde
 - Infobulles contextuelles avec icônes Lucide
 
 **Onglets**
-1. **Général** : Format des nombres (décimales, arrondi), dossier PDF
+1. **Général** : Format des nombres (décimales, arrondi), dossier PDF, taux de change (EUR/USD), devises personnalisées, devise par défaut
 2. **Documents** : Préfixes par type, aperçu du compteur, réinitialisation
 3. **Apparence** : 4 thèmes prédéfinis + constructeur personnalisé, aperçu en direct, mode clair/sombre
 4. **Sauvegarde** : Planification, création manuelle, rapport, liste des sauvegardes, restauration
 5. **Automatisation** : Factures récurrentes (CRUD)
+6. **Email** : Configuration SMTP (hôte, port, utilisateur, mot de passe, SSL), test de connexion, modèles d'email par défaut avec variables template
+7. **Devises** : Gestion des taux de change, devises personnalisées, devise par défaut
 
 ### 🏢 Mon Entreprise
 

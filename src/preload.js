@@ -70,9 +70,10 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     deleteServiceCategory:(id)     => invoke('services:cats:del', id),
 
     // ── SETTINGS ─────────────────────────────────────────────────────
-    getSettings:    (userId) => invoke('settings:get', userId),
-    updateSettings: (data)   => invoke('settings:update', data),
-    resetCounter:   (data)   => invoke('settings:resetCounter', data),
+    getSettings:         (userId) => invoke('settings:get', userId),
+    updateSettings:      (data)   => invoke('settings:update', data),
+    resetCounter:        (data)   => invoke('settings:resetCounter', data),
+    testSmtpConnection:  (data)   => invoke('email:test', data),
 
     // ── THEMES ───────────────────────────────────────────────────────
     getThemeSettings:  (userId) => invoke('theme:get', userId),
@@ -148,6 +149,12 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     deleteReminder:  (id)     => invoke('reminders:delete', id),
     markReminderDone:(id)     => invoke('reminders:markDone', id),
     onReminderDue:   (cb)     => ipcRenderer.on('reminder:due', (_, r) => cb(r)),
+    saveRelance:     (data)   => invoke('relances:save', data),
+    getRelancesByInvoice: (invoiceId) => invoke('relances:getByInvoice', invoiceId),
+    getRelanceAttemptCount: (invoiceId) => invoke('relances:attemptCount', invoiceId),
+    getExchangeRates:  (userId) => invoke('rates:getAll', userId),
+    saveExchangeRate:  (data)   => invoke('rates:save', data),
+    deleteExchangeRate:(data)   => invoke('rates:delete', data),
 
     // ── HR (EMPLOYEES & PAYSLIPS) ────────────────────────────────────
     getEmployees:    (userId) => invoke('hr:getEmployees', userId),
@@ -180,7 +187,11 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     sendEmail: (params) => invoke('email:send', params),
 
     // ── SHORTCUTS (from main process) ─────────────────────────────────
-    onShortcut: (channel, cb) => { ipcRenderer.on(`shortcut:${channel}`, (_, payload) => cb(payload)); },
+    onShortcut: (channel, cb) => {
+        const ALLOWED_SHORTCUTS = ['newDoc', 'focusSearch', 'navigate'];
+        if (!ALLOWED_SHORTCUTS.includes(channel)) return;
+        ipcRenderer.on(`shortcut:${channel}`, (_, payload) => cb(payload));
+    },
 
     // ── DOCUMENT TEMPLATES ───────────────────────────────────────────
     getTemplates:   (userId) => invoke('templates:getAll', userId),

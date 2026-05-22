@@ -38,7 +38,8 @@ Interface de caisse complète pour commerces et marchés :
 
 **8 types de documents** : Facture, Avoir, Devis, Bon de Commande, BL, BA, BS, BE
 - Pipeline Devis → Facture → BL avec suivi de conversion
-- BA → Dépense en un clic
+- Timeline visuelle dans l'aperçu document (chaîne ascendante/descendante)
+- BA → Dépense en un clic ; Facture → Avoir en un clic
 - Numérotation intelligente (compteur à la sauvegarde uniquement)
 - Saisie manuelle du numéro possible
 - 4 thèmes PDF (Classique, Moderne, Exécutif, Tunisien) + personnalisable
@@ -48,6 +49,10 @@ Interface de caisse complète pour commerces et marchés :
 - Dates en langage naturel (aujourd'hui, demain, +30d, fin de mois)
 - Duplication et conversion en un clic
 - Champs personnalisés et notes internes
+- Champ remise (%) avec ligne dédiée dans les totaux
+- Filtres par plage de dates dans la barre d'outils
+- Compteur d'articles en direct
+- Garde modifications non sauvegardées
 
 ---
 
@@ -106,22 +111,34 @@ Interface de caisse complète pour commerces et marchés :
 - Notes adhésives (couleurs, épinglage, widget dashboard)
 - Opérations par lot (supprimer, marquer payé, exporter, email)
 - Modèles d'email
-- Factures récurrentes (auto-génération)
+- Factures récurrentes (auto-génération, configuration sur le formulaire document)
+- Relances : PDF ou Email avec historique et compteur de tentatives
+- Rappels automatiques pour impayés
 - Recherche rapide sur toutes les pages
 - Tri par colonnes, pagination
 - Import/Export CSV et Excel
 - Carte client Leaflet
 
+---
+
+## Multi-Devises
+
+- Taux de change EUR/TND et USD/TND configurables
+- Devises personnalisées (ajout/suppression)
+- Devise par défaut appliquée aux nouveaux documents
+- Ligne "Équivalent en TND" sous le total quand devise ≠ TND
 
 ---
 
 ## Paramètres & Mon Entreprise
 
-- Barre latérale 5 onglets avec persistance
+- Barre latérale 7 onglets avec persistance
 - Format des nombres, préfixes documents
 - 4 thèmes + personnalisation avec aperçu
 - Sauvegarde planifiée/manuelle/auto
 - Factures récurrentes
+- Configuration SMTP (Email)
+- Taux de change (Devises)
 
 ---
 

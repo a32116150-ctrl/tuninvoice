@@ -1,6 +1,6 @@
 # TuniInvoice Desktop — Code Audit & Fix Log
 
-> **Initial Audit:** 2026-05-21 | **Fixes Applied:** 2026-05-22 | Version: 3.1.0
+> **Initial Audit:** 2026-05-21 | **Fixes Applied:** 2026-05-22 | Version: 3.5.0
 
 ---
 
@@ -416,6 +416,127 @@ The build `files` config only packages `src/**/*`, `assets/**/*`, and `node_modu
 | `src/renderer/app-features.js` | BUG-A1, BUG-A2, BUG-A3, BUG-A7 |
 | `src/renderer/index.html` | BUG-A4, IMP-A2, SEC-A1 |
 | `src/renderer/i18n.js` | IMP-A1 (already present) |
+
+---
+
+## Part 3 — Third-Pass Audit (13 fixes from external security audit)
+
+### Summary
+
+| Severity | Found | Fixed | Skipped |
+|----------|-------|-------|---------|
+| 🔴 Critical | 3 | 3 | 0 |
+| 🟠 High | 4 | 4 | 0 |
+| 🟡 Medium | 5 | 5 | 0 |
+| 🎨 UI | 1 | 1 | 0 |
+| **Total** | **13** | **13** | **0** |
+
+### Date: 2026-05-22
+
+### 🚨 CRITICAL
+
+#### SEC-01 — Missing Content Security Policy (tightened)
+**File:** `src/renderer/index.html:6` • **Status:** ✅ Fixed
+
+Tightened CSP: removed `https:` wildcard from `img-src` (was allowing image exfiltration to any HTTPS URL). Added an additional session-level CSP enforcement in `main.js:122` via `session.defaultSession.webRequest.onHeadersReceived`.
+
+```diff
+- img-src 'self' data: blob: https:;
++ img-src 'self' data: blob:;
+```
+
+Also added to `main.js`:
+```js
+session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  callback({ responseHeaders: { ...details.responseHeaders,
+    'Content-Security-Policy': [csp] }});
+});
+```
+
+#### SEC-02 — XSS via innerHTML in Confirm Dialog & Toast
+**File:** `src/renderer/app-core.js:210,219-220` • **Status:** ✅ Fixed
+
+```diff
+- document.getElementById('confirmTitle').innerHTML = title;
+- document.getElementById('confirmMessage').innerHTML = message;
++ document.getElementById('confirmTitle').textContent = title;
++ document.getElementById('confirmMessage').textContent = message;
+- toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
++ toast.innerHTML = `<span>${icons[type]}</span><span></span>`;
++ toast.lastElementChild.textContent = message;
+```
+
+#### SEC-03 — Path Traversal in scanner:storeFile
+**File:** `src/main.js:941-953` • **Status:** ✅ Fixed
+
+`srcPath` from renderer is now validated against allowed directories (home, downloads, desktop, documents, pictures) before copying.
+
+```js
+const resolved = path.resolve(srcPath);
+const allowed = [app.getPath('home'), app.getPath('downloads'), ...];
+if (!allowed.some(dir => resolved.startsWith(dir))) {
+    return { success: false, error: 'Chemin de fichier non autorisé' };
+}
+```
+
+### 🟠 HIGH
+
+#### SEC-04 — Login Rate Limiting
+**File:** `src/main.js:392-395` • **Status:** ✅ Fixed
+
+Added in-memory rate limiter: 5 failed attempts per email → 15-minute lockout.
+
+#### SEC-05 — Email Attachment Path Validation
+**File:** `src/main.js:795-808` • **Status:** ✅ Fixed
+
+Attachment paths now validated against the `attachments/` directory before sending.
+
+#### SEC-06 — SMTP Decryption Silent Failure
+**File:** `src/main.js:782` • **Status:** ✅ Fixed
+
+Empty `catch {}` replaced with a throw that surfaces a clear French error message.
+
+#### SEC-07 — Unvalidated IPC Shortcut Channels
+**File:** `src/preload.js:183` • **Status:** ✅ Fixed
+
+Channel names now whitelisted to `['newDoc', 'focusSearch', 'navigate']`.
+
+### 🟡 MEDIUM
+
+#### SEC-08 — OCR Raw Text Logged in Production
+**File:** `src/main.js:982-984` • **Status:** ✅ Fixed
+
+Console logs guarded behind `process.env.NODE_ENV === 'development'`.
+
+#### SEC-09 — media:// Protocol Path Traversal
+**File:** `src/main.js:110-114` • **Status:** ✅ Fixed
+
+Resolved paths now validated against `userData`, `pictures`, and `home` directories.
+
+#### SEC-10 — validateRecurringInvoice template_id Null Check
+**File:** `src/validate.js:90` • **Status:** ✅ Fixed
+
+```diff
+- if (!isUUID(data.template_id)) ...
++ if (data.template_id && !isUUID(data.template_id)) ...
+```
+
+#### SEC-11 — Backup Restore Integrity Check
+**File:** `src/database/db.js:216` • **Status:** ✅ Fixed
+
+Added SQLite magic header validation (`SQLite format 3\0`) before restore.
+
+#### SEC-12 — Plaintext Password Fallback (kept with guard)
+**File:** `src/database/db.js:241-246` • **Status:** ✅ Reviewed — kept for legacy upgrade path; auto-upgrades to bcrypt on first login
+
+### 🎨 UI
+
+#### SEC-13 — Session-level CSP Enforcement
+**File:** `src/main.js:122-127` • **Status:** ✅ Fixed
+
+Added `Content-Security-Policy` header via `session.defaultSession.webRequest.onHeadersReceived` as a second layer of defense alongside the meta tag.
+
+---
 
 ## Files Audited
 

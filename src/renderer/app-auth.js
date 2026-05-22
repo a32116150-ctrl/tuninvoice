@@ -284,6 +284,32 @@ async function saveNewPassword() {
         else showToast(r.error || 'Erreur', 'error');
     } catch { showToast('Erreur', 'error'); }
 }
+// ==================== SIDEBAR TOGGLE ====================
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if (window.innerWidth <= 900) {
+        sidebar.classList.toggle('open');
+    } else {
+        const container = document.getElementById('appContainer');
+        const isCollapsed = container.classList.toggle('sidebar-collapsed');
+        try { localStorage.setItem('tuni_sidebar_collapsed', isCollapsed ? '1' : '0'); } catch {}
+    }
+}
+// Close sidebar on nav click for mobile
+document.addEventListener('click', (e) => {
+    if (window.innerWidth <= 900 && !e.target.closest('.sidebar') && !e.target.closest('.hamburger-btn')) {
+        document.querySelector('.sidebar')?.classList.remove('open');
+    }
+});
+// Restore sidebar state
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        if (localStorage.getItem('tuni_sidebar_collapsed') === '1') {
+            document.getElementById('appContainer').classList.add('sidebar-collapsed');
+        }
+    } catch {}
+});
+
 // ==================== HOOK showApp to init new features ====================
 const _origShowApp = window.showApp;
 window.showApp = async function () {

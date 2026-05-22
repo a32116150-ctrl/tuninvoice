@@ -12,7 +12,7 @@
   <a href="https://factarlou.online">
     <img src="https://img.shields.io/badge/website-factarlou.online-00e5ff?style=for-the-badge&logo=google-chrome" alt="Website"/>
   </a>
-  <img src="https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-4.0.0-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -30,7 +30,76 @@ De la génération de factures conformes à l'exportation XML pour la plateforme
 
 ---
 
-## What's New in v3.1.0
+## What's New in v4.0.0
+
+### UI/UX & Quality-of-Life
+
+- **Emoji → Lucide Icons** : Tous les émojis de l'interface remplacés par des icônes Lucide SVG pour une expérience visuelle cohérente et moderne
+- **Champ Remise (%)** : Nouveau champ de remise proportionnelle sur le formulaire document, avec ligne dédiée dans les totaux
+- **Filtres par Date** : Filtrage des documents par plage de dates (de/à) dans la barre d'outils
+- **Duplication de Document** : Bouton "Dupliquer" pour copier un document existant en un clic
+- **Sidebar Hamburger** : Menu hamburger responsive — sidebar escamotable sur desktop, tiroir sur mobile
+- **Bénéfice Net** : 6ᵉ carte dans la rangée de statistiques du tableau de bord
+- **Taux TVA Dépense** : Sélecteur de taux TVA (19/13/7/0%) avec montant HT calculé automatiquement
+- **Garde Modification** : Alertes de confirmation avant de quitter un formulaire avec des modifications non sauvegardées
+- **Compteur d'Articles** : Affichage en direct du nombre d'articles sur le formulaire document
+
+### Responsive & Mobile
+
+- **Points de rupture 900px/600px** : Sidebar slide-out, barres d'outils adaptatives, tableaux scrollables, grille stats 6→3→2 colonnes, polices compactes
+- **Fermeture sidebar au clic externe** sur mobile
+
+### Factures Récurrentes
+
+- **Interface sur le formulaire** : Case "Récurrente" + sélecteur de fréquence/date de fin directement sur la page de création de document (plus besoin d'aller dans Paramètres)
+- **Champs** : Fréquence (hebdomadaire/mensuelle/trimestrielle/annuelle), date de fin optionnelle
+
+### Modèles d'Email & SMTP
+
+- **Nouvel onglet Email** dans Paramètres : configuration SMTP (hôte, port, utilisateur, mot de passe, SSL) et bouton "Tester la connexion"
+- **Modèles d'email** : Sujet et corps par défaut avec variables template ({{clientName}}, {{docNumber}}, {{totalTTC}}, {{currency}}, {{companyName}}, {{dueDate}}, {{date}})
+- **Envoi Email** : Bouton email sur chaque document (documents récents et liste complète)
+- **Relance Email** : Envoi de relances client directement par email via SMTP
+
+### Pipeline & Suivi de Documents
+
+- **Pipeline vertical** : Timeline visuelle dans l'aperçu document montrant la chaîne ascendante (devis source, etc.) et descendante (avoir généré, etc.) avec badges Lucide
+- **Conversion en Avoir** : Nouveau bouton "Convertir en Avoir" pour les factures, avec création automatique
+
+### Relances Automatiques
+
+- **Nouvelle table `relances`** : Historique des tentatives avec méthode (PDF/Email), date, et compteur
+- **Relance PDF** : Génération de lettre de relance en PDF avec numéro de tentative
+- **Relance Email** : Envoi de relance par SMTP
+- **Rappels Automatiques** : Création de rappels pour les factures impayées en échéance au chargement du tableau de bord
+- **Affichage** : Badges ambre dans l'aperçu document montrant l'historique des relances
+
+### Multi-Devises
+
+- **Configuration des taux** : Taux de change EUR/TND et USD/TND configurables dans les paramètres (onglet Général)
+- **Devises personnalisées** : Ajout/suppression de devises supplémentaires avec taux
+- **Devise par défaut** : Sélecteur de devise par défaut appliqué automatiquement aux nouveaux documents
+- **Équivalent TND** : Ligne "Équivalent en TND" affichée sous le total quand la devise du document ≠ TND
+
+### Paramètres
+
+- **7 onglets** : Général, Documents, Apparence, Sauvegarde, Automatisation, Email, Devises
+
+---
+
+## What's New in v3.5.0
+
+### Security Hardening
+
+- **XSS Prevention** : Confirm dialog and toast messages use `textContent` instead of `innerHTML` — stored client/document names can no longer execute scripts.
+- **Content Security Policy** : Tightened CSP in both meta tag and session-level headers. Blocked arbitrary `https:` image loading.
+- **Path Traversal Protections** : `scanner:storeFile` and `media://` protocol handlers now validate file paths against allowed directories.
+- **Login Rate Limiting** : 5 failed attempts per email triggers a 15-minute lockout (in-memory).
+- **Email Security** : Attachment paths restricted to the app's `attachments/` directory. SMTP decryption failures now raise clear errors.
+- **IPC Channel Whitelist** : Shortcut channel names restricted to `['newDoc', 'focusSearch', 'navigate']`.
+- **Backup Integrity** : Restore operation validates the SQLite magic header before overwriting.
+- **Privacy** : OCR text output is no longer logged to console in production.
+- **Validation Fix** : `validateRecurringInvoice` correctly allows optional `template_id` to be null.
 
 ### POS Performance & Code Quality
 
@@ -162,7 +231,7 @@ Interface de caisse complète adaptée aux commerces et marchés :
 
 ### ⚙️ Paramètres & Mon Entreprise
 
-- **Paramètres redessinés** : Barre latérale verticale, 5 onglets (Général, Documents, Apparence, Sauvegarde, Automatisation), cartes améliorées avec infobulles
+- **Paramètres redessinés** : Barre latérale verticale, 7 onglets (Général, Documents, Apparence, Sauvegarde, Automatisation, Email, Devises), cartes améliorées avec infobulles
 - **Mon Entreprise** : Design uniforme — cartes structurées, icône `building`, pills
 - **Dossier PDF configurable**
 - **Format des nombres** : Décimales (0-5), arrondi (half_up/ceil/floor)
@@ -177,6 +246,7 @@ Interface de caisse complète adaptée aux commerces et marchés :
 - **Validation** : Tous les handlers IPC validés via `validate.js`
 - **Suppressions en Cascade** : Clients → documents → paiements/retenues/récurrent
 - **Migrations Sécurisées** : `CREATE → INSERT → RENAME` (pas de DROP TABLE)
+- **Audit de Sécurité (2026-05-22)** : 13 vulnérabilités corrigées — XSS, CSP, path traversal, rate limiting, validation IPC. Voir `CODE_AUDIT.md`
 - **Mise à Jour Auto.** : Intégration GitHub Releases. Windows auto-install, macOS copie DMG
 - **Tray** : Accès rapide Nouvelle Facture, Nouveau Devis, Dashboard, Quitter
 - **Persistance Fenêtre** : Position, taille, maximisé mémorisés

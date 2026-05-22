@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **App Name**: Factarlou (Product Name) / TuniInvoice Pro (Internal Name)
-- **Version**: 3.1.0
+- **Version**: 4.0.0
 - **Description**: A comprehensive, high-performance desktop application tailored for the Tunisian market to manage invoicing, taxation (Retenue), and business operations.
 - **Tech Stack**: 
   - **Framework**: Electron (v28+)
@@ -708,6 +708,102 @@ Premium UI/UX overhaul (CSS + icon consolidation) using Open Design's generated 
 - **Hold + Draft**: `posHoldCart()` now also saves to drafts in addition to in-memory `posHeldCart`.
 - **Unified POS version**: All features merged into v3.0.0 release with updated documentation.
 
+---
+
+## Phase 1 — UI/UX Quick Wins (2026-05-22)
+
+### A. Emoji → Lucide Icons
+- Replaced `👁️` `🔄` `✏️` in `renderRecentDocs()` action buttons
+- Replaced `✏️` `➕` in `openClientModal()` titles
+- Replaced `🔍` CSS emoji with SVG mask in `.search-box::before`
+- **Files**: `app-features.js`, `styles.css`
+
+### B. Discount Field on Document Form
+- Added `#discountPercent` input with `%` label next to timbre checkbox
+- Added hidden `#discountRow` in totals section
+- `calculateTotals()` tracks `originalHTRaw` before discount factor and toggles row visibility
+- Discount amount = `originalHTRaw - totalHTRaw`
+- Percentage-only (no fixed mode) — matches existing `discountPercent` logic
+
+### C. Date Range Filters
+- Added `#filterDateFrom` / `#filterDateTo` inputs to document toolbar
+- `filterDocuments()` updated to filter by date range
+
+### D. Duplicate Button
+- Added `duplicateDocument()` JS function
+- Button already existed in HTML template
+
+### E. Hamburger Sidebar Toggle
+- Hamburger button in topbar
+- CSS for `.sidebar-collapsed` (desktop) and `.sidebar.open` (mobile)
+- `toggleSidebar()` uses slide-out on ≤900px, collapse on desktop
+- Click-outside closes sidebar on mobile
+- State persisted in localStorage
+
+### F. Bénéfice Net Card
+- 6th card merged into main stats row
+- Grid changed from `repeat(5,1fr)` → `repeat(6,1fr)`
+
+### G. Expense TVA Rate
+- Added `#expTvaRate` dropdown (19/13/7/0%) + `#expAmountHT` read-only field
+- `updateExpenseHT()` auto-calculates HT from TTC ÷ (1 + tvaRate/100)
+- `saveExpense()` includes `tvaRate` in saved data
+
+### I. Unsaved Changes Guard
+- `_docFormDirty` flag, `markDocDirty()`/`resetDocDirty()`, `watchDocFormDirty()`
+- `beforeunload` handler + click interceptor for nav-item clicks with confirm dialog
+- Reset on save (`saveAndDownloadPDF`, `saveAndNew`)
+
+### J. Item Count Display
+- `<span id="itemCountDisplay">0 article(s)</span>` next to "Ajouter une ligne"
+- `updateItemCount()` called in `addItem()`, `removeItem()`, `renumberItems()`
+
+---
+
+## Phase 2 — Responsive Polish, Recurring Invoices, Email Templates (2026-05-22)
+
+### Responsive Design
+- 900px breakpoint: sidebar slide-out, wrapping toolbars, scrollable tables, stats grid 6→3 cols
+- 600px breakpoint: stats grid 3→2 cols, compact font/sizing
+- Mobile sidebar closes on outside click
+
+### Recurring Invoices on Document Form
+- Case "Récurrente" + frequency selector + end-date picker added to document form
+- `toggleRecurringFields()`, `collectDocumentData()` includes `recurring`/`recurringFrequency`/`recurringEndDate`
+- `populateFormWithDoc()` restores recurring values on edit
+- `resetDocumentForm()` clears them
+
+### Email Templates & SMTP Configuration
+- New "Email" settings tab with SMTP fields (host, port, user, pass, SSL) + "Tester la connexion" button
+- `email:test` IPC handler in `main.js`
+- Preload binding `testSmtpConnection`
+- Template variable substitution: `{{clientName}}`, `{{docNumber}}`, `{{totalTTC}}`, `{{currency}}`, `{{companyName}}`, `{{dueDate}}`, `{{date}}`
+- Default subject/body stored in `user_settings` as `email_default_subject`/`email_default_body`
+- `emailSingleDoc()` — single-document email button in recent docs + full docs table
+- `sendRelanceEmail()` — email-based relance via SMTP
+- Passwords encrypted via `safeStorage` in `settings:update` IPC handler
+
+---
+
+## Phase 3 — Pipeline Tracking, Auto-Relance, Multi-Currency (2026-05-22)
+
+### Pipeline Tracking
+- Fixed `docs:convert` to set `referenceDoc: src.id` (UUID) instead of `null`/number
+- Visual pipeline timeline in preview modal — renders ancestor/descendant chain with Lucide-icon badges
+- "Convertir en Avoir" button for factures + `convertToAvoir()` function
+
+### Auto-Relance
+- New `relances` DB table + IPC/preload
+- `doRelance()` tracks attempt count via `getRelanceAttemptCount()` and generates PDF or sends email based on `method` (pdf/email)
+- Relance history displayed in preview modal as amber badges
+- `autoCreateOverdueReminders()` runs on dashboard load, creates reminders for unpaid overdue invoices with `entityType: 'facture'`
+
+### Multi-Currency
+- New `exchange_rates` DB table + IPC/preload
+- Currency settings card in Settings > Général with EUR/USD rate inputs, add/delete custom currencies, default currency selector (`currency_default` setting)
+- `initNewDocument()` uses `currency_default` to set `#docCurrency`
+- Equivalent-in-TND row shown below total when doc currency ≠ TND, calculated from stored rate
+
 ## Important File Paths
 - **Main Process**: `src/main.js` (Core IPC & PDF logic)
 - **Database Logic**: `src/database/db.js`
@@ -776,6 +872,42 @@ Premium UI/UX overhaul (CSS + icon consolidation) using Open Design's generated 
 ### 5. Enhancement: Destroyed Window Guard (`src/main.js`)
 - **Before**: `mainWindow.setProgressBar()` could throw if the window was destroyed between the event firing and the handler executing.
 - **After**: Added `!mainWindow.isDestroyed()` guard before any window/dock operations.
+
+---
+
+## v3.5.0 — Security Hardening & Deep Audit Fixes (2026-05-22)
+
+### 1. Critical XSS Fix — innerHTML → textContent (`src/renderer/app-core.js`)
+- `confirmTitle` / `confirmMessage` changed from `.innerHTML` to `.textContent` to prevent script injection via stored client/ document names.
+- Toast message span also uses `.textContent` for the message portion.
+
+### 2. Content Security Policy Enforcement (`src/renderer/index.html`, `src/main.js`)
+- Tightened CSP in meta tag: removed `https:` wildcard from `img-src` (previously allowed arbitrary HTTPS image exfiltration).
+- Added session-level CSP header via `session.defaultSession.webRequest.onHeadersReceived` as a hardened second layer.
+
+### 3. Path Traversal Protections (`src/main.js`)
+- `scanner:storeFile` — validates `srcPath` against allowed user directories (home, downloads, desktop, documents, pictures).
+- `media://` protocol — resolves path and validates against `userData`, `pictures`, `home` before serving files.
+
+### 4. Login Rate Limiting (`src/main.js`)
+- In-memory rate limiter: 5 failed login attempts per email triggers 15-minute lockout.
+- Failed attempts tracked per email; successful login clears the counter.
+
+### 5. Email Security (`src/main.js`)
+- Attachment paths filtered: only files within `userData/attachments/` are allowed.
+- SMTP decryption failure now throws a clear error instead of silently sending the encrypted blob.
+
+### 6. IPC Channel Whitelist (`src/preload.js`)
+- `onShortcut` channel names restricted to `['newDoc', 'focusSearch', 'navigate']`.
+
+### 7. OCR Privacy (`src/main.js`)
+- Raw OCR text console logs guarded behind `NODE_ENV === 'development'`.
+
+### 8. Backup Integrity (`src/database/db.js`)
+- `restore()` validates SQLite magic header (`SQLite format 3\0`) before overwriting the database.
+
+### 9. Validation Fix (`src/validate.js`)
+- `validateRecurringInvoice` now correctly allows `template_id` to be null (optional field).
 
 ---
 

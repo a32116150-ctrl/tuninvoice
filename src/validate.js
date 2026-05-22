@@ -87,7 +87,7 @@ function validateSettings(data) {
 function validateRecurringInvoice(data) {
     const errors = [];
     if (!isUUID(data.userId)) errors.push('userId: invalid UUID');
-    if (!isUUID(data.template_id)) errors.push('template_id: invalid UUID');
+    if (data.template_id && !isUUID(data.template_id)) errors.push('template_id: invalid UUID');
     if (!VALID_FREQUENCIES.includes(data.frequency)) errors.push('frequency: must be daily/weekly/monthly/yearly');
     if (!isDate(data.next_run)) errors.push('next_run: required (YYYY-MM-DD)');
     return errors;

@@ -207,7 +207,7 @@ function showToast(message, type = 'info', duration = 3500) {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
+    toast.innerHTML = `<span>${icons[type]}</span><span></span>`; toast.lastElementChild.textContent = message;
     container.appendChild(toast);
     setTimeout(() => { toast.classList.add('toast-out'); setTimeout(() => toast.remove(), 300); }, duration);
 }
@@ -216,8 +216,8 @@ function showLoading(text = 'Traitement en cours...') { document.getElementById(
 function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 // ==================== CONFIRM MODAL ====================
 function showConfirm(title, message, onConfirm, btnLabel = 'Confirmer', btnClass = 'btn-danger') {
-    document.getElementById('confirmTitle').innerHTML = title;
-    document.getElementById('confirmMessage').innerHTML = message;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
     if (window.lucide) lucide.createIcons();
     const btn = document.getElementById('confirmBtn');
     btn.textContent = btnLabel; btn.className = `btn ${btnClass}`;

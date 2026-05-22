@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Notification, safeStorage, Tray, Menu, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification, safeStorage, Tray, Menu, globalShortcut, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
@@ -108,14 +108,23 @@ function createWindow() {
 app.whenReady().then(() => {
     const { protocol } = require('electron');
     protocol.registerFileProtocol('media', (request, callback) => {
-        const url = request.url.replace('media://', '');
-        try { return callback(decodeURIComponent(url)); }
+        const url = decodeURIComponent(request.url.replace('media://', ''));
+        const resolved = path.resolve(url);
+        const allowedDirs = [app.getPath('userData'), app.getPath('pictures'), app.getPath('home')];
+        if (!allowedDirs.some(dir => resolved.startsWith(dir))) {
+            return callback({ statusCode: 403 });
+        }
+        try { return callback(resolved); }
         catch (error) { console.error(error); }
     });
 
     if (process.platform === 'darwin') {
         app.dock.setIcon(path.join(__dirname, '../assets/iconblack2.png'));
     }
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        const csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://nominatim.openstreetmap.org https://registre-entreprises.tn https://*.tile.openstreetmap.org";
+        callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] } });
+    });
     createWindow();
     createTray();
     registerShortcuts();
@@ -389,8 +398,24 @@ ipcMain.handle('pdf:generateBuffer', async (_, { html }) => {
 });
 
 // ==================== AUTH ====================
+const loginAttempts = new Map();
 ipcMain.handle('auth:register', async (_, d) => { try { return { success: true, user: db.registerUser(d) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('auth:login', async (_, d) => { try { return { success: true, user: db.loginUser(d.email, d.password) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('auth:login', async (_, d) => {
+    const key = d.email;
+    const record = loginAttempts.get(key);
+    if (record && record.count >= 5 && Date.now() - record.firstAttempt < 15 * 60 * 1000) {
+        return { success: false, error: 'Trop de tentatives. Attendez 15 minutes.' };
+    }
+    try {
+        const result = db.loginUser(d.email, d.password);
+        loginAttempts.delete(key);
+        return { success: true, user: result };
+    } catch (e) {
+        if (!record) loginAttempts.set(key, { count: 1, firstAttempt: Date.now() });
+        else { record.count++; loginAttempts.set(key, record); }
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('auth:changePassword', async (_, { userId, oldPassword, newPassword }) => { try { db.changePassword(userId, oldPassword, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('auth:resetPasswordMasterKey', async (_, { email, masterKey, newPassword }) => { try { db.resetPasswordWithMasterKey(email, masterKey, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
@@ -426,9 +451,10 @@ ipcMain.handle('docs:convert', async (_, { sourceId, targetType, userId, year })
         const src = db.getDocumentById(sourceId);
         if (!src) throw new Error('Source introuvable');
         const num = db.getNextDocumentNumber(userId, targetType, year || new Date().getFullYear());
-        const note = `Converti depuis ${src.type.toUpperCase()} N° ${src.number} du ${src.date}`;
+        const note = `← ${src.type.toUpperCase()} ${src.number}`;
         const isFactureOrAvoir = ['facture', 'avoir'].includes(targetType);
-        return { success: true, document: db.saveDocument({ ...src, id: undefined, type: targetType, number: num, date: new Date().toISOString().split('T')[0], dueDate: isFactureOrAvoir ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, referenceDoc: targetType === 'avoir' ? src.number : null, notes: src.notes ? `${src.notes}\n\n${note}` : note, paymentStatus: 'unpaid', paidAmount: 0 }) };
+        const newDoc = db.saveDocument({ ...src, id: undefined, type: targetType, number: num, date: new Date().toISOString().split('T')[0], dueDate: isFactureOrAvoir ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, referenceDoc: src.id, notes: src.notes && !src.notes.startsWith('←') ? `${src.notes}\n\n${note}` : note, paymentStatus: 'unpaid', paidAmount: 0 });
+        return { success: true, document: newDoc };
     } catch (e) { return { success: false, error: e.message }; }
 });
 ipcMain.handle('docs:duplicate', async (_, { docId, userId }) => {
@@ -436,8 +462,7 @@ ipcMain.handle('docs:duplicate', async (_, { docId, userId }) => {
         const src = db.getDocumentById(docId);
         if (!src) throw new Error('Introuvable');
         const num = db.getNextDocumentNumber(userId, src.type, new Date().getFullYear());
-        const note = `Copie de ${src.type.toUpperCase()} N° ${src.number}`;
-        return { success: true, document: db.saveDocument({ ...src, id: undefined, number: num, date: new Date().toISOString().split('T')[0], dueDate: src.type === 'facture' ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, notes: src.notes ? `${src.notes}\n\n${note}` : note, paymentStatus: 'unpaid', paidAmount: 0 }) };
+        return { success: true, document: db.saveDocument({ ...src, id: undefined, number: num, date: new Date().toISOString().split('T')[0], dueDate: src.type === 'facture' ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, notes: src.notes || null, paymentStatus: 'unpaid', paidAmount: 0 }) };
     } catch (e) { return { success: false, error: e.message }; }
 });
 ipcMain.handle('docs:search', async (_, { userId, query }) => { try { return db.searchDocuments(userId, query); } catch { return []; } });
@@ -464,6 +489,8 @@ ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
             companyName: company?.name,
             companyMF: company?.mf,
             companyAddress: company?.address,
+            companyBank: doc.companyBank || company?.bank,
+            companyRIB: doc.companyRIB || company?.rib,
             logoImage: imagePathToBase64(doc.logoImage) || company?.logo_image,
             stampImage: imagePathToBase64(doc.stampImage) || company?.stamp_image,
             signatureImage: imagePathToBase64(doc.signatureImage) || company?.signature_image,
@@ -711,6 +738,12 @@ ipcMain.handle('reminders:getAll', async (_, userId) => db.getReminders(userId))
 ipcMain.handle('reminders:save', async (_, data) => { try { return { success: true, reminder: db.saveReminder(data) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('reminders:delete', async (_, id) => { try { db.deleteReminder(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('reminders:markDone', async (_, id) => { try { db.markReminderDone(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('relances:save', async (_, data) => { try { return { success: true, relance: db.saveRelance(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('relances:getByInvoice', async (_, invoiceId) => { try { return db.getRelancesByInvoice(invoiceId); } catch { return []; } });
+ipcMain.handle('relances:attemptCount', async (_, invoiceId) => { try { return db.getRelanceAttemptCount(invoiceId); } catch { return 0; } });
+ipcMain.handle('rates:getAll', async (_, userId) => { try { return db.getExchangeRates(userId); } catch { return []; } });
+ipcMain.handle('rates:save', async (_, data) => { try { return { success: true, rate: db.saveExchangeRate(data) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('rates:delete', async (_, { userId, currency }) => { try { db.deleteExchangeRate(userId, currency); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
 // ==================== HR (EMPLOYEES & PAYSLIPS) ====================
 ipcMain.handle('hr:getEmployees', async (_, userId) => db.getEmployees(userId));
@@ -779,7 +812,7 @@ ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments 
 
         let smtpPass = settings.smtp_pass;
         if (smtpPass && safeStorage.isEncryptionAvailable()) {
-            try { smtpPass = safeStorage.decryptString(Buffer.from(smtpPass, 'base64')); } catch { }
+            try { smtpPass = safeStorage.decryptString(Buffer.from(smtpPass, 'base64')); } catch (e) { throw new Error('Impossible de déchiffrer le mot de passe SMTP. Veuillez le reconfigurer.'); }
         }
 
         const transporter = nodemailer.createTransport({
@@ -792,18 +825,37 @@ ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments 
             }
         });
 
+        const safeAttachments = (attachments || []).filter(a => {
+            if (!a.path) return true;
+            const resolved = path.resolve(a.path);
+            const allowedDir = path.join(app.getPath('userData'), 'attachments');
+            return resolved.startsWith(allowedDir);
+        });
         const info = await transporter.sendMail({
             from: settings.smtp_user,
             to,
             subject,
             text: body,
-            attachments: attachments || []
+            attachments: safeAttachments
         });
 
         return { success: true, messageId: info.messageId };
     } catch (e) {
         return { success: false, error: e.message };
     }
+});
+ipcMain.handle('email:test', async (_, { host, port, user, pass, secure }) => {
+    try {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+            host, port, secure: !!secure,
+            auth: { user, pass },
+            tls: { rejectUnauthorized: false },
+            connectionTimeout: 10000
+        });
+        await transporter.verify();
+        return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
 });
 
 // ==================== CONTRACTS ====================
@@ -940,6 +992,11 @@ ipcMain.handle('scanner:pickFile', async () => {
 
 ipcMain.handle('scanner:storeFile', async (_, srcPath) => {
     try {
+        const resolved = path.resolve(srcPath);
+        const allowed = [app.getPath('home'), app.getPath('downloads'), app.getPath('desktop'), app.getPath('documents'), app.getPath('pictures')];
+        if (!allowed.some(dir => resolved.startsWith(dir))) {
+            return { success: false, error: 'Chemin de fichier non autorisé' };
+        }
         const attachDir = path.join(app.getPath('userData'), 'attachments');
         fs.mkdirSync(attachDir, { recursive: true });
         const destName = `${Date.now()}_${path.basename(srcPath)}`;
@@ -979,9 +1036,7 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
         }
 
         const { data: { text } } = await ocrWorker.recognize(filePath);
-        console.log('--- RAW OCR START ---');
-        console.log(text);
-        console.log('--- RAW OCR END ---');
+        if (process.env.NODE_ENV === 'development') { console.log('--- RAW OCR START ---'); console.log(text); console.log('--- RAW OCR END ---'); }
         return { success: true, text };
     } catch (e) {
         console.error('OCR Error:', e);
@@ -1182,7 +1237,7 @@ ipcMain.handle('templates:delete', async (_, id) => { try { db.deleteTemplate(id
 // ==================== XLSX IMPORT ====================
 ipcMain.handle('import:xlsx', async (_, { filePath }) => {
     try {
-        const XLSX = require('xlsx');
+const XLSX = require('xlsx');
         const wb = XLSX.readFile(filePath);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, { defval: '' });

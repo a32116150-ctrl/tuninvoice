@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://nominatim.openstreetmap.org https://registre-entreprises.tn https://*.tile.openstreetmap.org; font-src 'self' data: https://fonts.gstatic.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self' https://nominatim.openstreetmap.org https://registre-entreprises.tn https://*.tile.openstreetmap.org; font-src 'self' data: https://fonts.gstatic.com;">
     <title>Factarlou</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -158,6 +158,7 @@
         <!-- TOPBAR -->
         <header class="topbar">
             <div class="topbar-left">
+                <button class="hamburger-btn" onclick="toggleSidebar()" title="Menu"><i data-lucide="menu"></i></button>
                 <div class="topbar-search">
                     <span class="topbar-search-ico"><i data-lucide="search"></i></span>
                     <input type="text" placeholder="Rechercher..." id="globalSearch" onkeyup="globalSearchHandler()" data-i18n-placeholder>
@@ -188,8 +189,8 @@
                 </div>
             </div>
 
-            <!-- Stats grid — 5 cards -->
-            <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+            <!-- Stats grid — 6 cards -->
+            <div class="stats-grid" style="grid-template-columns:repeat(6,1fr)">
                 <div class="stat-card">
                     <div class="stat-card-top"><div><div class="stat-label">Total Revenus</div><div class="stat-value" id="statTotalRevenue">0 TND</div></div><div class="stat-icon blue"><i data-lucide="coins"></i></div></div>
                     <div class="stat-sub">Factures TTC</div>
@@ -210,8 +211,6 @@
                     <div class="stat-card-top"><div><div class="stat-label">Total Dépenses</div><div class="stat-value" id="statTotalExpenses">0 TND</div></div><div class="stat-icon purple"><i data-lucide="shopping-cart"></i></div></div>
                     <div class="stat-sub">Achats &amp; charges</div>
                 </div>
-            </div>
-            <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-top:16px">
                 <div class="stat-card">
                     <div class="stat-card-top"><div><div class="stat-label">Bénéfice Net</div><div class="stat-value" id="statNetProfit" style="color:#10b981">0.000 TND</div></div><div class="stat-icon" style="background:#dcfce7"><i data-lucide="trending-up"></i></div></div>
                     <div class="stat-sub">Revenus − Dépenses</div>
@@ -344,6 +343,8 @@
                         <div class="form-group"><label>Téléphone</label><input type="tel" id="docCompanyPhone" placeholder="+216 XX XXX XXX"></div>
                         <div class="form-group"><label>Email</label><input type="email" id="docCompanyEmail" placeholder="contact@entreprise.com"></div>
                         <div class="form-group"><label>Registre de Commerce (RC)</label><input type="text" id="docCompanyRC" placeholder="B XXXXXXXX XXXX"></div>
+                        <input type="hidden" id="docCompanyBank">
+                        <input type="hidden" id="docCompanyRIB">
                     </div>
                 </div>
 
@@ -412,22 +413,46 @@
                             <tbody id="itemsBody"></tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-small btn-secondary" style="margin-top:12px" onclick="addItem()"><i data-lucide="plus-circle"></i> Ajouter une ligne</button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+                        <span style="font-size:0.85rem;color:var(--text-muted)"><span id="itemCountDisplay">0</span> article(s)</span>
+                        <button type="button" class="btn btn-small btn-secondary" onclick="addItem()"><i data-lucide="plus-circle"></i> Ajouter une ligne</button>
+                    </div>
                     <div class="totals-section">
                         <div class="total-row"><span>Total HT</span><span id="totalHT">0.000 TND</span></div>
+                        <div class="total-row hidden" id="discountRow"><span>Remise <span id="discountLabel">0</span>%</span><span id="discountAmount" style="color:var(--danger)">−0.000 TND</span></div>
                         <div class="total-row hidden" id="tva19Row"><span>TVA 19%</span><span id="tva19Amount">0.000 TND</span></div>
                         <div class="total-row hidden" id="tva13Row"><span>TVA 13%</span><span id="tva13Amount">0.000 TND</span></div>
                         <div class="total-row hidden" id="tva7Row"><span>TVA 7%</span><span id="tva7Amount">0.000 TND</span></div>
                         <div class="total-row hidden" id="timbreRow"><span>Timbre fiscal</span><span id="timbreTotal">0.000 TND</span></div>
                         <div class="total-row hidden" id="roundingAdjRow" style="font-style:italic;color:var(--text-muted)"><span>Ajustement d'arrondi</span><span id="roundingAdjAmount">0.000 TND</span></div>
                         <div class="total-row grand-total"><span>Total TTC</span><span id="totalTTC">0.000 TND</span></div>
+                        <div class="total-row" id="equivRow" style="display:none;border-top:none;padding:4px 0;font-size:0.8rem;color:var(--text-muted)"><span>Équivalent</span><span id="equivAmount"></span></div>
                     </div>
-                    <div style="margin-top:12px">
+                    <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap">
                         <label class="checkbox-group">
                             <input type="checkbox" id="applyTimbre" onchange="calculateTotals()">
-                            <span>Appliquer le timbre fiscal (1.000 TND si total HT &gt; 1000)</span>
+                            <span>Timbre fiscal (1.000 TND si HT &gt; 1000)</span>
                         </label>
-                        <span style="color:var(--text-muted);font-size:0.8rem;margin-left:8px">Montant: <span id="timbreDisplay">0.000 TND</span></span>
+                        <span style="color:var(--text-muted);font-size:0.8rem">Montant: <span id="timbreDisplay">0.000 TND</span></span>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-muted)">
+                            <span>Remise:</span>
+                            <input type="number" id="discountPercent" min="0" max="100" step="0.5" value="0" onchange="calculateTotals()" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem">
+                            <span>%</span>
+                        </label>
+                        <label class="checkbox-group">
+                            <input type="checkbox" id="docRecurring" onchange="toggleRecurringFields()">
+                            <span>Récurrente</span>
+                        </label>
+                        <div id="recurringOptions" style="display:none;gap:8px;align-items:center;flex-wrap:wrap">
+                            <select id="recurringFrequency" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem;background:white">
+                                <option value="monthly">Mensuelle</option>
+                                <option value="weekly">Hebdomadaire</option>
+                                <option value="daily">Quotidienne</option>
+                                <option value="yearly">Annuelle</option>
+                            </select>
+                            <span style="font-size:0.8rem;color:var(--text-muted)">jusqu'au</span>
+                            <input type="date" id="recurringEndDate" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem">
+                        </div>
                     </div>
                 </div>
 
@@ -480,6 +505,8 @@
                             <option value="partial">Partielles</option>
                             <option value="paid">Payées</option>
                         </select>
+                        <input type="date" id="filterDateFrom" onchange="filterDocuments()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white" title="Date début">
+                        <input type="date" id="filterDateTo" onchange="filterDocuments()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white" title="Date fin">
                         <div class="batch-actions" style="display:flex;gap:6px;align-items:center" id="batchActions">
                             <button class="btn btn-small btn-danger" onclick="batchDeleteSelected()" title="Supprimer la sélection" disabled id="batchDeleteBtn"><i data-lucide="trash-2" class="lucide-sm"></i></button>
                             <button class="btn btn-small btn-success" onclick="batchMarkPaid()" title="Marquer payées" disabled id="batchPaidBtn"><i data-lucide="check-circle" class="lucide-sm"></i></button>
@@ -970,7 +997,8 @@
                         <div class="form-group"><label>Email</label><input type="email" id="companyEmail" placeholder="contact@entreprise.com"></div>
                         <div class="form-group"><label>Registre de Commerce (RC)</label><input type="text" id="companyRC" placeholder="B XXXXXXXX XXXX"></div>
                         <div class="form-group"><label>Site Web</label><input type="url" id="companyWebsite" placeholder="www.monentreprise.com"></div>
-                        <div class="form-group"><label>Banque / RIB</label><input type="text" id="companyBank" placeholder="Banque XYZ — RIB XXXXX"></div>
+                        <div class="form-group"><label>Banque</label><input type="text" id="companyBank" placeholder="Banque XYZ"></div>
+                        <div class="form-group"><label>RIB</label><input type="text" id="companyRIB" placeholder="XX XXX XXXXX XXXXXXXXXXXX"></div>
                     </div>
                 </div>
                 <div class="card-save-bar">
@@ -1450,7 +1478,7 @@
                             <div class="tool-info"><h4>Compte de Résultat (P&L)</h4><p>Revenus, dépenses et résultat net sur une période</p></div>
                         </div>
                         <div class="tool-card" onclick="openBalanceReport()">
-                            <div class="tool-icon"><i data-lucide="balance"></i></div>
+                            <div class="tool-icon"><i data-lucide="pie-chart"></i></div>
                             <div class="tool-info"><h4>Bilan Annuel</h4><p>Synthèse des actifs et passifs</p></div>
                         </div>
                         <div class="tool-card" onclick="openTVAAnnualReport()">
@@ -1473,10 +1501,12 @@
                         <div class="grid-2">
                             <div class="form-group">
                                 <label>Sélectionner une facture impayée :</label>
-                                <select id="relanceDocSelect"></select>
+                                <select id="relanceDocSelect" onchange="updateRelanceAttemptInfo()"></select>
+                                <div id="relanceAttemptInfo" style="font-size:0.8rem;color:var(--text-muted);margin-top:4px"></div>
                             </div>
-                            <div class="form-group" style="display:flex;align-items:flex-end">
+                            <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
                                 <button class="btn btn-primary" onclick="generateRelancePDF()"><i data-lucide="file-text"></i> Générer le PDF</button>
+                                <button class="btn btn-secondary" onclick="sendRelanceEmail()"><i data-lucide="mail"></i> Envoyer par Email</button>
                             </div>
                         </div>
                     </div>
@@ -1603,6 +1633,9 @@
                     <button class="settings-sidebar-btn" data-target="settings-appearance" onclick="switchSettingsTab('settings-appearance', this)">
                         <i data-lucide="palette"></i> Apparence
                     </button>
+                    <button class="settings-sidebar-btn" data-target="settings-email" onclick="switchSettingsTab('settings-email', this)">
+                        <i data-lucide="mail"></i> Email
+                    </button>
                     <button class="settings-sidebar-btn" data-target="settings-backup" onclick="switchSettingsTab('settings-backup', this)">
                         <i data-lucide="hard-drive"></i> Sauvegarde
                     </button>
@@ -1636,6 +1669,48 @@
                             </div>
                             <div class="card-save-bar">
                                 <button class="btn btn-primary" onclick="saveFormatSettings()"><i data-lucide="save"></i> Enregistrer</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="coins"></i> Devises &amp; Taux de Change</h2>
+                                    <span class="card-desc">Configurez la devise par défaut et les taux de conversion</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="grid-2">
+                                    <div class="form-group"><label>Devise par défaut pour les nouveaux documents</label>
+                                        <select id="settingDefaultCurrency" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white;width:100%">
+                                            <option value="TND">TND (Dinar Tunisien)</option>
+                                            <option value="EUR">EUR (Euro)</option>
+                                            <option value="USD">USD (Dollar US)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <h4 style="font-size:0.85rem;font-weight:600;margin:16px 0 8px">Taux de change (par rapport à 1 TND)</h4>
+                                <div id="exchangeRatesList" style="margin-bottom:12px">
+                                    <div class="exchange-rate-row" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                                        <span style="flex:0 0 60px;font-weight:600">EUR</span>
+                                        <input type="number" id="rateEUR" step="0.001" min="0.001" value="3.400" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.875rem">
+                                        <span style="color:var(--text-muted);font-size:0.8rem">1 TND = <span id="rateEURDisplay">3.400</span> EUR</span>
+                                        <button class="btn-icon" onclick="deleteExchangeRate('EUR')" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--danger)"></i></button>
+                                    </div>
+                                    <div class="exchange-rate-row" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                                        <span style="flex:0 0 60px;font-weight:600">USD</span>
+                                        <input type="number" id="rateUSD" step="0.001" min="0.001" value="3.130" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.875rem">
+                                        <span style="color:var(--text-muted);font-size:0.8rem">1 TND = <span id="rateUSDDisplay">3.130</span> USD</span>
+                                        <button class="btn-icon" onclick="deleteExchangeRate('USD')" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--danger)"></i></button>
+                                    </div>
+                                </div>
+                                <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                                    <input type="text" id="newRateCurrency" placeholder="Code devise (ex: GBP)" style="width:100px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem;text-transform:uppercase">
+                                    <input type="number" id="newRateValue" step="0.001" min="0.001" placeholder="Taux" style="width:120px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem">
+                                    <button class="btn btn-secondary btn-small" onclick="addExchangeRate()"><i data-lucide="plus-circle" style="width:14px;height:14px"></i> Ajouter</button>
+                                </div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="saveExchangeRates()"><i data-lucide="save"></i> Enregistrer les taux</button>
                             </div>
                         </div>
                         <div class="card">
@@ -1774,6 +1849,77 @@
                             <div class="card-save-bar">
                                 <button class="btn btn-primary" onclick="saveThemeSettings()"><i data-lucide="save"></i> Enregistrer</button>
                                 <button class="btn btn-secondary" onclick="resetThemeDefaults()"><i data-lucide="refresh-cw"></i> Réinitialiser</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══════ EMAIL ═══════ -->
+                    <div id="settings-email" class="settings-section">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="mail"></i> Configuration SMTP</h2>
+                                    <span class="card-desc">Paramètres du serveur de messagerie pour l'envoi de documents par email</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-info-box card-info-box-info">
+                                    <i data-lucide="info"></i>
+                                    <span>Sélectionnez votre fournisseur email ou choisissez "Autre" pour une configuration manuelle.</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fournisseur</label>
+                                    <select id="smtpProvider" onchange="applySmtpProvider()" style="width:100%">
+                                        <option value="">-- Choisir un fournisseur --</option>
+                                        <option value="gmail">Gmail</option>
+                                        <option value="outlook">Outlook / Hotmail</option>
+                                        <option value="yahoo">Yahoo Mail</option>
+                                        <option value="laposte">La Poste Tunisienne</option>
+                                        <option value="other">Autre (configuration manuelle)</option>
+                                    </select>
+                                </div>
+                                <div class="grid-2">
+                                    <div class="form-group"><label>Serveur SMTP *</label><input type="text" id="smtpHost" placeholder="smtp.gmail.com" style="width:100%"></div>
+                                    <div class="form-group"><label>Port *</label><input type="number" id="smtpPort" value="587" style="width:100%"></div>
+                                </div>
+                                <div class="grid-2">
+                                    <div class="form-group"><label>Adresse email *</label><input type="email" id="smtpUser" placeholder="votre@email.com" style="width:100%"></div>
+                                    <div class="form-group"><label>Mot de passe *</label><input type="password" id="smtpPass" placeholder="Mot de passe ou token d'application" style="width:100%"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="checkbox-group" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.9rem">
+                                        <input type="checkbox" id="smtpSecure" style="width:18px;height:18px;accent-color:var(--primary)">
+                                        <span>Utiliser SSL/TLS (port 465)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-secondary" onclick="testSmtpConfig()"><i data-lucide="send"></i> Tester la connexion</button>
+                                <button class="btn btn-primary" onclick="saveSmtpConfig()"><i data-lucide="save"></i> Enregistrer</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-header-left">
+                                    <h2><i data-lucide="file-text"></i> Modèles d'Email</h2>
+                                    <span class="card-desc">Personnalisez le sujet et le corps des emails envoyés</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-info-box">
+                                    <i data-lucide="info"></i>
+                                    <span>Utilisez les variables <code>{{clientName}}</code>, <code>{{docNumber}}</code>, <code>{{totalTTC}}</code>, <code>{{currency}}</code>, <code>{{companyName}}</code> dans vos modèles.</span>
+                                </div>
+                                <div class="form-group"><label>Sujet par défaut</label><input type="text" id="emailDefaultSubject" value="Votre document {{docNumber}}" style="width:100%"></div>
+                                <div class="form-group"><label>Corps par défaut</label><textarea id="emailDefaultBody" rows="5" style="width:100%;font-family:inherit;font-size:0.875rem;padding:10px 12px;border:1px solid var(--border);border-radius:8px;resize:vertical">Bonjour,
+
+Veuillez trouver ci-joint le document {{docNumber}} d'un montant de {{totalTTC}} {{currency}}.
+
+Cordialement,
+{{companyName}}</textarea></div>
+                            </div>
+                            <div class="card-save-bar">
+                                <button class="btn btn-primary" onclick="saveEmailTemplates()"><i data-lucide="save"></i> Enregistrer les modèles</button>
                             </div>
                         </div>
                     </div>
@@ -1949,7 +2095,7 @@
                     <div class="form-group"><label>Date *</label><input type="date" id="expDate" required></div>
                 </div>
                 <div class="grid-2" style="margin-bottom:14px">
-                    <div class="form-group"><label>Montant TTC *</label><input type="number" id="expAmountTTC" step="0.001" required placeholder="0.000"></div>
+                    <div class="form-group"><label>Montant TTC *</label><input type="number" id="expAmountTTC" step="0.001" required placeholder="0.000" oninput="updateExpenseHT()"></div>
                     <div class="form-group"><label>Dont Retenue (TND)</label><input type="number" id="expRetenue" step="0.001" placeholder="0.000"></div>
                 </div>
                 <div class="grid-2" style="margin-bottom:14px">
@@ -1961,7 +2107,19 @@
                             <option>Fournitures</option><option>Services</option><option>Autre</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Taux TVA</label>
+                        <select id="expTvaRate" onchange="updateExpenseHT()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white;width:100%">
+                            <option value="19">19%</option>
+                            <option value="13">13%</option>
+                            <option value="7">7%</option>
+                            <option value="0">0% (Exonéré)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-2" style="margin-bottom:14px">
                     <div class="form-group"><label>Référence Facture</label><input type="text" id="expRef" placeholder="N° de pièce"></div>
+                    <div class="form-group"><label>Montant HT</label><input type="text" id="expAmountHT" readonly style="background:#f8fafc;color:var(--text-secondary);font-weight:600" placeholder="0.000"></div>
                 </div>
                 <div class="form-group" style="margin-top:12px">
                     <label>Pièce justificative (PDF/Image)</label>
@@ -2045,6 +2203,10 @@
         <button class="btn btn-warning" id="retenueFromFactureBtn" style="display:none"><i data-lucide="receipt"></i> Certificat de Retenue</button>
     </div>
     <div class="document-sheet" id="previewContent"></div>
+    <div id="pipelineTimeline" style="max-width:210mm;margin:16px auto;padding:12px 16px;background:white;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.06);font-size:0.85rem;display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:600;color:var(--text)"><i data-lucide="git-branch" style="width:16px;height:16px"></i> Chaîne documentaire</div>
+        <div id="pipelineNodes" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
+    </div>
 </div>
 
 <!-- ═══════════ PAYMENT MODAL ═══════════ -->

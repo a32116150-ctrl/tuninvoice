@@ -141,6 +141,10 @@ ${data.notes ? `
 </div>` : ''}
 
 <div class="footer">
+    <div style="flex:1">
+        ${data.companyBank ? `<div style="font-size:11px; color:#666; margin-bottom:2px;">Banque: ${esc(data.companyBank)}</div>` : ''}
+        ${data.companyRIB ? `<div style="font-size:11px; color:#666; margin-bottom:2px;">RIB: ${esc(data.companyRIB)}</div>` : ''}
+    </div>
     <div class="signature">
         <div style="font-size:11px; color:#666; margin-bottom:10px;">Signature</div>
         ${data.signatureImage ? `<img src="${data.signatureImage}" />` : ''}
