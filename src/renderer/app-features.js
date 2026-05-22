@@ -90,9 +90,9 @@ async function loadDashboard() {
         const profitEl = document.getElementById('statNetProfit');
         if (profitEl) profitEl.textContent = formatAmount(stats.netProfit || 0) + ' TND';
 
-        const result = await window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: 999999 });
+        const result = await window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: 6 });
         const docs = result.rows || [];
-        renderRecentDocs(docs.slice(0, 6));
+        renderRecentDocs(docs);
         renderDashboardCharts(stats);
         renderTopClients(stats.topClients || []);
         renderRecentActivity(stats.recentActivity || []);
@@ -128,6 +128,7 @@ function renderRecentDocs(docs) {
 }
 
 function renderPaymentBadge(doc) {
+    if (doc.type === 'ticket') return `<span class="badge badge-paid"><i data-lucide="check-circle" class="lucide-sm"></i> Payée</span>`;
     if (doc.type !== 'facture') return '—';
     const status = doc.paymentStatus || 'unpaid';
     const map = { paid: '<i data-lucide="check-circle" class="lucide-sm"></i> Payée', partial: '<i data-lucide="clock" class="lucide-sm"></i> Partiel', unpaid: '<i data-lucide="x-circle" class="lucide-sm"></i> Impayée' };
@@ -463,7 +464,7 @@ async function initNewDocument() {
     await loadServicesDropdown();
     if (!document.getElementById('itemsBody').children.length) addItem();
     const saveBtn = document.getElementById('saveBtn');
-    saveBtn.innerHTML = getLabel(currentDocType);
+    saveBtn.innerHTML = getDocTypeLabel(currentDocType);
     saveBtn.onclick = saveAndDownloadPDF;
     editingDocId = null;
     restoreDraft();
@@ -605,6 +606,14 @@ function calculateTotals() {
         if (tva === 19) tva19 += line * 0.19;
         else if (tva === 13) tva13 += line * 0.13;
         else if (tva === 7) tva7 += line * 0.07;
+    }
+    const discountPct = parseFloat(document.getElementById('discountPercent')?.value) || 0;
+    if (discountPct > 0) {
+        const f = 1 - discountPct / 100;
+        totalHTRaw *= f;
+        tva19 *= f;
+        tva13 *= f;
+        tva7 *= f;
     }
     const applyTimbre = document.getElementById('applyTimbre').checked;
     timbreAmount = (applyTimbre && totalHTRaw > 1000) ? 1.000 : 0;
@@ -777,9 +786,9 @@ function openClientModal(clientId = null) {
     setTimeout(() => document.getElementById('newClientName').focus(), 100);
     const addrInput = document.getElementById('newClientAddress');
     if (addrInput) {
-        addrInput.addEventListener('change', function() {
+        addrInput.onchange = function() {
             geocodeAddress(this.value);
-        });
+        };
     }
 }
 
@@ -1479,7 +1488,7 @@ function renderDocumentsTable(docs) {
             <td class="actions-cell">
                 <button class="btn-icon btn-view"    onclick="viewDocument('${doc.id}')"           title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
                 ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
-                <button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>
+                ${doc.type !== 'ticket' ? `<button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>` : ''}
                 <button class="btn-icon"             onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6"><i data-lucide="clipboard-list" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"           title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
@@ -1753,6 +1762,30 @@ async function viewDocument(docId) {
     generatePreviewHTML();
     updateBreadcrumb(getDocTypeLabel(doc.type) + ' — Consultation');
     document.getElementById('previewModal').classList.add('active');
+    const retBtn = document.getElementById('retenueFromFactureBtn');
+    if (retBtn) {
+        retBtn.style.display = doc.type === 'facture' ? '' : 'none';
+        retBtn.onclick = () => createRetenueFromInvoice(doc);
+    }
+    const editBtn = document.getElementById('previewEditBtn');
+    if (editBtn) {
+        editBtn.onclick = () => { closePreview(); editExistingDoc(docId); };
+    }
+}
+
+async function createRetenueFromInvoice(doc) {
+    if (!doc) return;
+    await openRetenueModal({
+        beneficiaireName: doc.companyName,
+        beneficiaireMF: doc.companyMF,
+        factureNumber: doc.number,
+        factureDate: doc.date,
+        montantBrut: doc.totalHT
+    });
+    document.getElementById('rRetenuerName').value = doc.clientName || '';
+    document.getElementById('rRetenuerMF').value = doc.clientMF || '';
+    document.getElementById('rRetenuerAddress').value = doc.clientAddress || '';
+    document.getElementById('rBeneficiaireAddress').value = doc.companyAddress || '';
 }
 
 async function editExistingDoc(docId) {
@@ -1785,7 +1818,7 @@ function populateFormWithDoc(doc) {
     currentDocType = doc.type;
     document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === doc.type);
     updateDocType();
-    document.getElementById('docInternalNotes').value = doc.internalNotes || '';
+    const internalNotesEl = document.getElementById('docInternalNotes'); if (internalNotesEl) internalNotesEl.value = doc.internalNotes || '';
     const fields = { docCompanyName: doc.companyName, docCompanyMF: doc.companyMF, docCompanyAddress: doc.companyAddress, docCompanyPhone: doc.companyPhone, docCompanyEmail: doc.companyEmail, docCompanyRC: doc.companyRC, docClientName: doc.clientName, docClientMF: doc.clientMF, docClientAddress: doc.clientAddress, docClientPhone: doc.clientPhone, docClientEmail: doc.clientEmail, docNumber: doc.number, docDate: doc.date, docDueDate: doc.dueDate, docCurrency: doc.currency || 'TND', docPayment: doc.paymentMode || 'Virement bancaire', docNotes: doc.notes };
     Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
     document.getElementById('applyTimbre').checked = doc.applyTimbre || false;
@@ -2626,6 +2659,7 @@ function closeGlobalSearchResults() {
 async function openDocFromSearch(docId) {
     closeGlobalSearchResults();
     document.getElementById('globalSearch').value = '';
+    // Load all documents to find by ID (search requires full dataset)
     const result = await window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: 999999 });
     allDocuments = result.rows || [];
     const doc = allDocuments.find(d => d.id === docId);
@@ -4561,6 +4595,7 @@ async function calculateTVADeclaration() {
     const month = parseInt(document.getElementById('tvaDeclMonth').value);
     showLoading('Calcul de la déclaration TVA...');
     try {
+        // Load all documents for period filtering (needs full dataset for monthly breakdown)
         const result = await window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: 999999 });
         const docs = result.rows || [];
         const expenses = await window.electronAPI.getExpenses(currentUser.id);
@@ -5153,8 +5188,8 @@ function simulateCurrentDocument() {
     const applyTimbre = document.getElementById('docApplyTimbre')?.checked;
 
     const simCalc = simCalculateTotals(items, {
-        applyTimbre, discountPercent: discount, decimalPlaces: parseInt(localStorage.getItem('tuni_decimals')) || 3,
-        roundingMethod: localStorage.getItem('tuni_rounding') || 'half_up'
+        applyTimbre, discountPercent: discount, decimalPlaces: currentDecimalPlaces,
+        roundingMethod: currentRoundingMethod
     });
 
     simCurrentDoc = {
@@ -5203,8 +5238,8 @@ function recalcSimulation() {
         const simTimbre = document.getElementById('simTimbre').checked;
         const tvaOverride = document.getElementById('simTvaOverride').value;
         if (tvaOverride) items.forEach(item => { item.tva = parseInt(tvaOverride); });
-        const dec = parseInt(localStorage.getItem('tuni_decimals')) || 3;
-        const rounding = localStorage.getItem('tuni_rounding') || 'half_up';
+        const dec = currentDecimalPlaces;
+        const rounding = currentRoundingMethod;
 
         const origCalc = simCalculateTotals(simCurrentDoc.items || JSON.parse(simCurrentDoc.items_json || '[]'), {
             applyTimbre: simCurrentDoc.apply_timbre ? true : false,
@@ -5272,8 +5307,8 @@ function applySimulation() {
     const simCalc = simCalculateTotals(items, {
         applyTimbre: simTimbre,
         discountPercent: simDiscount,
-        decimalPlaces: parseInt(localStorage.getItem('tuni_decimals')) || 3,
-        roundingMethod: localStorage.getItem('tuni_rounding') || 'half_up'
+        decimalPlaces: currentDecimalPlaces,
+        roundingMethod: currentRoundingMethod
     });
 
     const docData = {
@@ -5319,6 +5354,7 @@ function applySimulation() {
 // ═══════════════════════════════════════════
 
 let posCart = [];
+let posSelectedItem = null;
 let posActiveSession = null;
 let posAllProducts = [];
 let posSelectedMethod = 'cash';
@@ -5336,6 +5372,89 @@ let posAcompteAmount = 0;
 let posCartNote = '';
 let posReceiptFooter = localStorage.getItem('tuni_pos_footer') || '';
 let posDrafts = JSON.parse(localStorage.getItem('tuni_pos_drafts') || '[]');
+
+// Scanner auto-detect timestamps
+let posScanTimestamps = [];
+const POS_SCAN_THRESHOLD_MS = 50;
+
+// AbortController for search
+let posSearchAbortController = null;
+
+// Product grid chunking
+const POS_PAGE_SIZE = 60;
+let posProductPage = 1;
+let posFilteredProducts = [];
+let posProductsAreaEl = null;
+
+// DOM element cache for hot paths (only caches valid elements)
+const posDOM = {};
+function posGetEl(id) {
+    if (!(id in posDOM)) posDOM[id] = document.getElementById(id);
+    return posDOM[id];
+}
+
+// ── Audio feedback ───────────────────────────
+const POSAudio = {
+    _ctx: null,
+    _getCtx() {
+        if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        return this._ctx;
+    },
+    beep() {
+        try {
+            const ctx = this._getCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 1200;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.1);
+        } catch {}
+    },
+    chime() {
+        try {
+            const ctx = this._getCtx();
+            [800, 1000, 1200].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = freq;
+                osc.type = 'sine';
+                const t = ctx.currentTime + i * 0.1;
+                gain.gain.setValueAtTime(0.25, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                osc.start(t);
+                osc.stop(t + 0.15);
+            });
+        } catch {}
+    },
+    error() {
+        try {
+            const ctx = this._getCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 200;
+            osc.type = 'sawtooth';
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+        } catch {}
+    }
+};
+
+// ── Cash rounding (Tunisian millimes) ────────
+function posRoundCash(amount) {
+    // Round to nearest 100 millimes (0.100 TND)
+    return Math.round(amount * 10) / 10;
+}
 
 function loadPOS() {
     posCart = [];
@@ -5380,7 +5499,7 @@ async function loadPOSSession() {
     try {
         posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id);
         updatePOSSessionUI();
-    } catch {}
+    } catch (e) { console.error('loadPOSSession:', e); }
 }
 
 function updatePOSSessionUI() {
@@ -5423,13 +5542,13 @@ async function loadTodayTotal() {
         const sales = await window.electronAPI.getTodayPOSSales(currentUser.id);
         const total = (sales || []).reduce((s, d) => s + (d.totalTTC || 0), 0);
         document.getElementById('posTodayTotal').innerHTML = total.toFixed(3) + ' TND <small>ventes</small>';
-    } catch { document.getElementById('posTodayTotal').innerHTML = '0,000 TND <small>ventes</small>'; }
+    } catch (e) { console.error('loadTodayTotal:', e); document.getElementById('posTodayTotal').innerHTML = '0,000 TND <small>ventes</small>'; }
 }
 
 // ── TTC Pricing Mode ──────────────────────────────────────────
 function posToggleTTCMode() {
     posTTCMode = !posTTCMode;
-    const btn = document.getElementById('posTTCToggle');
+    const btn = posGetEl('posTTCToggle');
     btn.classList.toggle('active', posTTCMode);
     btn.innerHTML = posTTCMode ? '<i data-lucide="toggle-right"></i>' : '<i data-lucide="toggle-left"></i>';
     const activeCat = document.querySelector('.pos-cat-btn.active');
@@ -5471,20 +5590,84 @@ async function posLoadTodaySales() {
             const t = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
             const payLabel = payLabels[s.paymentMode] || s.paymentMode;
             const isNegative = (s.totalTTC || 0) < 0;
-            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-bottom:1px solid var(--border-light);font-size:0.85rem;${isNegative ? 'opacity:0.6' : ''}">
-                <div>
-                    <strong>#${s.number}</strong> <span style="color:var(--text-muted)">${t}</span>
-                    ${isNegative ? '<span style="color:#dc2626;font-size:0.7rem;font-weight:600"> REMBOURSÉ</span>' : ''}
-                    <br><span style="font-size:0.75rem;color:var(--text-muted)">${escHtml(s.client_name || s.clientName || 'Client du magasin')}</span>
+            const items = typeof s.items_json === 'string' ? JSON.parse(s.items_json) : (s.items || []);
+            const itemsHtml = items.map((item, idx) => {
+                const qty = item.quantity || item.qty || 1;
+                const name = item.description || item.name || 'Article';
+                const lineTotal = qty * (item.price || 0) * (1 - (item.discount || 0) / 100);
+                return `<div style="display:flex;justify-content:space-between;font-size:0.7rem;padding:1px 4px;color:var(--text-muted)">
+                    <span>${escHtml(name)} x${qty}</span>
+                    <span>${lineTotal.toFixed(3)} TND</span>
+                    ${!isNegative && posActiveSession ? `<button class="btn btn-danger" style="font-size:0.55rem;padding:1px 4px;margin-left:4px" onclick="posRefundLineItem('${s.id}', ${idx});event.stopPropagation()">×</button>` : ''}
+                </div>`;
+            }).join('');
+            return `<div style="padding:8px 6px;border-bottom:1px solid var(--border-light);font-size:0.85rem;${isNegative ? 'opacity:0.6' : ''}">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <strong>#${s.number}</strong> <span style="color:var(--text-muted)">${t}</span>
+                        ${isNegative ? '<span style="color:#dc2626;font-size:0.7rem;font-weight:600"> REMBOURSÉ</span>' : ''}
+                        <br><span style="font-size:0.75rem;color:var(--text-muted)">${escHtml(s.client_name || s.clientName || 'Client du magasin')}</span>
+                    </div>
+                    <div style="text-align:right">
+                        <strong>${(s.totalTTC || 0).toFixed(3)} TND</strong>
+                        <br><span style="font-size:0.7rem;color:var(--text-muted)">${payLabel}</span>
+                        ${!isNegative && posActiveSession ? `<br><button class="btn btn-danger" style="font-size:0.65rem;padding:2px 6px;margin-top:4px" onclick="posRefundSale('${s.id}');event.stopPropagation()">Remb. tout</button>` : ''}
+                    </div>
                 </div>
-                <div style="text-align:right">
-                    <strong>${(s.totalTTC || 0).toFixed(3)} TND</strong>
-                    <br><span style="font-size:0.7rem;color:var(--text-muted)">${payLabel}</span>
-                    ${!isNegative && posActiveSession ? `<br><button class="btn btn-danger" style="font-size:0.65rem;padding:2px 6px;margin-top:4px" onclick="posRefundSale('${s.id}');event.stopPropagation()">Rembourser</button>` : ''}
-                </div>
+                ${itemsHtml ? `<div style="margin-top:4px;padding-top:4px;border-top:1px dashed var(--border-light)">${itemsHtml}</div>` : ''}
             </div>`;
         }).join('');
     } catch { document.getElementById('posTodaySalesContent').innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">Erreur de chargement</div>'; }
+}
+
+async function posRefundLineItem(saleId, itemIndex) {
+    if (!posActiveSession) { showToast('Session active requise', 'warning'); return; }
+    if (!showConfirm) { if (!confirm('Rembourser cet article ?')) return; }
+    else {
+        const confirmed = await new Promise(resolve => {
+            showConfirm('Remboursement article', 'Rembourser uniquement cet article ? Le stock sera réintégré.', resolve);
+        });
+        if (!confirmed) return;
+    }
+    showLoading('Remboursement article...');
+    try {
+        const sale = await window.electronAPI.getPOSSale(saleId);
+        if (!sale) { hideLoading(); showToast('Vente introuvable', 'error'); return; }
+        const items = typeof sale.items === 'string' ? JSON.parse(sale.items) : (sale.items || []);
+        if (!items[itemIndex]) { hideLoading(); showToast('Article introuvable', 'error'); return; }
+        const item = items[itemIndex];
+        const qty = item.quantity || item.qty || 1;
+        const price = item.price || 0;
+        const discount = item.discount || 0;
+        const lineHT = qty * price;
+        const discountAmt = lineHT * discount / 100;
+        const lineTotal = lineHT - discountAmt;
+        const tvaAmt = (item.tva > 0) ? lineTotal * item.tva / 100 : 0;
+        // Reverse stock
+        if (item.serviceId) {
+            await window.electronAPI.updatePOSStock({ id: item.serviceId, quantity: (posAllProducts.find(p => p.id === item.serviceId)?.stock || 0) + qty });
+        }
+        // Create refund document for this line item
+        const refundResult = await window.electronAPI.savePOSSale({
+            userId: currentUser.id,
+            items: [{ ...item, quantity: -qty }],
+            totalHT: -lineHT,
+            totalTTC: -(lineTotal + tvaAmt),
+            paymentMethod: 'cash',
+            clientName: sale.client_name || sale.clientName || 'Client du magasin',
+            notes: `Remboursement article "${item.description || item.name || 'Article'}" de ${sale.number || ''}`,
+            sessionId: posActiveSession.id,
+            currency: 'TND'
+        });
+        if (refundResult.success) {
+            showToast('Article remboursé', 'success');
+            if (posTodaySalesOpen) posLoadTodaySales();
+            loadPOSProducts();
+            posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id);
+            loadTodayTotal();
+        } else { showToast('Erreur: ' + (refundResult.error || 'Échec'), 'error'); }
+    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+    finally { hideLoading(); }
 }
 
 // ── Last Receipt Reprint ──────────────────────────────────────
@@ -5499,6 +5682,7 @@ function posReprintLast() {
 // ── Hold / Resume Cart ────────────────────────────────────────
 function posHoldCart() {
     if (posCart.length === 0) { showToast('Panier vide', 'warning'); return; }
+    posSaveDraft();
     posHeldCart = JSON.parse(JSON.stringify(posCart));
     posCart = [];
     renderPOSCart();
@@ -5544,7 +5728,7 @@ async function posZReport() {
         try {
             const company = await window.electronAPI.getCompany(currentUser.id);
             if (company) { storeName = company.name || storeName; storeMF = company.mf || ''; }
-        } catch {}
+        } catch (e) { console.error('posZReport company:', e); }
         const payLabels = { cash: 'Espèces', card: 'Carte', mobile: 'Mobile Money', check: 'Chèque' };
         let byMethod = '<div style="font-size:0.7rem;margin:4px 0">';
         if (cashSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Espèces</span><span>${cashSales.toFixed(3)}</span></div>`;
@@ -5612,7 +5796,7 @@ async function posXReport() {
         try {
             const company = await window.electronAPI.getCompany(currentUser.id);
             if (company) { storeName = company.name || storeName; storeMF = company.mf || ''; }
-        } catch {}
+        } catch (e) { console.error('posXReport company:', e); }
         const mobileSales = sales.filter(s => s.paymentMode === 'mobile').reduce((sum, s) => sum + (s.totalTTC || 0), 0);
         const checkSales = sales.filter(s => s.paymentMode === 'check').reduce((sum, s) => sum + (s.totalTTC || 0), 0);
         let byMethod = '';
@@ -5938,7 +6122,7 @@ async function loadPOSProducts() {
         renderPOSProducts('all');
         renderPOSCategories();
         checkLowStock();
-    } catch {}
+    } catch (e) { console.error('loadPOSProducts:', e); showToast('Erreur chargement produits', 'error'); }
 }
 
 async function checkLowStock() {
@@ -5953,7 +6137,7 @@ async function checkLowStock() {
         } else {
             badge.style.display = 'none';
         }
-    } catch {}
+    } catch (e) { console.error('checkLowStock:', e); }
 }
 
 function renderPOSCategories() {
@@ -5974,25 +6158,36 @@ function posFilterCategory(btn, cat) {
 
 function renderPOSProducts(category) {
     const grid = document.getElementById('posProductGrid');
-    let filtered;
+    if (!posProductsAreaEl) posProductsAreaEl = document.getElementById('posProductsArea');
     if (category === '__fav__') {
-        filtered = posAllProducts.filter(p => posFavorites.includes(p.id));
+        posFilteredProducts = posAllProducts.filter(p => posFavorites.includes(p.id));
     } else {
-        filtered = category === 'all' ? posAllProducts : posAllProducts.filter(p => (p.category || 'Autre') === category);
+        posFilteredProducts = category === 'all' ? posAllProducts : posAllProducts.filter(p => (p.category || 'Autre') === category);
     }
     if (posSearchFilter) {
         const q = posSearchFilter.toLowerCase();
-        filtered = filtered.filter(p =>
+        posFilteredProducts = posFilteredProducts.filter(p =>
             p.name.toLowerCase().includes(q) ||
             (p.barcode && p.barcode.toLowerCase().includes(q)) ||
             (p.category || '').toLowerCase().includes(q)
         );
     }
-    if (filtered.length === 0) {
+    posProductPage = 1;
+    posRenderProductChunk(grid);
+}
+
+function posRenderProductChunk(grid) {
+    if (!grid) grid = document.getElementById('posProductGrid');
+    const end = posProductPage * POS_PAGE_SIZE;
+    const chunk = posFilteredProducts.slice(0, end);
+    const hasMore = end < posFilteredProducts.length;
+
+    if (chunk.length === 0) {
         grid.innerHTML = '<div class="pos-empty">Aucun produit trouvé</div>';
         return;
     }
-    grid.innerHTML = filtered.map(p => {
+
+    grid.innerHTML = chunk.map(p => {
         const stock = p.stock || 0;
         const tracking = p.min_stock > 0;
         const outOfStock = tracking && stock <= 0;
@@ -6015,6 +6210,38 @@ function renderPOSProducts(category) {
             ${stockLabel ? `<div class="pos-prod-stock ${lowStock ? 'low' : ''}">${stockLabel}</div>` : ''}
         </div>`;
     }).join('');
+
+    posSetupInfiniteScroll();
+    if (hasMore) {
+        const loadMore = document.createElement('div');
+        loadMore.className = 'pos-empty pos-load-more';
+        loadMore.style.cursor = 'pointer';
+        loadMore.style.color = 'var(--primary)';
+        loadMore.style.fontWeight = '600';
+        loadMore.textContent = `Afficher plus (${posFilteredProducts.length - end} restants)`;
+        loadMore.onclick = () => {
+            posProductPage++;
+            posRenderProductChunk(grid);
+        };
+        grid.appendChild(loadMore);
+    }
+}
+
+// Infinite scroll for product grid
+function posSetupInfiniteScroll() {
+    const area = document.getElementById('posProductsArea');
+    if (!area || area._posScrollSetup) return;
+    area._posScrollSetup = true;
+    let scrollTimer;
+    area.addEventListener('scroll', () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+            if (area.scrollTop + area.clientHeight >= area.scrollHeight - 300) {
+                const loadMore = area.querySelector('.pos-load-more');
+                if (loadMore) loadMore.click();
+            }
+        }, 200);
+    }, { passive: true });
 }
 
 function posFilterSearch(val) {
@@ -6038,12 +6265,24 @@ function posAddToCart(productId) {
     document.getElementById('posBarcodeInput').focus();
 }
 
+function posSelectCartItem(index) {
+    posSelectedItem = posSelectedItem === index ? null : index;
+    renderPOSCart();
+}
+
 function renderPOSCart() {
-    const itemsEl = document.getElementById('posCartItems');
-    const totalsEl = document.getElementById('posCartTotals');
-    const countEl = document.getElementById('posCartCount');
-    const clearBtn = document.getElementById('posClearBtn');
-    const payBtn = document.getElementById('posPayBtn');
+    const itemsEl = posGetEl('posCartItems');
+    const totalsEl = posGetEl('posCartTotals');
+    const countEl = posGetEl('posCartCount');
+    const clearBtn = posGetEl('posClearBtn');
+    const payBtn = posGetEl('posPayBtn');
+    const notesEl = posGetEl('posCartNotes');
+    const subtotalEl = posGetEl('posSubtotal');
+    const discountRow = posGetEl('posDiscountRow');
+    const discountTotalEl = posGetEl('posDiscountTotal');
+    const taxTotalEl = posGetEl('posTaxTotal');
+    const grandTotalEl = posGetEl('posGrandTotal');
+    const payBtnAmount = posGetEl('posPayBtnAmount');
 
     countEl.textContent = posCart.reduce((s, c) => s + c.qty, 0);
 
@@ -6052,18 +6291,13 @@ function renderPOSCart() {
         totalsEl.style.display = 'none';
         clearBtn.disabled = true;
         payBtn.disabled = true;
+        if (notesEl) notesEl.style.display = 'none';
         return;
     }
 
-    document.getElementById('posCartNotes').style.display = posCart.length > 0 ? 'block' : 'none';
+    if (notesEl) notesEl.style.display = 'block';
     clearBtn.disabled = false;
     payBtn.disabled = false;
-
-    const lineTotals = posCart.map(item => {
-        const lineHT = item.qty * item.price;
-        const discountAmt = lineHT * ((item.discount || 0) / 100);
-        return lineHT - discountAmt;
-    });
 
     itemsEl.innerHTML = posCart.map((item, i) => {
         const lineHT = item.qty * item.price;
@@ -6071,8 +6305,8 @@ function renderPOSCart() {
         const discountAmt = lineHT * discountPct / 100;
         const total = lineHT - discountAmt;
         const tvaAmt = (item.tva > 0) ? total * item.tva / 100 : 0;
-        const priceOverridden = item.priceOverridden;
-        return `<div class="pos-cart-item">
+        const selected = posSelectedItem === i ? 'selected' : '';
+        return `<div class="pos-cart-item ${selected}" onclick="posSelectCartItem(${i})">
             <div style="flex:1;min-width:0">
                 <div class="pos-ci-name">${escHtml(item.name)}</div>
                 <div class="pos-ci-discount">
@@ -6081,46 +6315,42 @@ function renderPOSCart() {
                 </div>
             </div>
             <div class="pos-ci-qty">
-                <button onclick="posDecQty(${i})">−</button>
+                <button onclick="posDecQty(${i});event.stopPropagation()">−</button>
                 <span ondblclick="posQuickQty(${i},this)" style="cursor:pointer" title="Double-clic quantité">${item.qty}</span>
-                <button onclick="posIncQty(${i})">+</button>
+                <button onclick="posIncQty(${i});event.stopPropagation()">+</button>
             </div>
             <div style="text-align:right">
                 <span class="pos-ci-total ${discountPct > 0 ? 'pos-ci-discounted' : ''}" ondblclick="posOverridePrice(${i},this)" style="cursor:pointer" title="Double-clic prix">${total.toFixed(3)}</span>
-                ${priceOverridden ? `<div style="font-size:0.55rem;color:#f59e0b;font-weight:600">PRIX MODIFIÉ</div>` : ''}
+                ${item.priceOverridden ? `<div style="font-size:0.55rem;color:#f59e0b;font-weight:600">PRIX MODIFIÉ</div>` : ''}
                 ${tvaAmt > 0 ? `<div style="font-size:0.6rem;color:var(--text-muted)">TVA ${tvaAmt.toFixed(3)}</div>` : ''}
             </div>
-            <button class="pos-ci-remove" onclick="posRemoveItem(${i})"><i data-lucide="x" style="width:14px"></i></button>
+            <button class="pos-ci-remove" onclick="posRemoveItem(${i});event.stopPropagation()"><i data-lucide="x" style="width:14px"></i></button>
         </div>`;
     }).join('');
 
     const subtotal = posCart.reduce((s, c) => s + c.qty * c.price, 0);
     const totalDiscount = posCart.reduce((s, c) => {
-        const lineHT = c.qty * c.price;
-        return s + lineHT * (c.discount || 0) / 100;
+        return s + c.qty * c.price * (c.discount || 0) / 100;
     }, 0);
-    const discountedHT = subtotal - totalDiscount;
     const tvaByRate = {};
     posCart.forEach(c => {
         const lineHT = c.qty * c.price;
-        const lineDiscountAmt = lineHT * (c.discount || 0) / 100;
-        const taxable = lineHT - lineDiscountAmt;
+        const taxable = lineHT - lineHT * (c.discount || 0) / 100;
         if (c.tva > 0) tvaByRate[c.tva] = (tvaByRate[c.tva] || 0) + taxable * c.tva / 100;
     });
     const totalTVA = Object.values(tvaByRate).reduce((s, v) => s + v, 0);
-    const grandTotal = discountedHT + totalTVA;
+    const grandTotal = subtotal - totalDiscount + totalTVA;
 
-    document.getElementById('posSubtotal').textContent = subtotal.toFixed(3);
-    const discountRow = document.getElementById('posDiscountRow');
+    subtotalEl.textContent = subtotal.toFixed(3);
     if (totalDiscount > 0) {
         discountRow.style.display = 'flex';
-        document.getElementById('posDiscountTotal').textContent = '-' + totalDiscount.toFixed(3);
+        discountTotalEl.textContent = '-' + totalDiscount.toFixed(3);
     } else {
         discountRow.style.display = 'none';
     }
-    document.getElementById('posTaxTotal').textContent = totalTVA.toFixed(3);
-    document.getElementById('posGrandTotal').textContent = grandTotal.toFixed(3);
-    document.getElementById('posPayBtnAmount').textContent = grandTotal.toFixed(3) + ' TND';
+    taxTotalEl.textContent = totalTVA.toFixed(3);
+    grandTotalEl.textContent = grandTotal.toFixed(3);
+    payBtnAmount.textContent = grandTotal.toFixed(3) + ' TND';
     totalsEl.style.display = 'block';
 
     if (window.lucide) lucide.createIcons();
@@ -6194,30 +6424,22 @@ function posClearCart() {
 
 function posOpenPayment() {
     if (posCart.length === 0) { showToast('Panier vide', 'warning'); return; }
-    const subtotal = posCart.reduce((s, c) => s + c.qty * c.price, 0);
-    const totalDiscount = posCart.reduce((s, c) => s + (c.qty * c.price) * (c.discount || 0) / 100, 0);
-    const discountedHT = subtotal - totalDiscount;
-    const total = discountedHT +
-        Object.values(posCart.reduce((r, c) => {
-            if (c.tva > 0) {
-                const lineHT = c.qty * c.price;
-                const lineDiscount = lineHT * (c.discount || 0) / 100;
-                r[c.tva] = (r[c.tva] || 0) + (lineHT - lineDiscount) * c.tva / 100;
-            }
-            return r;
-        }, {})).reduce((s, v) => s + v, 0);
-    document.getElementById('posPayTotal').textContent = total.toFixed(3) + ' TND';
-    document.getElementById('posAmountReceived').value = '';
-    document.getElementById('posChangeDisplay').style.display = 'none';
-    document.getElementById('posPayClient').value = '';
-    document.getElementById('posPayNotes').value = '';
+    const total = parseFloat(posGetEl('posGrandTotal').textContent) || 0;
+    posGetEl('posPayTotal').textContent = total.toFixed(3) + ' TND';
+    posGetEl('posAmountReceived').value = '';
+    posGetEl('posChangeDisplay').style.display = 'none';
+    posGetEl('posPayClient').value = '';
+    posGetEl('posPayNotes').value = '';
     posSelectedMethod = 'cash';
     posSplitPayments = [];
     document.querySelectorAll('.pos-pay-method').forEach(b => b.classList.toggle('active', b.dataset.method === 'cash'));
-    document.getElementById('posCashSection').style.display = 'block';
-    document.getElementById('posSplitPaymentsList').innerHTML = '';
-    document.getElementById('posPaymentModal').style.display = 'flex';
+    posGetEl('posCashSection').style.display = 'block';
+    posGetEl('posSplitPaymentsList').innerHTML = '';
+    const roundingInfo = document.getElementById('posRoundingInfo');
+    if (roundingInfo) roundingInfo.textContent = '';
+    posGetEl('posPaymentModal').style.display = 'flex';
     if (window.lucide) lucide.createIcons();
+    setTimeout(() => posGetEl('posAmountReceived').focus(), 100);
 }
 
 function posSelectPayMethod(btn) {
@@ -6294,24 +6516,100 @@ function posRemoveSplitPayment(index) {
     posRenderSplitPayments();
 }
 
-function posSelectPayMethod(btn) {
-    document.querySelectorAll('.pos-pay-method').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    posSelectedMethod = btn.dataset.method;
-    document.getElementById('posCashSection').style.display = posSelectedMethod === 'cash' ? 'block' : 'none';
-}
-
 function posCalcChange() {
     const received = parseFloat(document.getElementById('posAmountReceived').value) || 0;
     const totalText = document.getElementById('posPayTotal').textContent;
     const total = parseFloat(totalText) || 0;
-    const change = received - total;
-    if (received >= total && total > 0) {
+    const isCash = posSelectedMethod === 'cash' && posSplitPayments.length === 0;
+    const effectiveTotal = isCash ? posRoundCash(total) : total;
+    const roundedReceived = isCash ? posRoundCash(received) : received;
+    const change = roundedReceived - effectiveTotal;
+    if (isCash && total !== effectiveTotal) {
+        const roundedEl = document.getElementById('posRoundingInfo');
+        if (!roundedEl) {
+            const info = document.createElement('div');
+            info.id = 'posRoundingInfo';
+            info.style.cssText = 'font-size:0.75rem;color:#f59e0b;text-align:center;margin-top:4px';
+            document.getElementById('posCashSection').appendChild(info);
+        }
+        document.getElementById('posRoundingInfo').textContent =
+            `Arrondi espèces: ${total.toFixed(3)} → ${effectiveTotal.toFixed(3)} TND`;
+    } else {
+        const roundedEl = document.getElementById('posRoundingInfo');
+        if (roundedEl) roundedEl.textContent = '';
+    }
+    if (roundedReceived >= effectiveTotal && effectiveTotal > 0) {
         document.getElementById('posChangeDisplay').style.display = 'block';
         document.getElementById('posChangeAmount').textContent = change.toFixed(3);
     } else {
         document.getElementById('posChangeDisplay').style.display = 'none';
     }
+}
+
+function posSetReceived(amount) {
+    const el = document.getElementById('posAmountReceived');
+    el.value = amount.toFixed(3);
+    posCalcChange();
+    el.focus();
+}
+
+let posNpValue = '';
+
+function posNumpadInput(char) {
+    if (char === ',' && posNpValue.includes(',')) return;
+    posNpValue += char;
+    const display = document.getElementById('posNpDisplay');
+    if (display) display.value = posNpValue || '0';
+}
+
+function posNumpadBackspace() {
+    posNpValue = posNpValue.slice(0, -1);
+    const display = document.getElementById('posNpDisplay');
+    if (display) display.value = posNpValue || '0';
+}
+
+function posNumpadAction(mode) {
+    const val = parseFloat(posNpValue.replace(',', '.'));
+    if (!val || posCart.length === 0) return;
+    const idx = posSelectedItem !== null ? posSelectedItem : posCart.length - 1;
+    const item = posCart[idx];
+    if (mode === 'qte') item.qty = val;
+    posNpValue = '';
+    const display = document.getElementById('posNpDisplay');
+    if (display) display.value = '0';
+    renderPOSCart();
+}
+
+function posNumpadEnter() {
+    const val = parseFloat(posNpValue.replace(',', '.'));
+    if (!val || val <= 0) return;
+    const trimmed = posNpValue.replace(',', '.');
+    // First try barcode match
+    const product = posAllProducts.find(p => p.barcode && p.barcode === trimmed);
+    if (product) {
+        posAddToCart(product.id);
+    } else {
+        posCart.push({
+            id: 'custom_' + Date.now(),
+            name: 'Article personnalisé',
+            price: val,
+            tva: 19,
+            qty: 1,
+            discount: 0,
+            priceOverridden: true
+        });
+        renderPOSCart();
+    }
+    posNpValue = '';
+    const display = document.getElementById('posNpDisplay');
+    if (display) display.value = '0';
+    document.getElementById('posBarcodeInput').focus();
+}
+
+function posNumpadClear() {
+    posNpValue = '';
+    const display = document.getElementById('posNpDisplay');
+    if (display) display.value = '0';
 }
 
 function posClosePayment() {
@@ -6383,6 +6681,7 @@ async function posCompleteSale() {
         if (result.success) {
             showToast('Vente enregistrée', 'success');
             document.getElementById('posPaymentModal').style.display = 'none';
+            POSAudio.chime();
             // Add loyalty points
             posAddLoyaltyPoints(clientName, totalTTC);
             const pts = posGetLoyalty(clientName);
@@ -6402,7 +6701,7 @@ async function posCompleteSale() {
             loadPOSProducts();
             // Refresh session totals first, then update the display
             if (posActiveSession) {
-                try { posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id); } catch {}
+                try { posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id); } catch (e) { console.error('posCompleteSale refresh session:', e); }
             }
             loadTodayTotal();
         } else {
@@ -6436,7 +6735,7 @@ async function posShowReceipt(data) {
             storeInfo = parts.join(' | ') || 'Point de Vente';
             storePhone = company.phone || '';
         }
-    } catch {}
+    } catch (e) { console.error('posShowReceipt company:', e); }
 
     let itemsHtml = '';
     data.items.forEach(item => {
@@ -6505,7 +6804,7 @@ async function posLoadQuickGrid() {
                     const name = item.description || item.name || '';
                     if (name) freq[name] = (freq[name] || 0) + (item.quantity || 1);
                 });
-            } catch {}
+            } catch (e) { console.error('posLoadQuickGrid parse:', e); }
         });
         const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10);
         if (top.length === 0) { container.style.display = 'none'; return; }
@@ -6515,7 +6814,7 @@ async function posLoadQuickGrid() {
             return `<span class="pos-quick-item" onclick="posAddToCart('${product.id}')">${escHtml(name)}</span>`;
         }).filter(Boolean).join('');
         container.style.display = top.some(Boolean) ? 'flex' : 'none';
-    } catch { container.style.display = 'none'; }
+    } catch (e) { console.error('posLoadQuickGrid:', e); container.style.display = 'none'; }
 }
 
 // ── Client Search ────────────────────────────────────────────
@@ -6539,6 +6838,31 @@ function posSelectClient(name) {
     document.getElementById('posPayClient').value = name;
     document.getElementById('posClientResults').style.display = 'none';
     posRefreshFidelityFromClient(name);
+    posShowClientHistory(name);
+}
+
+async function posShowClientHistory(name) {
+    if (!name || name === 'Client du magasin') return;
+    const historyEl = document.getElementById('posClientHistory');
+    if (!historyEl) return;
+    try {
+        const sales = await window.electronAPI.getTodayPOSSales(currentUser.id);
+        if (!sales || sales.length === 0) { historyEl.style.display = 'none'; return; }
+        const clientSales = sales.filter(s =>
+            (s.client_name || s.clientName || '') === name
+        ).slice(0, 5);
+        if (clientSales.length === 0) { historyEl.style.display = 'none'; return; }
+        historyEl.style.display = 'block';
+        historyEl.innerHTML = '<div style="font-size:0.7rem;font-weight:600;color:var(--text-muted);margin-bottom:4px">Achats récents</div>' +
+            clientSales.map(s => {
+                const d = new Date(s.created_at);
+                const t = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                return `<div style="display:flex;justify-content:space-between;font-size:0.7rem;padding:2px 0">
+                    <span style="color:var(--text-muted)">${t} — #${s.number}</span>
+                    <span style="font-weight:600">${(s.totalTTC || 0).toFixed(3)} TND</span>
+                </div>`;
+            }).join('');
+    } catch { historyEl.style.display = 'none'; }
 }
 
 function posRefreshFidelityFromClient(name) {
@@ -6685,21 +7009,7 @@ function posOpenFidelity() {
     document.getElementById('posFidelityModal').style.display = 'flex';
 }
 
-// ── Also add a hold with draft save ──────────────────────────
-// Enhances the existing posHoldCart to also save as draft and in-memory hold
-posHoldCart = function posHoldCartOverride() {
-    if (posCart.length === 0) { showToast('Panier vide', 'warning'); return; }
-    posSaveDraft();
-    posHeldCart = JSON.parse(JSON.stringify(posCart));
-    posCart = [];
-    renderPOSCart();
-    document.getElementById('posHoldBtn').style.display = 'none';
-    const ind = document.getElementById('posHeldIndicator');
-    ind.style.display = 'inline-flex';
-    ind.innerHTML = `<i data-lucide="rotate-ccw" style="width:12px;height:12px"></i> 1 en attente`;
-    if (window.lucide) lucide.createIcons();
-    showToast('Panier mis en attente', 'info');
-};
+
 
 function posCloseReceipt() {
     document.getElementById('posReceiptModal').style.display = 'none';
@@ -6721,6 +7031,22 @@ function posPrintReceipt() {
 // ── Unified barcode/search handler ───────────────────────────
 let posScanTimer = null;
 function posBarcodeSearch(val) {
+    const now = Date.now();
+    posScanTimestamps.push(now);
+    if (posScanTimestamps.length > 10) posScanTimestamps.shift();
+
+    // Detect scanner: very fast keystrokes (<50ms apart)
+    const isScanner = posScanTimestamps.length >= 3 &&
+        (posScanTimestamps[posScanTimestamps.length - 1] - posScanTimestamps[posScanTimestamps.length - 2]) < POS_SCAN_THRESHOLD_MS &&
+        (posScanTimestamps[posScanTimestamps.length - 2] - posScanTimestamps[posScanTimestamps.length - 3]) < POS_SCAN_THRESHOLD_MS;
+
+    const delay = isScanner ? 30 : 300;
+
+    // Abort any previous search
+    if (posSearchAbortController) posSearchAbortController.abort();
+    posSearchAbortController = new AbortController();
+    const signal = posSearchAbortController.signal;
+
     clearTimeout(posScanTimer);
     if (val.length === 0) {
         posSearchFilter = '';
@@ -6730,7 +7056,7 @@ function posBarcodeSearch(val) {
     }
     if (val.length < 2) { posSearchFilter = val; return; }
     posScanTimer = setTimeout(async () => {
-        if (!currentUser) return;
+        if (signal.aborted || !currentUser) return;
         const trimmed = val.trim();
         // Try barcode first
         let product = posAllProducts.find(p => p.barcode && p.barcode === trimmed);
@@ -6739,6 +7065,8 @@ function posBarcodeSearch(val) {
             document.getElementById('posBarcodeInput').value = '';
             posSearchFilter = '';
             renderPOSProducts(document.querySelector('.pos-cat-btn.active')?.dataset?.cat || 'all');
+            posScanTimestamps = [];
+            POSAudio.beep();
             return;
         }
         // Search by name
@@ -6749,20 +7077,29 @@ function posBarcodeSearch(val) {
             posAddToCart(matches[0].id);
             document.getElementById('posBarcodeInput').value = '';
             posSearchFilter = '';
+            POSAudio.beep();
         } else if (matches.length > 1) {
             posSearchFilter = trimmed;
             document.querySelectorAll('.pos-cat-btn').forEach(b => b.classList.remove('active'));
             renderPOSProducts('all');
+            POSAudio.error();
         } else {
             posSearchFilter = trimmed;
             renderPOSProducts(document.querySelector('.pos-cat-btn.active')?.dataset?.cat || 'all');
+            POSAudio.error();
         }
-    }, 300);
+    }, delay);
 }
 
 // Init F2 focus shortcut
 document.addEventListener('DOMContentLoaded', () => {
-    // Nothing else needed here — posBarcodeSearch is called via oninput
+    // Sync numpad input field back to posNpValue on manual keyboard entry
+    const npDisplay = document.getElementById('posNpDisplay');
+    if (npDisplay) {
+        npDisplay.addEventListener('input', function() {
+            posNpValue = this.value;
+        });
+    }
 });
 
 function escHtml(t) {

@@ -9,6 +9,9 @@
 </p>
 
 <p align="center">
+  <a href="https://factarlou.online">
+    <img src="https://img.shields.io/badge/website-factarlou.online-00e5ff?style=for-the-badge&logo=google-chrome" alt="Website"/>
+  </a>
   <img src="https://img.shields.io/badge/version-3.1.0-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
@@ -21,11 +24,22 @@
 
 **Factarlou** est bien plus qu'un simple logiciel de facturation. C'est un écosystème complet de gestion conçu spécifiquement pour le cadre légal et fiscal **Tunisien**. Entièrement **Offline-First**, il garantit que vos données financières sensibles restent exclusivement sur votre machine, sans aucun passage par le cloud.
 
+> 🌐 **Site web officiel : [factarlou.online](https://factarlou.online)** — Documentation, blog, guides fiscaux et téléchargement.
+
 De la génération de factures conformes à l'exportation XML pour la plateforme **TEJ**, en passant par un **Point de Vente (POS)** complet, Factarlou automatise vos processus tout en assurant une précision chirurgicale (3 décimales).
 
 ---
 
 ## What's New in v3.1.0
+
+### POS Performance & Code Quality
+
+- **Grille Produits Paginée** : Les produits chargent par lots de 60 avec défilement infini — plus de ralentissements avec des catalogues de 1000+ articles
+- **Déduction Stock Transactionnelle** : Les mises à jour de stock sont groupées dans une seule transaction SQLite, garantissant atomicité et performance
+- **Cache DOM** : Les éléments fréquemment utilisés (panier, totaux, produits) sont mis en cache pour éliminer les requêtes DOM redondantes
+- **Index Base de Données** : 5 nouveaux indexes SQL (barcode, POS session, catégorie) accélèrent les recherches et filtrages
+- **Corrections Qualité** : Fonctions dupliquées fusionnées (`posSelectPayMethod`, `posHoldCart`), 12 blocs `catch {}` remplacés par `console.error()`
+- **Fidélité** : Nouvelle table `pos_loyalty` en SQLite (backend prêt, migration depuis localStorage possible)
 
 ### Auto-Updater Reliability
 
@@ -63,10 +77,11 @@ Interface de caisse complète adaptée aux commerces et marchés :
 - **Rapport Z** : Rapport fin de journée, impression thermique 80mm
 - **Mouvements de Caisse** (`F8`) : Apports/retraits en session
 - **Ventes du Jour** (`F4`) : Historique complet avec remboursement
-- **Stock** : Suivi optionnel, déduction auto, alerte stock bas
+- **Stock** : Suivi optionnel, déduction auto (batch transaction), alerte stock bas
 - **Ticket** : Style thermique 80mm, remises, éclatement paiements, pied personnalisable
 - **Raccourcis** : `F1` plein écran, `F2` scan, `F3` TTC, `F4` ventes, `F5` X, `F6` favoris, `F7` produit, `F8` caisse
 - **Intégration** : Ventes enregistrées comme documents `facture` (`is_pos=1`)
+- **Performance** : Grille produits paginée (60 par lot) avec défilement infini, cache DOM pour les chemins chauds, requêtes DB optimisées avec index
 
 ### 📄 Moteur de Documents — 8 Types
 

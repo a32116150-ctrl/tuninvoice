@@ -1,8 +1,8 @@
-const VALID_TVA_RATES = [0, 7, 13, 19];
+const VALID_TVA_RATES = [19, 13, 7, 0];
 const VALID_CURRENCIES = ['TND', 'EUR', 'USD'];
 const VALID_DOC_TYPES = ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir'];
 const VALID_ROUNDING_METHODS = ['half_up', 'ceil', 'floor'];
-const VALID_FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly'];
+const VALID_FREQUENCIES = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
 
 function isString(v, maxLen = 500) {
     return typeof v === 'string' && v.length > 0 && v.length <= maxLen;
@@ -29,7 +29,8 @@ function isDate(v) {
 }
 
 function isMF(v) {
-    return !v || typeof v === 'string' && v.length <= 20;
+    if (!v) return true;
+    return typeof v === 'string' && v.length <= 20;
 }
 
 function validateDocSave(data) {

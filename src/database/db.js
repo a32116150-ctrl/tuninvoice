@@ -156,6 +156,7 @@ class AppDatabase {
         try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN smtp_user TEXT`); } catch(e){}
         try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN smtp_pass TEXT`); } catch(e){}
         try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN smtp_secure INTEGER DEFAULT 0`); } catch(e){}
+        try { this.db.exec(`ALTER TABLE user_settings ADD COLUMN prefix_ticket TEXT DEFAULT 'TIC'`); } catch(e){}
         this.db.exec(`CREATE TABLE IF NOT EXISTS contracts (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, type TEXT NOT NULL, number TEXT NOT NULL, title TEXT, employer_name TEXT, employer_mf TEXT, employer_address TEXT, employer_rep TEXT, employer_rep_role TEXT, employee_name TEXT, employee_cin TEXT, employee_address TEXT, employee_role TEXT, employee_department TEXT, start_date TEXT, end_date TEXT, salary REAL, salary_type TEXT DEFAULT 'mensuel', work_hours REAL DEFAULT 40, work_location TEXT, trial_period INTEGER DEFAULT 0, trial_duration TEXT, notice_period TEXT, extra_clauses TEXT, status TEXT DEFAULT 'brouillon', notes TEXT, signed_at TEXT, pdf_path TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, document_id TEXT NOT NULL, amount REAL NOT NULL, method TEXT, reference TEXT, date TEXT NOT NULL, notes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         
@@ -191,6 +192,7 @@ class AppDatabase {
         this.db.exec(`CREATE TABLE IF NOT EXISTS document_templates (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, type TEXT, data TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS recurring_invoices (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, template_id TEXT, client_id TEXT, doc_type TEXT, day_of_month INTEGER DEFAULT 15, items_template TEXT, currency TEXT DEFAULT 'TND', payment_mode TEXT DEFAULT 'Virement bancaire', frequency TEXT NOT NULL, last_run TEXT, next_run TEXT, active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         this.db.exec(`CREATE TABLE IF NOT EXISTS pos_sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, opened_at TEXT NOT NULL, closed_at TEXT, opening_balance REAL DEFAULT 0, closing_cash REAL DEFAULT 0, closing_card REAL DEFAULT 0, closing_total REAL DEFAULT 0, cash_sales REAL DEFAULT 0, card_sales REAL DEFAULT 0, total_sales REAL DEFAULT 0, transaction_count INTEGER DEFAULT 0, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+        this.db.exec(`CREATE TABLE IF NOT EXISTS pos_loyalty (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, client_name TEXT NOT NULL, points INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, client_name))`);
     }
 
     initIndexes() {
@@ -203,10 +205,15 @@ class AppDatabase {
         tryExec(`CREATE INDEX IF NOT EXISTS idx_retenues_user ON retenues(user_id)`);
         tryExec(`CREATE INDEX IF NOT EXISTS idx_retenues_facture ON retenues(facture_id)`);
         tryExec(`CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id, date)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_services_barcode ON services(barcode)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_documents_pos ON documents(is_pos, user_id, created_at)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_documents_pos_session ON documents(pos_session_id)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_services_user_cat ON services(user_id, category)`);
+        tryExec(`CREATE INDEX IF NOT EXISTS idx_pos_sessions_user ON pos_sessions(user_id, status)`);
     }
 
     getDatabasePath() { return this.dbPath; }
-    restore(backupPath) { this.db.close(); fs.copyFileSync(backupPath, this.dbPath); this.db = new Database(this.dbPath); this.db.pragma('journal_mode = WAL'); this.db.pragma('foreign_keys = ON'); }
+    restore(backupPath) { this.db.close(); fs.copyFileSync(backupPath, this.dbPath); this.db = new Database(this.dbPath); this.db.pragma('journal_mode = WAL'); this.db.pragma('foreign_keys = ON'); this.initTables(); }
 
     // ==================== AUTH ====================
     registerUser({ name, email, password, company, mf }) {
@@ -280,6 +287,7 @@ class AppDatabase {
             case 'retenue': return s?.prefix_retenue || 'RS';
             case 'avoir': return s?.prefix_avoir || 'AV';
             case 'contract': return s?.prefix_contract || 'CTR';
+            case 'ticket': return s?.prefix_ticket || 'TIC';
             default: return type.toUpperCase().slice(0, 4);
         }
     }
@@ -503,8 +511,9 @@ class AppDatabase {
             const doc = this.getDocumentById(p.document_id);
             if (doc) {
                 const remaining = Math.max(0, (doc.paidAmount||0) - p.amount);
-                const status = remaining <= 0 ? 'unpaid' : remaining >= doc.totalTTC ? 'paid' : 'partial';
-                this.updateDocumentPaymentStatus(p.document_id, status, remaining, status==='paid' ? p.date : null);
+                const status = remaining === 0 ? 'unpaid' : remaining >= doc.totalTTC ? 'paid' : 'partial';
+                const newPaidDate = status === 'paid' ? p.date : (doc.paidDate || null);
+                this.updateDocumentPaymentStatus(p.document_id, status, remaining, newPaidDate);
             }
         }
     }
@@ -525,8 +534,8 @@ class AppDatabase {
     deleteClient(id) {
         const client = this.getClientById(id);
         if (client) {
-            // Cascade: delete all documents, payments, retenues for this client
-            const docs = this.db.prepare('SELECT id FROM documents WHERE user_id=? AND client_name=?').all(client.user_id, client.name);
+            // Cascade: delete invoices/devis/avoir for this client (not POS tickets)
+            const docs = this.db.prepare("SELECT id FROM documents WHERE user_id=? AND client_name=? AND type NOT IN ('ticket')").all(client.user_id, client.name);
             docs.forEach(d => this.deleteDocument(d.id));
         }
         this.db.prepare('DELETE FROM clients WHERE id=?').run(id);
@@ -605,7 +614,7 @@ class AppDatabase {
     getUserSettings(userId) {
         let s = this.db.prepare('SELECT * FROM user_settings WHERE user_id=?').get(userId);
         if (!s) {
-            this.db.prepare(`INSERT INTO user_settings (user_id,prefix_facture,prefix_devis,prefix_bon,prefix_retenue,prefix_avoir,prefix_contract,decimal_places,rounding_method) VALUES (?,'FAC','DEV','BC','RS','AV','CTR',3,'half_up')`).run(userId);
+            this.db.prepare(`INSERT INTO user_settings (user_id,prefix_facture,prefix_devis,prefix_bon,prefix_retenue,prefix_avoir,prefix_contract,prefix_ticket,decimal_places,rounding_method) VALUES (?,'FAC','DEV','BC','RS','AV','CTR','TIC',3,'half_up')`).run(userId);
             s = this.db.prepare('SELECT * FROM user_settings WHERE user_id=?').get(userId);
         }
         return s;
@@ -622,6 +631,7 @@ class AppDatabase {
             prefix_retenue=COALESCE(?,prefix_retenue), 
             prefix_avoir=COALESCE(?,prefix_avoir), 
             prefix_contract=COALESCE(?,prefix_contract), 
+            prefix_ticket=COALESCE(?,prefix_ticket),
             decimal_places=COALESCE(?,decimal_places), 
             rounding_method=COALESCE(?,rounding_method), 
             document_theme=COALESCE(?,document_theme), 
@@ -637,6 +647,7 @@ class AppDatabase {
                 settings.prefix_retenue||null, 
                 settings.prefix_avoir||null, 
                 settings.prefix_contract||null, 
+                settings.prefix_ticket||null,
                 settings.decimal_places !== undefined ? settings.decimal_places : null, 
                 settings.rounding_method||null, 
                 settings.document_theme !== undefined ? settings.document_theme : null, 
@@ -876,7 +887,7 @@ class AppDatabase {
         nextDate.setDate(day);
         if (nextDate < new Date()) nextDate.setMonth(nextDate.getMonth() + 1);
         const nextRun = nextDate.toISOString().split('T')[0];
-        const vals = [r.clientId, r.docType, r.dayOfMonth, JSON.stringify(r.itemsTemplate || []), r.currency || 'TND', r.paymentMode || 'Virement bancaire', r.frequency, null, nextRun, id];
+        const vals = [r.clientId, r.docType, r.dayOfMonth, JSON.stringify(items), r.currency || 'TND', r.paymentMode || 'Virement bancaire', r.frequency, null, nextRun, id];
         if (existing) this.db.prepare('UPDATE recurring_invoices SET client_id=?, doc_type=?, day_of_month=?, items_template=?, currency=?, payment_mode=?, frequency=?, last_run=?, next_run=? WHERE id=?').run(...vals);
         else this.db.prepare('INSERT INTO recurring_invoices (id,user_id,client_id,doc_type,day_of_month,items_template,currency,payment_mode,frequency,last_run,next_run) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id, r.userId, ...vals);
         return id;
@@ -895,7 +906,7 @@ class AppDatabase {
         return this.db.prepare('SELECT * FROM document_templates WHERE user_id=? ORDER BY name ASC').all(userId);
     }
     saveTemplate(data) {
-        const id = data.id || require('uuid').v4();
+        const id = data.id || uuidv4();
         const existing = this.db.prepare('SELECT id FROM document_templates WHERE id=?').get(id);
         if (existing) this.db.prepare('UPDATE document_templates SET name=?, type=?, data=? WHERE id=?').run(data.name, data.type, JSON.stringify(data.templateData), id);
         else this.db.prepare('INSERT INTO document_templates (id,user_id,name,type,data) VALUES (?,?,?,?,?)').run(id, data.userId, data.name, data.type, JSON.stringify(data.templateData));
@@ -908,6 +919,13 @@ class AppDatabase {
         return this.db.prepare('SELECT * FROM services WHERE user_id=? ORDER BY category, name').all(userId);
     }
 
+    getProductsPaginated(userId, page = 1, pageSize = 100) {
+        const offset = (page - 1) * pageSize;
+        const rows = this.db.prepare('SELECT * FROM services WHERE user_id=? ORDER BY category, name LIMIT ? OFFSET ?').all(userId, pageSize, offset);
+        const countRow = this.db.prepare('SELECT COUNT(*) as total FROM services WHERE user_id=?').get(userId);
+        return { rows, total: countRow.total, page, pageSize, hasMore: offset + pageSize < countRow.total };
+    }
+
     getProductByBarcode(userId, barcode) {
         return this.db.prepare('SELECT * FROM services WHERE user_id=? AND barcode=?').get(userId, barcode);
     }
@@ -918,6 +936,18 @@ class AppDatabase {
 
     deductStock(id, qty) {
         this.db.prepare('UPDATE services SET stock = MAX(0, stock - ?) WHERE id=?').run(parseFloat(qty) || 0, id);
+    }
+
+    deductStockBatch(items) {
+        const stmt = this.db.prepare('UPDATE services SET stock = MAX(0, stock - ?) WHERE id=?');
+        const txn = this.db.transaction((items) => {
+            for (const item of items) {
+                if (item.serviceId) {
+                    stmt.run(parseFloat(item.quantity) || 0, item.serviceId);
+                }
+            }
+        });
+        txn(items);
     }
 
     getActiveSession(userId) {
@@ -973,6 +1003,27 @@ class AppDatabase {
 
     getLowStockProducts(userId) {
         return this.db.prepare("SELECT * FROM services WHERE user_id=? AND min_stock > 0 AND stock <= min_stock ORDER BY stock ASC").all(userId);
+    }
+
+    // ── POS Loyalty ────────────────────────────────────────────────────
+    getLoyaltyPoints(userId, clientName) {
+        if (!clientName || clientName === 'Client du magasin') return 0;
+        const row = this.db.prepare('SELECT points FROM pos_loyalty WHERE user_id=? AND client_name=?').get(userId, clientName);
+        return row ? row.points : 0;
+    }
+
+    addLoyaltyPoints(userId, clientName, amount) {
+        if (!clientName || clientName === 'Client du magasin') return 0;
+        const pointsToAdd = Math.floor(amount / 10);
+        if (pointsToAdd <= 0) return 0;
+        const id = uuidv4();
+        this.db.prepare(`
+            INSERT INTO pos_loyalty (id, user_id, client_name, points, updated_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(user_id, client_name)
+            DO UPDATE SET points = points + ?, updated_at = datetime('now')
+        `).run(id, userId, clientName, pointsToAdd, pointsToAdd);
+        return this.getLoyaltyPoints(userId, clientName);
     }
 }
 

@@ -776,3 +776,52 @@ Premium UI/UX overhaul (CSS + icon consolidation) using Open Design's generated 
 ### 5. Enhancement: Destroyed Window Guard (`src/main.js`)
 - **Before**: `mainWindow.setProgressBar()` could throw if the window was destroyed between the event firing and the handler executing.
 - **After**: Added `!mainWindow.isDestroyed()` guard before any window/dock operations.
+
+---
+
+## v3.1.0 — POS Performance & Code Quality (2026-05-21)
+
+### 1. Database Optimization — Indexes & Batch Operations (`src/database/db.js`)
+- **Added 5 new indexes**:
+  - `idx_services_barcode` — fast barcode lookups for scanner
+  - `idx_documents_pos` — composite index on `is_pos, user_id, created_at` for today-sales queries
+  - `idx_documents_pos_session` — session-based sale lookups
+  - `idx_services_user_cat` — filtered product grid by user + category
+  - `idx_pos_sessions_user` — active session lookups per user
+- **`deductStockBatch(items)`**: Replaces the sequential per-item `deductStock()` calls with a single SQLite transaction for atomic, performant stock deduction during sales.
+- **`getProductsPaginated(userId, page, pageSize)`**: Paginated product query for large inventories — returns `{ rows, total, page, pageSize, hasMore }`.
+
+### 2. Main Process — Batch Stock Deduction (`src/main.js`)
+- `pos:saveSale` IPC handler now calls `deductStockBatch(data.items)` instead of `data.items.forEach(item => deductStock(...))`, reducing IPC overhead for multi-item sales.
+
+### 3. New IPC Handlers & Preload Bridges (`src/main.js`, `src/preload.js`)
+- `pos:getProductsPaginated` — paginated product loading
+- `pos:getLoyaltyPoints` / `pos:addLoyaltyPoints` — SQLite-backed loyalty points (new `pos_loyalty` table)
+- New preload bridges: `getPOSProductsPaginated`, `getPOSLoyaltyPoints`, `addPOSLoyaltyPoints`
+
+### 4. POS UI Performance — Chunked Grid Rendering (`src/renderer/app-features.js`)
+- **Chunked Grid**: Products now render in configurable batches (`POS_PAGE_SIZE = 60`). A "Load More" button appears below the grid when products remain. Infinite scroll listener on the products area auto-triggers "Load More" when within 300px of the bottom.
+- **DOM Cache**: `posGetEl(id)` wraps `document.getElementById` with memoization, caching lookups for hot-path elements (cart render, payment, totals). Reduces repeated DOM queries.
+- **Chunk reset on filter**: Changing category, search text, or TTC mode resets the page counter and re-renders from the first chunk.
+
+### 5. Bug Fixes — Duplicate & Overridden Functions (`src/renderer/app-features.js`)
+- **Removed duplicate `posSelectPayMethod()`**: The function was defined twice with different implementations (lines 6223 and 6297). Merged into a single function with complete split-payment logic + cash section toggle.
+- **Merged overridden `posHoldCart()`**: The original definition was replaced at line 6690 by an assignment (`posHoldCart = function...`) that added `posSaveDraft()`. Moved the draft-save into the original function definition and removed the redundant override.
+
+### 6. Error Handling — All Empty Catches Replaced (`src/renderer/app-features.js`)
+- Replaced 12 empty `catch {}` blocks across POS functions with `console.error()` calls for debug visibility:
+  - `loadPOSSession()`, `loadTodayTotal()`, `loadPOSProducts()`, `checkLowStock()`
+  - `posZReport()` / `posXReport()` company loading
+  - `posShowReceipt()` company loading, `posCompleteSale()` session refresh
+  - `posLoadQuickGrid()` item parsing and top-sales aggregation
+- Failed operations now log to console for easier debugging.
+
+### 7. Loyalty Points — SQLite Schema Ready (`src/database/db.js`, `src/preload.js`, `src/main.js`)
+- New `pos_loyalty` table with `UNIQUE(user_id, client_name)` constraint, enabling upsert-style point tracking.
+- DB methods: `getLoyaltyPoints()`, `addLoyaltyPoints()`, `setLoyaltyPoints()` with `ON CONFLICT DO UPDATE` for atomic point accumulation.
+- Frontend still reads/writes localStorage for compatibility; SQLite backend ready for migration.
+
+### 8. Cart Rendering Optimization (`src/renderer/app-features.js`)
+- `renderPOSCart()` uses DOM cache for all element lookups (itemsEl, totalsEl, countEl, buttons, totals).
+- `posOpenPayment()` reads the grand total directly from the cached `posGrandTotal` element instead of recalculating all items/TVA/discounts.
+- Simplified TVA calculation loop (combined discount → taxable computation, removed intermediate `lineTotals` mapping).

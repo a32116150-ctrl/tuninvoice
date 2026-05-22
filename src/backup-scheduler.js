@@ -15,7 +15,11 @@ class BackupScheduler {
         const settingsPath = path.join(userDataPath, 'backup-settings.json');
         
         if (fs.existsSync(settingsPath)) {
-            return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+            try {
+                return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+            } catch (e) {
+                console.error('Failed to parse backup settings, using defaults:', e.message);
+            }
         }
         
         return {

@@ -44,7 +44,7 @@ function imagePathToBase64(filePath) {
     } catch (e) {
         console.error(`[base64] Error converting ${filePath}:`, e.message);
     }
-    return filePath; // Return original if conversion fails
+    return null; // Return null if conversion fails
 }
 
 const db = new Database();
@@ -169,6 +169,7 @@ function registerShortcuts() {
 app.on('will-quit', () => {
     globalShortcut.unregisterAll();
     if (appTray) { appTray.destroy(); appTray = null; }
+    if (ocrWorker) { ocrWorker.terminate(); ocrWorker = null; }
 });
 
 // ==================== AUTO-UPDATER ====================
@@ -351,9 +352,10 @@ ipcMain.handle('pdf:save', async (_, { html, filename }) => {
 });
 
 ipcMain.handle('pdf:print', async (_, { html }) => {
-    const win = new BrowserWindow({ show: false, webPreferences: { offscreen: false } });
     const tempPath = path.join(app.getPath('temp'), `print-${uuidv4()}.html`);
+    let win;
     try {
+        win = new BrowserWindow({ show: false, webPreferences: { offscreen: false } });
         fs.writeFileSync(tempPath, html, 'utf8');
         await win.loadFile(tempPath);
 
@@ -374,7 +376,7 @@ ipcMain.handle('pdf:print', async (_, { html }) => {
         return { success: true };
     } catch (e) { return { success: false, error: e.message }; }
     finally {
-        win.close();
+        if (win && !win.isDestroyed()) win.close();
         if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     }
 });
@@ -454,6 +456,8 @@ ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
             company.signature_image = imagePathToBase64(company.signature_image);
         }
 
+        const settings = db.getUserSettings(userId || doc.user_id);
+
         // Prepare data for builder
         const data = {
             ...doc,
@@ -469,7 +473,8 @@ ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
             totalTTC: doc.totalTTC || 0,
             timbreFiscal: doc.timbreAmount || 0,
             referenceDoc: doc.referenceDoc || null,
-            tvaLines: doc.items ? [] : [] // Builder handles items and extracts TVA
+            decimalPlaces: settings?.decimal_places ?? 3,
+            tvaLines: (() => { const items = doc.items || []; const m = {}; items.forEach(it => { const r = Number(it.tva) || 0; const h = (Number(it.quantity)||0) * (Number(it.price)||0); const ta = h * r / 100; if (!m[r]) m[r] = { baseHT: 0, tvaAmount: 0 }; m[r].baseHT += h; m[r].tvaAmount += ta; }); return Object.entries(m).filter(([_, v]) => Math.abs(v.baseHT) > 0.0001).map(([rate, v]) => ({ rate: Number(rate), ...v })).sort((a, b) => b.rate - a.rate); })()
         };
 
         const html = buildInvoiceHTML(data);
@@ -489,13 +494,21 @@ ipcMain.handle('docs:generatePDF', async (_, { doc, company, type, theme, decima
         }));
 
         const totalHT = items.reduce((s, i) => s + i.total, 0);
-        let tva19 = 0, tva13 = 0, tva7 = 0;
+        const tvaBuckets = {};
         items.forEach(i => {
-            if (i.tva === 19) tva19 += i.total * 0.19;
-            else if (i.tva === 13) tva13 += i.total * 0.13;
-            else if (i.tva === 7) tva7 += i.total * 0.07;
+            const rate = Number(i.tva) || 0;
+            const amount = i.total * rate / 100;
+            if (!tvaBuckets[rate]) tvaBuckets[rate] = 0;
+            tvaBuckets[rate] += amount;
         });
-        const totalTTC = totalHT + tva19 + tva13 + tva7 + (doc.timbreAmount || 0);
+        const totalTva = Object.values(tvaBuckets).reduce((s, v) => s + v, 0);
+        const totalTTC = totalHT + totalTva + (doc.timbreAmount || 0);
+
+        const tvaRows = Object.entries(tvaBuckets)
+            .filter(([_, v]) => v > 0)
+            .sort(([a], [b]) => Number(b) - Number(a))
+            .map(([rate, amount]) => `<div class="row"><span>TVA ${rate}%</span><span>${amount.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>`)
+            .join('');
 
         // Create full HTML document for PDF generation
         const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
@@ -539,9 +552,7 @@ td:last-child,th:last-child{text-align:right}
 </table>
 <div class="totals">
     <div class="row"><span>Total HT</span><span>${totalHT.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>
-    ${tva19 > 0 ? `<div class="row"><span>TVA 19%</span><span>${tva19.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
-    ${tva13 > 0 ? `<div class="row"><span>TVA 13%</span><span>${tva13.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
-    ${tva7 > 0 ? `<div class="row"><span>TVA 7%</span><span>${tva7.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
+    ${tvaRows}
     ${doc.timbreAmount ? `<div class="row"><span>Timbre fiscal</span><span>${(doc.timbreAmount).toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
     <div class="row grand"><span>Total TTC</span><span>${totalTTC.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>
 </div>
@@ -562,7 +573,7 @@ ${doc.notes ? `<div class="footer">${escapeHtml(doc.notes).replace(/\n/g, '<br>'
         return { success: false, error: e.message };
     }
 });
-ipcMain.handle('payments:add', async (_, d) => { try { return { success: true, payment: db.savePayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('payments:add', async (_, d) => { try { return { success: true, payment: db.addPayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('payments:getAll', async (_, id) => db.getPayments(id));
 ipcMain.handle('payments:delete', async (_, id) => { try { db.deletePayment(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 
@@ -735,7 +746,7 @@ ipcMain.handle('backup:report', async (event, userId) => {
     if (!userId) return null;
     try {
         const rawDb = db.getDatabase();
-        const docs = rawDb.prepare('SELECT COUNT(*) as count, COALESCE(SUM(net_total), 0) as total, type FROM documents WHERE user_id = ? GROUP BY type').all(userId);
+        const docs = rawDb.prepare('SELECT COUNT(*) as count, COALESCE(SUM(total_ttc), 0) as total, type FROM documents WHERE user_id = ? GROUP BY type').all(userId);
         const totalDocs = rawDb.prepare('SELECT COUNT(*) as c FROM documents WHERE user_id = ?').get(userId);
         const totalClients = rawDb.prepare('SELECT COUNT(*) as c FROM clients WHERE user_id = ?').get(userId);
         const totalServices = rawDb.prepare('SELECT COUNT(*) as c FROM services WHERE user_id = ?').get(userId);
@@ -855,18 +866,19 @@ ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) 
 
 // ==================== POS (Point of Sale) ====================
 ipcMain.handle('pos:getProducts', async (_, userId) => db.getProducts(userId));
+ipcMain.handle('pos:getProductsPaginated', async (_, { userId, page, pageSize }) => db.getProductsPaginated(userId, page, pageSize));
 ipcMain.handle('pos:getProductByBarcode', async (_, { userId, barcode }) => db.getProductByBarcode(userId, barcode));
 ipcMain.handle('pos:updateStock', async (_, { id, quantity }) => { try { db.updateStock(id, quantity); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
 ipcMain.handle('pos:saveSale', async (_, data) => {
     try {
-        const id = require('uuid').v4();
+        const id = uuidv4();
         const now = new Date().toISOString();
         const today = now.split('T')[0];
         // Reserve a document number
-        const number = db.getNextDocumentNumber(data.userId, 'facture', new Date().getFullYear());
+        const number = db.getNextDocumentNumber(data.userId, 'ticket', new Date().getFullYear());
         // Create a document for the POS sale
         const docData = {
-            id, userId: data.userId, type: 'facture', number, date: today,
+            id, userId: data.userId, type: 'ticket', number, date: today,
             clientName: data.clientName || 'Client du magasin', items: data.items,
             totalHT: data.totalHT, totalTTC: data.totalTTC, paymentStatus: 'paid',
             paidAmount: data.totalTTC, paidDate: today, paymentMode: data.paymentMethod,
@@ -875,11 +887,9 @@ ipcMain.handle('pos:saveSale', async (_, data) => {
         };
         // Save as document
         db.saveDocument(docData);
-        // Deduct stock for each item
-        if (data.items && Array.isArray(data.items)) {
-            data.items.forEach(item => {
-                if (item.serviceId) db.deductStock(item.serviceId, item.quantity);
-            });
+        // Deduct stock for all items in a single transaction
+        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+            db.deductStockBatch(data.items);
         }
         // Update session totals
         if (data.sessionId) {
@@ -897,6 +907,8 @@ ipcMain.handle('pos:closeSession', async (_, { id, closingCash, closingCard }) =
 ipcMain.handle('pos:getActiveSession', async (_, userId) => db.getActiveSession(userId));
 ipcMain.handle('pos:getSessions', async (_, userId) => db.getPosSessions(userId));
 ipcMain.handle('pos:getLowStock', async (_, userId) => db.getLowStockProducts(userId));
+ipcMain.handle('pos:getLoyaltyPoints', async (_, { userId, clientName }) => db.getLoyaltyPoints(userId, clientName));
+ipcMain.handle('pos:addLoyaltyPoints', async (_, { userId, clientName, amount }) => { try { return db.addLoyaltyPoints(userId, clientName, amount); } catch (e) { return 0; } });
 
 // ==================== EXPENSES ====================
 ipcMain.handle('expenses:getAll', async (_, userId) => db.getExpenses(userId));
@@ -1131,15 +1143,21 @@ function generateDueRecurring() {
                 const totalTva = Object.values(tvaAmounts).reduce((s, v) => s + v, 0);
                 const netTotal = ht + totalTva;
 
-                const docId = require('uuid').v4();
-                const company = db.db.prepare('SELECT * FROM companies WHERE user_id=? LIMIT 1').get(r.user_id);
-
-                db.db.prepare(`INSERT INTO documents (id,user_id,type,number,date,due_date,client_name,client_mf,client_address,client_phone,client_email,currency,payment_mode,items_json,notes,net_total,tva_total,timbre,amount_ttc,payment_status,created_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`).run(
-                    docId, r.user_id, docType, docNumber, dateStr, dueDate.toISOString().split('T')[0],
-                    '', '', '', '', '', r.currency || 'TND', r.payment_mode || 'Virement bancaire',
-                    JSON.stringify(parsedItems), 'Généré automatiquement', netTotal, totalTva, 0, netTotal, 'impaye'
-                );
+                db.saveDocument({
+                    userId: r.user_id,
+                    type: docType,
+                    number: docNumber,
+                    date: dateStr,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    currency: r.currency || 'TND',
+                    paymentMode: r.payment_mode || 'Virement bancaire',
+                    items: parsedItems,
+                    notes: 'Généré automatiquement',
+                    totalHT: ht,
+                    totalTTC: netTotal,
+                    timbreAmount: 0,
+                    paymentStatus: 'impaye'
+                });
 
                 // Calculate next run
                 const nextDate = new Date();

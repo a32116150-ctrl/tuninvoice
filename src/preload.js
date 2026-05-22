@@ -189,6 +189,7 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
 
     // ── POS (Point of Sale) ─────────────────────────────────────────
     getPOSProducts:      (userId)     => invoke('pos:getProducts', userId),
+    getPOSProductsPaginated: (params) => invoke('pos:getProductsPaginated', params),
     getPOSProductByBarcode: (params)  => invoke('pos:getProductByBarcode', params),
     savePOSSale:         (data)       => invoke('pos:saveSale', data),
     getPOSSales:         (params)     => invoke('pos:getSales', params),
@@ -201,6 +202,8 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
     getActivePOSSession: (userId)     => invoke('pos:getActiveSession', userId),
     getPOSSessions:      (userId)     => invoke('pos:getSessions', userId),
     getPOSLowStock:      (userId)     => invoke('pos:getLowStock', userId),
+    getPOSLoyaltyPoints: (params)     => invoke('pos:getLoyaltyPoints', params),
+    addPOSLoyaltyPoints: (params)     => invoke('pos:addLoyaltyPoints', params),
 
     // ── FILE SYSTEM ──────────────────────────────────────────────────
     openFolder:   (path) => invoke('fs:openFolder', path),

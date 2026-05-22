@@ -1,4 +1,8 @@
+function esc(t) { if (!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 function buildInvoiceHTML(data) {
+    const dp = data.decimalPlaces ?? 3;
+    const fmt = (v) => (parseFloat(v) || 0).toFixed(dp);
     const isStockDoc = ['bl', 'bs', 'be'].includes(data.type);
     const isAvoir = data.type === 'avoir';
     const hidePrices = isStockDoc;
@@ -18,15 +22,15 @@ function buildInvoiceHTML(data) {
     const itemsRows = data.items.map((item, idx) => {
         const lineHT = (item.quantity * item.price);
         if (hidePrices) {
-            return `<tr><td>${idx + 1}</td><td>${item.description}</td><td>${item.quantity}</td></tr>`;
+            return `<tr><td>${idx + 1}</td><td>${esc(item.description)}</td><td>${item.quantity}</td></tr>`;
         }
         return `
             <tr>
                 <td>${idx + 1}</td>
-                <td>${item.description}</td>
+                <td>${esc(item.description)}</td>
                 <td>${item.quantity}</td>
-                <td>${isAvoir ? `<span style="color:#dc2626">-${item.price.toFixed(3)}</span>` : item.price.toFixed(3)}</td>
-                <td>${isAvoir ? `<span style="color:#dc2626">-${lineHT.toFixed(3)}</span>` : lineHT.toFixed(3)}</td>
+                <td>${isAvoir ? `<span style="color:#dc2626">-${fmt(item.price)}</span>` : fmt(item.price)}</td>
+                <td>${isAvoir ? `<span style="color:#dc2626">-${fmt(lineHT)}</span>` : fmt(lineHT)}</td>
             </tr>
         `;
     }).join('');
@@ -67,9 +71,9 @@ td { padding: 12px 5px; border-bottom: 1px solid #f9f9f9; }
     </div>
     <div style="text-align:right;">
         ${data.logoImage ? `<div class="logo"><img src="${data.logoImage}" /></div>` : ''}
-        <div style="font-size:16px; font-weight:700;">${data.companyName || ''}</div>
-        <div style="color:#444;">MF: ${data.companyMF || ''}</div>
-        <div style="color:#666; max-width:250px; margin-left:auto;">${data.companyAddress || ''}</div>
+        <div style="font-size:16px; font-weight:700;">${esc(data.companyName || '')}</div>
+        <div style="color:#444;">MF: ${esc(data.companyMF || '')}</div>
+        <div style="color:#666; max-width:250px; margin-left:auto;">${esc(data.companyAddress || '')}</div>
     </div>
 </div>
 
@@ -81,9 +85,9 @@ ${isAvoir ? `
 <div style="display:flex; justify-content:space-between;">
     <div>
         <div style="text-transform:uppercase; font-size:11px; color:#666; margin-bottom:5px;">Destinataire</div>
-        <div style="font-size:15px; font-weight:700;">${data.clientName || ''}</div>
-        ${data.clientMF ? `<div>MF: ${data.clientMF}</div>` : ''}
-        <div style="color:#444; max-width:250px;">${data.clientAddress || ''}</div>
+        <div style="font-size:15px; font-weight:700;">${esc(data.clientName || '')}</div>
+        ${data.clientMF ? `<div>MF: ${esc(data.clientMF)}</div>` : ''}
+        <div style="color:#444; max-width:250px;">${esc(data.clientAddress || '')}</div>
     </div>
     <div style="text-align:right;">
         ${data.dueDate ? `<div style="color:#666;">Échéance: <strong>${data.dueDate}</strong></div>` : ''}
@@ -111,21 +115,21 @@ ${!hidePrices ? `
     <table class="totals-table">
         <tr>
             <td>Total HT</td>
-            <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${data.totalHT.toFixed(3)}</td>
+            <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${fmt(data.totalHT)}</td>
         </tr>
         ${(data.tvaLines || []).map(line => `
         <tr>
             <td>TVA ${line.rate}%</td>
-            <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${line.amount.toFixed(3)}</td>
+            <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${fmt(line.tvaAmount)}</td>
         </tr>`).join('')}
         ${data.timbreFiscal ? `
         <tr>
             <td>Timbre Fiscal</td>
-            <td>${data.timbreFiscal.toFixed(3)}</td>
+            <td>${fmt(data.timbreFiscal)}</td>
         </tr>` : ''}
         <tr class="total-row">
             <td>TOTAL TTC</td>
-            <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${data.totalTTC.toFixed(3)} ${data.currency || 'TND'}</td>
+            <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${fmt(data.totalTTC)} ${data.currency || 'TND'}</td>
         </tr>
     </table>
 </div>` : ''}
@@ -133,7 +137,7 @@ ${!hidePrices ? `
 ${data.notes ? `
 <div style="margin-top:40px; padding:15px; background:#f8f9fa; border-radius:8px;">
     <div style="font-size:11px; text-transform:uppercase; color:#666; margin-bottom:5px;">Notes & Observations</div>
-    <div style="white-space:pre-wrap;">${data.notes}</div>
+    <div style="white-space:pre-wrap;">${esc(data.notes)}</div>
 </div>` : ''}
 
 <div class="footer">

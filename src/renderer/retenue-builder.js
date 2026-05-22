@@ -18,6 +18,11 @@ function parseMF(mf) {
     return { base: String(mf), codeTva: '', codeCat: '', nEtab: '' };
 }
 
+// Helper functions
+function esc(t) { if (!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt3(v) { const n = parseFloat(v) || 0; return n.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }
+function fmtDate(d) { if (!d) return ''; try { return new Date(d).toLocaleDateString('fr-FR'); } catch { return String(d); } }
+
 // Main builder
 function buildRetenueHTML(data, _theme) {
     // Get MF components: first from dedicated fields, otherwise from full MF string
@@ -68,7 +73,7 @@ function buildRetenueHTML(data, _theme) {
     const monthLabel = monthNames[(data.month || 1) - 1] || '';
 
     // Format helpers
-    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '___/___/______';
+    const fmtDateOrBlank = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '___/___/______';
     const fmtAmount = (v) => (v || 0).toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
     const esc = (s) => {
         if (!s) return '';
@@ -234,7 +239,7 @@ function buildRetenueHTML(data, _theme) {
   </div>
 
   <div class="retenue-date">
-    Retenue effectuée le : ${fmtDate(data.factureDate || data.date)}
+    Retenue effectuée le : ${fmtDateOrBlank(data.factureDate || data.date)}
     &nbsp;&nbsp;&nbsp;&nbsp; Période : ${monthLabel} ${data.year}
     &nbsp;&nbsp;&nbsp;&nbsp; Facture N° : ${esc(data.factureNumber || '—')}
   </div>
@@ -329,7 +334,7 @@ function buildRetenueHTML(data, _theme) {
 
   <!-- Signature -->
   <div class="signature-row">
-    <div class="sig-left">A Tunis Le : ${fmtDate(data.date)}</div>
+    <div class="sig-left">A Tunis Le : ${fmtDateOrBlank(data.date)}</div>
     <div class="sig-right">
       <div>Cachet &amp; signature du payeur</div>
       <div class="sig-stamp">
@@ -469,12 +474,12 @@ function buildFiscalSummaryHTML(summary, company) {
 
   <table>
     <tr><th colspan="2">Résumé des Opérations</th></tr>
-    <tr><td>Nombre total de factures émises</td><td class="num">${summary.totalFactures}</td></tr>
-    <tr><td>Factures impayées</td><td class="num">${summary.totalUnpaidFactures}</td></tr>
+    <tr><td>Nombre total de factures émises</td><td class="num">${summary.docCount}</td></tr>
+    <tr><td>Factures impayées</td><td class="num">N/A</td></tr>
     <tr><td>Total Hors Taxes (HT) facturé</td><td class="num">${fmt3(summary.totalHT)} TND</td></tr>
     <tr><td>Total TVA collectée</td><td class="num">${fmt3(summary.totalTVA)} TND</td></tr>
     <tr><td>Total Droit de Timbre</td><td class="num">${fmt3(summary.totalTimbre)} TND</td></tr>
-    <tr><td>Total Retenues à la Source déduites</td><td class="num">${fmt3(summary.totalRetenue)} TND</td></tr>
+    <tr><td>Total Retenues à la Source déduites</td><td class="num">${fmt3(summary.totalRetenuesSubi)} TND</td></tr>
     <tr class="total-row"><td>Chiffre d'Affaires Global (TTC)</td><td class="num">${fmt3(summary.totalTTC)} TND</td></tr>
   </table>
 
@@ -633,11 +638,6 @@ const MOIS_FR = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
-
-// Helper functions
-function esc(t) { if (!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmt3(v) { const n = parseFloat(v) || 0; return n.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }
-function fmtDate(d) { if (!d) return ''; try { return new Date(d).toLocaleDateString('fr-FR'); } catch { return String(d); } }
 
 // Export for both Node.js and browser
 if (typeof window !== 'undefined') {

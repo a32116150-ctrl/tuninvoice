@@ -1,6 +1,6 @@
 {
   "name": "tuniinvoice-pro",
-  "version": "3.1.0",
+  "version": "3.5.0",
   "description": "Tunisian Invoice Generator - Desktop Edition",
   "main": "src/main.js",
   "scripts": {
@@ -9,7 +9,8 @@
     "build": "electron-builder",
     "build:win": "npm run clean && electron-builder --win",
     "build:mac": "npm run clean && electron-builder --mac",
-    "build:linux": "electron-builder --linux",
+    "build:linux": "npm run clean && electron-builder --linux",
+    "build:all": "npm run clean && electron-builder --win --mac --linux",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write 'src/**/*.js'",
@@ -83,9 +84,12 @@
       "icon": "assets/icon.ico"
     },
     "linux": {
+      "icon": "assets/icon.png",
+      "category": "Finance",
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ]
     },
     "nsis": {

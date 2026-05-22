@@ -3,7 +3,11 @@ const fs = require('fs');
 class CSVExporter {
     escapeCSV(value) {
         if (value === null || value === undefined) return '';
-        const str = String(value);
+        let str = String(value);
+        // Prevent CSV Formula Injection: prefix with single quote if starts with =, +, -, @
+        if (/^[=+\-@]/.test(str)) {
+            str = "'" + str;
+        }
         if (str.includes(',') || str.includes('"') || str.includes('\n')) {
             return `"${str.replace(/"/g, '""')}"`;
         }

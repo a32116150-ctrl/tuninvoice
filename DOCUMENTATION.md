@@ -29,7 +29,8 @@ Interface de caisse complète adaptée aux commerces et marchés :
 - Favoris (☆/★) : sauvegardés localStorage, filtrables (`F6`)
 - Images produit : vignettes sur les fiches
 - Création produit rapide depuis le POS (`F7`)
-- Gestion de stock : suivi optionnel, déduction auto, alerte stock bas
+- Gestion de stock : suivi optionnel, déduction auto via batch transaction SQL, alerte stock bas
+- Performance : grille paginée (60 produits par lot) avec chargement progressif et défilement infini
 
 **Panier**
 - Quantité +/− (zones 40x40px tactiles)
@@ -59,6 +60,7 @@ Interface de caisse complète adaptée aux commerces et marchés :
 - Rapport Z : rapport fin de journée imprimable
 - Détection d'écart de caisse à la clôture
 - Ventes du jour : historique avec remboursement (`F4`)
+- Base de données optimisée : index sur `is_pos`, `pos_session_id`, `services(barcode)` et `services(user_id, category)`
 
 **Ticket de Caisse**
 - Style thermique 80mm

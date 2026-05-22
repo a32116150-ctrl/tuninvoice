@@ -507,6 +507,7 @@ tbody tr:hover td:first-child {
 ══════════════════════════════════════════ */
 .badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
 .badge-facture { background:#dbeafe; color:#1d4ed8; }
+.badge-ticket { background:#f0fdf4; color:#059669; }
 .badge-devis   { background:#fef3c7; color:#92400e; }
 .badge-bon     { background:#d1fae5; color:#065f46; }
 .badge-active  { background:#d1fae5; color:#065f46; }
@@ -1021,8 +1022,11 @@ svg.lucide {
 
 /* ════════════ POS — SUPER APP ════════════ */
 /* ── POS TOUCH-FRIENDLY (all tap targets ≥44px) ────────── */
-#page-pos.pos-fullscreen { padding:0 !important; display:none; flex-direction:column; height:100%; overflow:hidden; touch-action:manipulation; }
-#page-pos.pos-fullscreen.active { display:flex; }
+#page-pos.pos-fullscreen { padding:0 !important; display:none; flex-direction:column; overflow:hidden; touch-action:manipulation; }
+#page-pos.pos-fullscreen.active { display:flex; height:100vh; }
+body:has(#page-pos.active) { overflow:hidden; }
+body:has(#page-pos.active) .topbar { display:none; }
+body:has(#page-pos.active) .page-container { overflow:hidden; }
 .pos-topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; background:#0f172a; color:white; flex-shrink:0; min-height:56px; }
 .pos-topbar-btn { background:rgba(255,255,255,0.1); border:none; color:white; width:44px; height:44px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:var(--transition); -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .pos-topbar-btn:active { background:rgba(255,255,255,0.3); transform:scale(0.92); }
@@ -1086,13 +1090,15 @@ svg.lucide {
 .pos-product-card.pos-out-of-stock:active { transform:none; box-shadow:none; background:white; }
 .pos-empty { text-align:center; padding:50px; color:#94a3b8; font-size:0.9rem; grid-column:1/-1; }
 
-.pos-cart { width:380px; flex-shrink:0; background:white; border-left:1px solid var(--border); display:flex; flex-direction:column; }
-.pos-cart-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; min-height:56px; }
+.pos-cart { width:380px; flex-shrink:0; background:white; border-left:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+.pos-cart-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; min-height:56px; flex-shrink:0; }
 .pos-cart-title { font-weight:700; font-size:1rem; color:#1e293b; }
 .pos-cart-badge { background:#1e293b; color:white; font-size:0.8rem; font-weight:600; padding:4px 12px; border-radius:14px; min-width:28px; text-align:center; }
-.pos-cart-items { flex:1; overflow-y:auto; padding:10px; }
+.pos-cart-items { flex:1; overflow-y:auto; padding:10px; min-height:0; }
 .pos-cart-empty { text-align:center; padding:40px 10px; color:#94a3b8; font-size:0.85rem; }
-.pos-cart-item { display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; background:#f8fafc; margin-bottom:6px; transition:var(--transition); min-height:56px; }
+.pos-cart-item { display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; background:#f8fafc; margin-bottom:6px; transition:var(--transition); min-height:56px; flex-shrink:0; cursor:pointer; }
+.pos-cart-item.selected { background:#eef2ff; outline:2px solid #4f46e5; outline-offset:-2px; }
+.pos-cart-item:active { background:#f1f5f9; }
 .pos-cart-item:active { background:#f1f5f9; }
 .pos-cart-item .pos-ci-name { flex:1; font-weight:500; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#1e293b; padding:4px 0; }
 .pos-cart-item .pos-ci-qty { display:flex; align-items:center; gap:6px; }
@@ -1103,11 +1109,9 @@ svg.lucide {
 .pos-cart-item .pos-ci-remove { background:none; border:none; cursor:pointer; color:#94a3b8; width:40px; height:40px; border-radius:8px; transition:var(--transition); display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .pos-cart-item .pos-ci-remove:active { color:#ef4444; background:rgba(239,68,68,0.15); }
 
-.pos-cart-totals { border-top:1px solid var(--border); padding:12px 18px; background:white; }
-.pos-total-row { display:flex; justify-content:space-between; font-size:0.9rem; padding:6px 0; color:#64748b; }
-.pos-total-row.pos-total-final { font-size:1.2rem; font-weight:700; color:#1e293b; border-top:2px solid #e2e8f0; margin-top:6px; padding-top:10px; }
-.pos-grand-total { color:#2563eb; font-size:1.4rem; }
-.pos-cart-actions { display:flex; gap:10px; padding:12px 18px; border-top:1px solid var(--border); background:#f8fafc; min-height:64px; }
+.pos-cart-totals { border-top:1px solid var(--border); padding:12px 18px; background:white; flex-shrink:0; }
+
+.pos-cart-actions { display:flex; gap:10px; padding:12px 18px; border-top:1px solid var(--border); background:#f8fafc; min-height:64px; flex-shrink:0; }
 .pos-btn { padding:12px 20px; min-height:48px; border-radius:12px; border:none; cursor:pointer; font-size:0.95rem; font-weight:600; font-family:inherit; display:flex; align-items:center; gap:8px; justify-content:center; transition:all 0.15s; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .pos-btn:active { transform:scale(0.96); }
 .pos-btn-secondary { background:#e2e8f0; color:#475569; }
@@ -1172,6 +1176,31 @@ body.pos-mode .main-content { margin-left:0; width:100%; }
 /* Acompte */
 .pos-acompte-badge { display:inline-block; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:600; background:#fef3c7; color:#92400e; }
 .pos-acompte-row { display:flex; justify-content:space-between; padding:4px 0; font-size:0.8rem; color:var(--text-muted); }
+
+/* Quick cash buttons */
+.pos-quick-cash { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.pos-qc-btn { flex:1; min-width:60px; min-height:44px; border:1px solid var(--border); border-radius:8px; background:white; cursor:pointer; font-size:0.85rem; font-weight:600; font-family:inherit; color:var(--text); transition:var(--transition); -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.pos-qc-btn:active { background:var(--primary); color:white; border-color:var(--primary); transform:scale(0.95); }
+
+/* On-screen numpad */
+.pos-numpad-wrap { display:flex; gap:1px; margin:8px 10px; background:#dcdcdc; border:1px solid #dcdcdc; border-radius:10px; overflow:hidden; flex-shrink:0; }
+.pos-numpad { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:auto repeat(4,1fr); gap:1px; flex:1; background:#dcdcdc; }
+.pos-np-display { grid-column:1/-1; background:#f8f9fa; padding:8px 12px; font-size:1.3rem; font-weight:500; color:#333; text-align:right; font-family:'Inter',system-ui,sans-serif; border:none; border-bottom:1px solid #dcdcdc; outline:none; }
+.pos-np-btn { min-height:50px; border:none; border-radius:0; background:#ffffff; cursor:pointer; font-size:1.4rem; font-weight:400; font-family:'Inter',system-ui,sans-serif; color:#333; display:flex; align-items:center; justify-content:center; transition:background 0.08s; -webkit-tap-highlight-color:transparent; touch-action:manipulation; outline:none; }
+.pos-np-btn:active { background:#e8eaed; }
+.pos-np-bksp { font-size:1.2rem; color:#555; }
+
+/* Action column */
+.pos-numpad-actions { display:flex; flex-direction:column; gap:1px; background:#dcdcdc; }
+.pos-np-action { flex:1; border:none; border-radius:0; background:#ffffff; cursor:pointer; font-size:0.82rem; font-weight:500; font-family:'Inter',system-ui,sans-serif; color:#666; padding:0 12px; display:flex; align-items:center; justify-content:center; transition:background 0.08s; -webkit-tap-highlight-color:transparent; touch-action:manipulation; outline:none; }
+.pos-np-action:hover { background:#f5f6f8; }
+.pos-np-action:active { background:#e8eaed; }
+.pos-np-enter { font-size:1.5rem; font-weight:600; color:#059669; background:#f0fdf4; }
+.pos-np-enter:hover { background:#dcfce7; }
+.pos-np-enter:active { background:#bbf7d0; }
+.pos-np-clear { font-size:1.2rem; font-weight:600; color:#dc2626; background:#fef2f2; }
+.pos-np-clear:hover { background:#fee2e2; }
+.pos-np-clear:active { background:#fecaca; }
 
 /* Responsive */
 @media (max-width: 800px) {

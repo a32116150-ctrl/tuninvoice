@@ -4,7 +4,7 @@ Votre solution de facturation, gestion et point de vente intelligente pour la Tu
 
 ---
 
-## Point de Vente (POS / Caisse) — v3.0
+## Point de Vente (POS / Caisse) — v3.1.0
 
 Interface de caisse complète pour commerces et marchés :
 - **Interface Plein Écran** : Grille produits avec filtres catégorie, recherche/scan unifié (`F2`)
@@ -26,9 +26,10 @@ Interface de caisse complète pour commerces et marchés :
 - **Rapport Z** : Rapport fin de journée imprimable
 - **Mouvements de Caisse** : Apports/retraits en session (`F8`)
 - **Création Produit Rapide** : Depuis le POS (`F7`)
-- **Stock** : Suivi optionnel, rupture grisée, déduction auto, alerte stock bas
+- **Stock** : Suivi optionnel, rupture grisée, déduction auto (batch transaction), alerte stock bas
 - **Sessions de Caisse** : Ouverture/clôture avec fond, écart détecté
 - **Optimisé Tactile** : Zones ≥44px, retour visuel actif
+- **Performance** : Grille paginée (60 produits/lot) avec défilement infini, cache DOM, requêtes optimisées par index SQL
 - **Raccourcis** : `F1` plein écran, `F2` recherche, `F3` TTC, `F4` ventes, `F5` X, `F6` favoris, `F7` produit, `F8` caisse
 
 ---
