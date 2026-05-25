@@ -19,9 +19,22 @@ function parseMF(mf) {
 }
 
 // Helper functions
-function esc(t) { if (!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmt3(v) { const n = parseFloat(v) || 0; return n.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }
-function fmtDate(d) { if (!d) return ''; try { return new Date(d).toLocaleDateString('fr-FR'); } catch { return String(d); } }
+function esc(t) {
+    if (!t) return '';
+    return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function fmt3(v) {
+    const n = parseFloat(v) || 0;
+    return n.toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+function fmtDate(d) {
+    if (!d) return '';
+    try {
+        return new Date(d).toLocaleDateString('fr-FR');
+    } catch {
+        return String(d);
+    }
+}
 
 // Main builder
 function buildRetenueHTML(data, _theme) {
@@ -40,7 +53,7 @@ function buildRetenueHTML(data, _theme) {
         payeur.codeTva = parsed.codeTva;
         payeur.codeCat = parsed.codeCat;
         payeur.nEtab = parsed.nEtab;
-        payeur.mf = parsed.base;  // keep only base part for display
+        payeur.mf = parsed.base; // keep only base part for display
     }
 
     const benef = {
@@ -67,22 +80,35 @@ function buildRetenueHTML(data, _theme) {
 
     // Month name
     const monthNames = [
-        'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        'Janvier',
+        'Février',
+        'Mars',
+        'Avril',
+        'Mai',
+        'Juin',
+        'Juillet',
+        'Août',
+        'Septembre',
+        'Octobre',
+        'Novembre',
+        'Décembre'
     ];
     const monthLabel = monthNames[(data.month || 1) - 1] || '';
 
     // Format helpers
-    const fmtDateOrBlank = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '___/___/______';
-    const fmtAmount = (v) => (v || 0).toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-    const esc = (s) => {
+    const fmtDateOrBlank = d => (d ? new Date(d).toLocaleDateString('fr-FR') : '___/___/______');
+    const fmtAmount = v => (v || 0).toLocaleString('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    const esc = s => {
         if (!s) return '';
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     };
 
-    const logoHtml = (data.logoImage && data.show_logo !== 0) ? `<img src="${data.logoImage}" style="max-height:80px;display:block;margin-bottom:10px">` : '';
-    const stampHtml = (data.stampImage && data.show_stamp !== 0) ? `<img src="${data.stampImage}" style="max-height:70px;opacity:0.9">` : '';
-    const sigHtml = (data.signatureImage && data.show_signature !== 0) ? `<img src="${data.signatureImage}" style="max-height:55px">` : '';
+    const logoHtml =
+        data.logoImage && data.show_logo !== 0
+            ? `<img src="${data.logoImage}" style="max-height:80px;display:block;margin-bottom:10px">`
+            : '';
+    const stampHtml = data.stampImage && data.show_stamp !== 0 ? `<img src="${data.stampImage}" style="max-height:70px;opacity:0.9">` : '';
+    const sigHtml = data.signatureImage && data.show_signature !== 0 ? `<img src="${data.signatureImage}" style="max-height:55px">` : '';
 
     return `<!DOCTYPE html>
 <html lang="fr">
@@ -363,19 +389,19 @@ function buildRetenueHTML(data, _theme) {
 function buildRelanceHTML(doc, company, attempt = 1) {
     const dueAmount = doc.totalTTC - (doc.paidAmount || 0);
     const today = new Date().toLocaleDateString('fr-FR');
-    
+
     let subject, intro, body;
     if (attempt === 1) {
         subject = `Objet : Relance - Facture impayée N° ${doc.number}`;
-        intro = `Madame, Monsieur,`;
+        intro = 'Madame, Monsieur,';
         body = `Sauf erreur ou omission de notre part, le paiement de la facture N° ${doc.number} datée du ${fmtDate(doc.date)} d'un montant de ${fmt3(dueAmount)} TND, arrivée à échéance, ne nous est pas parvenu.<br><br>Nous vous prions de bien vouloir procéder à son règlement dans les meilleurs délais.<br>Si votre règlement a été effectué entre-temps, veuillez ne pas tenir compte de cette lettre.`;
     } else if (attempt === 2) {
         subject = `Objet : Deuxième Relance - Facture impayée N° ${doc.number}`;
-        intro = `Madame, Monsieur,`;
+        intro = 'Madame, Monsieur,';
         body = `Suite à notre précédente relance concernant la facture N° ${doc.number} d'un montant de ${fmt3(dueAmount)} TND, nous constatons qu'aucun règlement ne nous est parvenu à ce jour.<br><br>Nous vous demandons de bien vouloir régulariser cette situation dans les plus brefs délais afin d'éviter tout désagrément.`;
     } else {
         subject = `Objet : Mise en Demeure - Facture N° ${doc.number}`;
-        intro = `Madame, Monsieur,`;
+        intro = 'Madame, Monsieur,';
         body = `Malgré nos multiples relances, la facture N° ${doc.number} d'un montant de ${fmt3(dueAmount)} TND reste impayée à ce jour.<br><br>Par la présente, nous vous mettons en demeure de procéder au règlement sous 8 jours. À défaut, nous serons contraints de transmettre ce dossier à notre service contentieux.`;
     }
 
@@ -436,7 +462,7 @@ function buildRelanceHTML(doc, company, attempt = 1) {
 function buildFiscalSummaryHTML(summary, company) {
     const today = new Date().toLocaleDateString('fr-FR');
     const period = summary.quarter ? `Trimestre ${summary.quarter} - ${summary.year}` : `Année ${summary.year}`;
-    
+
     return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -494,8 +520,21 @@ function buildFiscalSummaryHTML(summary, company) {
 
 function buildPayslipHTML(payslip, employee, company) {
     const today = new Date().toLocaleDateString('fr-FR');
-    const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-    const period = `${months[payslip.period_month-1]} ${payslip.period_year}`;
+    const months = [
+        'Janvier',
+        'Février',
+        'Mars',
+        'Avril',
+        'Mai',
+        'Juin',
+        'Juillet',
+        'Août',
+        'Septembre',
+        'Octobre',
+        'Novembre',
+        'Décembre'
+    ];
+    const period = `${months[payslip.period_month - 1]} ${payslip.period_year}`;
 
     return `<!DOCTYPE html>
 <html lang="fr">
@@ -545,7 +584,7 @@ function buildPayslipHTML(payslip, employee, company) {
     </div>
     <div class="info-box">
       <h3>DÉTAILS PÉRIODE</h3>
-      Mois: ${months[payslip.period_month-1]}<br>
+      Mois: ${months[payslip.period_month - 1]}<br>
       Année: ${payslip.period_year}<br>
       Date de paiement: ${fmtDate(payslip.date)}
     </div>
@@ -618,7 +657,6 @@ function buildPayslipHTML(payslip, employee, company) {
 </html>`;
 }
 
-
 // Constants
 const TAUX_RETENUE = [
     { value: 1.5, label: '1.5% — Honoraires & commissions (personnes morales résidentes)' },
@@ -627,17 +665,19 @@ const TAUX_RETENUE = [
     { value: 5, label: '5%   — Travaux / services (non-résidents)' },
     { value: 10, label: '10%  — Dividendes / valeurs mobilières' },
     { value: 15, label: '15%  — Intérêts / capitaux mobiliers' },
-    { value: 25, label: '25%  — Paiements à non-résidents (sans convention)' },
+    { value: 25, label: '25%  — Paiements à non-résidents (sans convention)' }
 ];
 const NATURES_REVENU = [
-    'Honoraires et commissions', 'Loyers immobiliers', 'Travaux et services',
-    'Dividendes', 'Intérêts bancaires', 'Revenus de capitaux mobiliers',
-    'Revenus de sources étrangères', 'Autres revenus soumis à retenue'
+    'Honoraires et commissions',
+    'Loyers immobiliers',
+    'Travaux et services',
+    'Dividendes',
+    'Intérêts bancaires',
+    'Revenus de capitaux mobiliers',
+    'Revenus de sources étrangères',
+    'Autres revenus soumis à retenue'
 ];
-const MOIS_FR = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-];
+const MOIS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
 // Export for both Node.js and browser
 if (typeof window !== 'undefined') {

@@ -5,7 +5,7 @@
 
 export function buildContractHTML(data) {
     const today = new Date().toLocaleDateString('fr-FR');
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '___/___/______';
+    const formatDate = d => (d ? new Date(d).toLocaleDateString('fr-FR') : '___/___/______');
     const blank = (n = 30) => '_'.repeat(n);
 
     const typeLabels = {
@@ -18,7 +18,7 @@ export function buildContractHTML(data) {
         freelance: 'CONTRAT DE TRAVAIL INDÉPENDANT (FREELANCE)',
         interim: 'CONTRAT DE MISSION INTÉRIMAIRE',
         parttime: 'CONTRAT DE TRAVAIL À TEMPS PARTIEL',
-        consulting: 'CONTRAT DE CONSEIL ET CONSULTING',
+        consulting: 'CONTRAT DE CONSEIL ET CONSULTING'
     };
 
     const typeLabel = typeLabels[data.type] || data.type?.toUpperCase() || 'CONTRAT DE TRAVAIL';
@@ -129,13 +129,17 @@ li { margin-bottom: 4px; }
 
 ${clauseBody}
 
-${data.extraClauses ? `
+${
+    data.extraClauses
+        ? `
 <div class="section">
     <div class="section-title">Clauses particulières</div>
     <div class="article">
         <p style="white-space:pre-wrap">${data.extraClauses}</p>
     </div>
-</div>` : ''}
+</div>`
+        : ''
+}
 
 <div class="section">
     <div class="section-title">Dispositions générales</div>
@@ -167,7 +171,8 @@ ${data.extraClauses ? `
 function buildClauses(data, formatDate, blank) {
     const type = data.type;
     const salary = data.salary ? `${parseFloat(data.salary).toFixed(3)} TND` : blank(12);
-    const salaryPeriod = { mensuel: 'par mois', hebdomadaire: 'par semaine', journalier: 'par jour', horaire: 'par heure' }[data.salaryType] || 'par mois';
+    const salaryPeriod =
+        { mensuel: 'par mois', hebdomadaire: 'par semaine', journalier: 'par jour', horaire: 'par heure' }[data.salaryType] || 'par mois';
     const workHours = data.workHours || 40;
 
     // Common articles shared by most employment contracts
@@ -207,7 +212,7 @@ function buildClauses(data, formatDate, blank) {
     <p>Le Salarié bénéficiera des congés payés légaux conformément au Code du Travail tunisien, soit un jour ouvrable par mois de travail effectif (minimum 15 jours ouvrables par an).</p>
 </div>`;
 
-    const articleResiliation = (noticePeriod) => `
+    const articleResiliation = noticePeriod => `
 <div class="article">
     <div class="article-title">Article 7 — Résiliation</div>
     <p>Chaque partie peut mettre fin au présent contrat moyennant un préavis de <strong>${noticePeriod || blank(10)}</strong>, sauf faute grave ou force majeure. La rupture doit être notifiée par écrit.</p>
@@ -352,7 +357,7 @@ function buildClauses(data, formatDate, blank) {
     <div class="article">
         <div class="article-title">Article 4 — Indépendance et Exclusivité</div>
         <p>Le Consultant agit en qualité de travailleur indépendant. Il est libre d'exercer d'autres activités sauf clause d'exclusivité expressément stipulée.</p>
-        ${data.extraClauses?.includes('exclusivité') ? '<p><strong>Clause d\'exclusivité :</strong> Pour la durée du présent contrat, le Consultant s\'engage à ne pas travailler pour des concurrents directs.</p>' : ''}
+        ${data.extraClauses?.includes('exclusivité') ? "<p><strong>Clause d'exclusivité :</strong> Pour la durée du présent contrat, le Consultant s'engage à ne pas travailler pour des concurrents directs.</p>" : ''}
     </div>
     <div class="article">
         <div class="article-title">Article 5 — Confidentialité et Propriété Intellectuelle</div>

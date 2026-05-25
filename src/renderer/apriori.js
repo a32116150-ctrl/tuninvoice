@@ -8,9 +8,11 @@ function apriori(transactions, minSupport, minConfidence) {
     const deduped = transactions.map(t => [...new Set(t)].sort());
     const frequent = new Map();
 
-    deduped.forEach(t => t.forEach(item => {
-        frequent.set(item, (frequent.get(item) || 0) + 1);
-    }));
+    deduped.forEach(t =>
+        t.forEach(item => {
+            frequent.set(item, (frequent.get(item) || 0) + 1);
+        })
+    );
 
     let level = [];
     frequent.forEach((count, item) => {
@@ -82,15 +84,16 @@ function analyzePaymentByItem(documents) {
     const stats = new Map();
     documents.forEach(doc => {
         const items = parseItems(doc);
-        const onTime = doc.payment_status === 'paid' && doc.paid_date && doc.due_date &&
-            new Date(doc.paid_date) <= new Date(doc.due_date);
-        const late = doc.payment_status === 'paid' && doc.paid_date && doc.due_date &&
-            new Date(doc.paid_date) > new Date(doc.due_date);
+        const onTime = doc.payment_status === 'paid' && doc.paid_date && doc.due_date && new Date(doc.paid_date) <= new Date(doc.due_date);
+        const late = doc.payment_status === 'paid' && doc.paid_date && doc.due_date && new Date(doc.paid_date) > new Date(doc.due_date);
         const unpaid = doc.payment_status === 'unpaid' || doc.payment_status === 'partial';
         items.forEach(item => {
             if (!stats.has(item)) stats.set(item, { total: 0, onTime: 0, late: 0, unpaid: 0 });
-            const s = stats.get(item); s.total++;
-            if (onTime) s.onTime++; else if (late) s.late++; else if (unpaid) s.unpaid++;
+            const s = stats.get(item);
+            s.total++;
+            if (onTime) s.onTime++;
+            else if (late) s.late++;
+            else if (unpaid) s.unpaid++;
         });
     });
     return [...stats.entries()]
@@ -121,17 +124,28 @@ function analyzeClientPatterns(documents) {
             if (dates.length < 2) return;
             dates.sort((a, b) => a - b);
             let totalDays = 0;
-            for (let i = 1; i < dates.length; i++)
-                totalDays += (dates[i] - dates[i - 1]) / 86400000;
-            patterns.push({ client, item, orderCount: dates.length,
+            for (let i = 1; i < dates.length; i++) totalDays += (dates[i] - dates[i - 1]) / 86400000;
+            patterns.push({
+                client,
+                item,
+                orderCount: dates.length,
                 avgDays: Math.round(totalDays / (dates.length - 1)),
-                lastOrder: dates[dates.length - 1] });
+                lastOrder: dates[dates.length - 1]
+            });
         });
     });
     return patterns.sort((a, b) => b.orderCount - a.orderCount);
 }
 
 function parseItems(doc) {
-    const raw = doc.items || (() => { try { return JSON.parse(doc.items_json || '[]'); } catch { return []; } })();
+    const raw =
+        doc.items ||
+        (() => {
+            try {
+                return JSON.parse(doc.items_json || '[]');
+            } catch {
+                return [];
+            }
+        })();
     return (raw || []).map(i => (i.description || '').trim()).filter(Boolean);
 }

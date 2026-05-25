@@ -24,10 +24,17 @@ class CSVExporter {
 
     exportDocument(document, filePath) {
         const itemsHeaders = ['n', 'description', 'quantity', 'price', 'tva', 'total'];
-        const itemsCSV = this.convertToCSV(document.items.map((item, idx) => ({
-            n: idx + 1, description: item.description, quantity: item.quantity,
-            price: item.price, tva: item.tva, total: item.total
-        })), itemsHeaders);
+        const itemsCSV = this.convertToCSV(
+            document.items.map((item, idx) => ({
+                n: idx + 1,
+                description: item.description,
+                quantity: item.quantity,
+                price: item.price,
+                tva: item.tva,
+                total: item.total
+            })),
+            itemsHeaders
+        );
 
         const summaryHeaders = ['field', 'value'];
         const summaryData = [

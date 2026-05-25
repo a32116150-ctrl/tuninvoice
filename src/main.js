@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Notification, safeStorage, Tray, Menu, globalShortcut, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const archiver = require('archiver');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const { autoUpdater } = require('electron-updater');
@@ -18,12 +17,7 @@ const XLSX = require('xlsx');
 
 function escapeHtml(text) {
     if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 /**
@@ -69,7 +63,10 @@ function loadWindowState() {
 function createWindow() {
     const savedState = loadWindowState();
     const winOpts = {
-        width: savedState.width || 1400, height: savedState.height || 900, minWidth: 1200, minHeight: 700,
+        width: savedState.width || 1400,
+        height: savedState.height || 900,
+        minWidth: 1200,
+        minHeight: 700,
         show: false,
         icon: path.join(__dirname, '../assets/iconblack2.png'),
         webPreferences: { contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js') }
@@ -85,10 +82,7 @@ function createWindow() {
             if (mainWindow && !mainWindow.isDestroyed()) {
                 const bounds = mainWindow.getBounds();
                 const isMax = mainWindow.isMaximized();
-                fs.writeFileSync(
-                    path.join(app.getPath('userData'), 'window-state.json'),
-                    JSON.stringify({ ...bounds, maximized: isMax })
-                );
+                fs.writeFileSync(path.join(app.getPath('userData'), 'window-state.json'), JSON.stringify({ ...bounds, maximized: isMax }));
             }
         } catch {}
     };
@@ -100,7 +94,9 @@ function createWindow() {
         if (savedState.maximized) mainWindow.maximize();
         mainWindow.show();
     });
-    mainWindow.on('closed', () => { mainWindow = null; });
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
     backupScheduler = new BackupScheduler(db);
     backupScheduler.start();
 }
@@ -114,15 +110,19 @@ app.whenReady().then(() => {
         if (!allowedDirs.some(dir => resolved.startsWith(dir))) {
             return callback({ statusCode: 403 });
         }
-        try { return callback(resolved); }
-        catch (error) { console.error(error); }
+        try {
+            return callback(resolved);
+        } catch (error) {
+            console.error(error);
+        }
     });
 
     if (process.platform === 'darwin') {
         app.dock.setIcon(path.join(__dirname, '../assets/iconblack2.png'));
     }
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        const csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://nominatim.openstreetmap.org https://registre-entreprises.tn https://*.tile.openstreetmap.org";
+        const csp =
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://nominatim.openstreetmap.org https://registre-entreprises.tn https://*.tile.openstreetmap.org";
         callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] } });
     });
     createWindow();
@@ -134,8 +134,12 @@ app.whenReady().then(() => {
     }, 3000);
 });
 app.on('before-quit', () => stopRecurringCron());
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
 
 // ==================== TRAY ICON ====================
 let appTray = null;
@@ -146,17 +150,60 @@ function createTray() {
         appTray.setToolTip('Factarlou — Gestion facturation');
 
         const contextMenu = Menu.buildFromTemplate([
-            { label: 'Ouvrir Factarlou', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } } },
+            {
+                label: 'Ouvrir Factarlou',
+                click: () => {
+                    if (mainWindow) {
+                        mainWindow.show();
+                        mainWindow.focus();
+                    }
+                }
+            },
             { type: 'separator' },
-            { label: 'Nouvelle Facture', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'facture'); } } },
-            { label: 'Nouveau Devis', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'devis'); } } },
+            {
+                label: 'Nouvelle Facture',
+                click: () => {
+                    if (mainWindow) {
+                        mainWindow.show();
+                        mainWindow.webContents.send('shortcut:newDoc', 'facture');
+                    }
+                }
+            },
+            {
+                label: 'Nouveau Devis',
+                click: () => {
+                    if (mainWindow) {
+                        mainWindow.show();
+                        mainWindow.webContents.send('shortcut:newDoc', 'devis');
+                    }
+                }
+            },
             { type: 'separator' },
-            { label: 'Tableau de bord', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:navigate', 'dashboard'); } } },
+            {
+                label: 'Tableau de bord',
+                click: () => {
+                    if (mainWindow) {
+                        mainWindow.show();
+                        mainWindow.webContents.send('shortcut:navigate', 'dashboard');
+                    }
+                }
+            },
             { type: 'separator' },
-            { label: 'Quitter', click: () => { app.isQuitting = true; app.quit(); } }
+            {
+                label: 'Quitter',
+                click: () => {
+                    app.isQuitting = true;
+                    app.quit();
+                }
+            }
         ]);
         appTray.setContextMenu(contextMenu);
-        appTray.on('double-click', () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } });
+        appTray.on('double-click', () => {
+            if (mainWindow) {
+                mainWindow.show();
+                mainWindow.focus();
+            }
+        });
     } catch (e) {
         console.error('[tray] Failed to create tray:', e.message);
     }
@@ -165,37 +212,51 @@ function createTray() {
 // ==================== KEYBOARD SHORTCUTS ====================
 function registerShortcuts() {
     globalShortcut.register('CommandOrControl+N', () => {
-        if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'facture'); }
+        if (mainWindow) {
+            mainWindow.show();
+            mainWindow.webContents.send('shortcut:newDoc', 'facture');
+        }
     });
     globalShortcut.register('CommandOrControl+Shift+N', () => {
-        if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:newDoc', 'devis'); }
+        if (mainWindow) {
+            mainWindow.show();
+            mainWindow.webContents.send('shortcut:newDoc', 'devis');
+        }
     });
     globalShortcut.register('CommandOrControl+F', () => {
-        if (mainWindow) { mainWindow.show(); mainWindow.webContents.send('shortcut:focusSearch'); }
+        if (mainWindow) {
+            mainWindow.show();
+            mainWindow.webContents.send('shortcut:focusSearch');
+        }
     });
 }
 
 app.on('will-quit', () => {
     globalShortcut.unregisterAll();
-    if (appTray) { appTray.destroy(); appTray = null; }
-    if (ocrWorker) { ocrWorker.terminate(); ocrWorker = null; }
+    if (appTray) {
+        appTray.destroy();
+        appTray = null;
+    }
+    if (ocrWorker) {
+        ocrWorker.terminate();
+        ocrWorker = null;
+    }
 });
 
 // ==================== AUTO-UPDATER ====================
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 const sendUpdate = (event, payload = {}) => {
-    if (mainWindow && !mainWindow.isDestroyed())
-        mainWindow.webContents.send('updater:event', { event, ...payload });
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:event', { event, ...payload });
 };
 autoUpdater.on('checking-for-update', () => sendUpdate('checking'));
-autoUpdater.on('update-available', (info) => {
+autoUpdater.on('update-available', info => {
     sendUpdate('available', { version: info.version, notes: info.releaseNotes });
     if (Notification.isSupported())
         new Notification({ title: 'Factarlou — Mise à jour', body: `Version ${info.version} est en cours de téléchargement…` }).show();
 });
-autoUpdater.on('update-not-available', (info) => sendUpdate('not-available', { version: info.version }));
-autoUpdater.on('download-progress', (p) => {
+autoUpdater.on('update-not-available', info => sendUpdate('not-available', { version: info.version }));
+autoUpdater.on('download-progress', p => {
     sendUpdate('progress', { percent: Math.round(p.percent), speed: p.bytesPerSecond, transferred: p.transferred, total: p.total });
     if (mainWindow && !mainWindow.isDestroyed()) {
         const fraction = p.percent / 100;
@@ -203,7 +264,7 @@ autoUpdater.on('download-progress', (p) => {
         else if (process.platform === 'darwin' && app.dock?.setProgressBar) app.dock.setProgressBar(fraction);
     }
 });
-autoUpdater.on('update-downloaded', (info) => {
+autoUpdater.on('update-downloaded', info => {
     if (mainWindow && !mainWindow.isDestroyed()) {
         if (process.platform === 'win32') mainWindow.setProgressBar(-1);
         else if (process.platform === 'darwin' && app.dock?.setProgressBar) app.dock.setProgressBar(-1);
@@ -217,7 +278,8 @@ autoUpdater.on('update-downloaded', (info) => {
 
             if (!downloadedPath || !fs.existsSync(downloadedPath)) {
                 const tempDir = app.getPath('temp');
-                const files = fs.readdirSync(tempDir)
+                const files = fs
+                    .readdirSync(tempDir)
                     .filter(f => f.endsWith('.dmg') && f.toLowerCase().includes('factarlou'))
                     .sort((a, b) => fs.statSync(path.join(tempDir, b)).mtimeMs - fs.statSync(path.join(tempDir, a)).mtimeMs)
                     .map(f => path.join(tempDir, f));
@@ -226,18 +288,20 @@ autoUpdater.on('update-downloaded', (info) => {
 
             if (!downloadedPath || !fs.existsSync(downloadedPath)) {
                 // Fallback — just open website
-                dialog.showMessageBox(mainWindow, {
-                    type: 'info',
-                    title: '🚀 Mise à jour disponible',
-                    message: `Factarlou v${info.version} est prêt`,
-                    detail: 'Téléchargez le fichier DMG depuis notre site et remplacez l\'application dans votre dossier Applications.',
-                    buttons: ['Ouvrir le site web', 'Plus tard'],
-                    defaultId: 0
-                }).then(r => {
-                    if (r.response === 0) {
-                        shell.openExternal('https://www.factarlou.online/');
-                    }
-                });
+                dialog
+                    .showMessageBox(mainWindow, {
+                        type: 'info',
+                        title: '🚀 Mise à jour disponible',
+                        message: `Factarlou v${info.version} est prêt`,
+                        detail: "Téléchargez le fichier DMG depuis notre site et remplacez l'application dans votre dossier Applications.",
+                        buttons: ['Ouvrir le site web', 'Plus tard'],
+                        defaultId: 0
+                    })
+                    .then(r => {
+                        if (r.response === 0) {
+                            shell.openExternal('https://www.factarlou.online/');
+                        }
+                    });
                 return;
             }
 
@@ -257,43 +321,51 @@ autoUpdater.on('update-downloaded', (info) => {
             }
 
             // Show dialog with clear instructions
-            dialog.showMessageBox(mainWindow, {
-                type: 'info',
-                title: '🚀 Mise à jour prête',
-                message: `Factarlou v${info.version} est dans votre dossier Téléchargements`,
-                detail: `Pour installer la mise à jour :\n\n1. Ouvrez le fichier "${fileName}"\n2. Faites glisser Factarlou vers Applications\n3. Cliquez sur "Remplacer"\n4. Relancez l'application\n\n⚠️ Fermez Factarlou avant d'installer.`,
-                buttons: ['📁 Ouvrir Téléchargements', '✕ Plus tard'],
-                defaultId: 0,
-                cancelId: 1
-            }).then(r => {
-                if (r.response === 0) {
-                    shell.openPath(downloadsFolder);
-                }
-            });
-
+            dialog
+                .showMessageBox(mainWindow, {
+                    type: 'info',
+                    title: '🚀 Mise à jour prête',
+                    message: `Factarlou v${info.version} est dans votre dossier Téléchargements`,
+                    detail: `Pour installer la mise à jour :\n\n1. Ouvrez le fichier "${fileName}"\n2. Faites glisser Factarlou vers Applications\n3. Cliquez sur "Remplacer"\n4. Relancez l'application\n\n⚠️ Fermez Factarlou avant d'installer.`,
+                    buttons: ['📁 Ouvrir Téléchargements', '✕ Plus tard'],
+                    defaultId: 0,
+                    cancelId: 1
+                })
+                .then(r => {
+                    if (r.response === 0) {
+                        shell.openPath(downloadsFolder);
+                    }
+                });
         } catch (e) {
             console.error('[updater] Mac copy error:', e);
             shell.openExternal('https://www.factarlou.online/');
         }
     } else {
         // Windows behavior stays automatic
-        dialog.showMessageBox(mainWindow, {
-            type: 'info', title: '🎉 Mise à jour prête',
-            message: `Factarlou ${info.version} est téléchargé et prêt.`,
-            detail: 'Redémarrez maintenant pour appliquer la mise à jour, ou elle s\'installera automatiquement au prochain démarrage.',
-            buttons: ['🔄 Redémarrer maintenant', '⏰ Plus tard'],
-            defaultId: 0, cancelId: 1
-        }).then(r => {
-            if (r.response === 0) {
-                setImmediate(() => {
-                    app.removeAllListeners("window-all-closed");
-                    autoUpdater.quitAndInstall(false, true);
-                });
-            }
-        });
+        dialog
+            .showMessageBox(mainWindow, {
+                type: 'info',
+                title: '🎉 Mise à jour prête',
+                message: `Factarlou ${info.version} est téléchargé et prêt.`,
+                detail: "Redémarrez maintenant pour appliquer la mise à jour, ou elle s'installera automatiquement au prochain démarrage.",
+                buttons: ['🔄 Redémarrer maintenant', '⏰ Plus tard'],
+                defaultId: 0,
+                cancelId: 1
+            })
+            .then(r => {
+                if (r.response === 0) {
+                    setImmediate(() => {
+                        app.removeAllListeners('window-all-closed');
+                        autoUpdater.quitAndInstall(false, true);
+                    });
+                }
+            });
     }
 });
-autoUpdater.on('error', (err) => { sendUpdate('error', { message: err.message }); console.error('[updater]', err); });
+autoUpdater.on('error', err => {
+    sendUpdate('error', { message: err.message });
+    console.error('[updater]', err);
+});
 
 ipcMain.handle('updater:check', async () => {
     try {
@@ -302,11 +374,13 @@ ipcMain.handle('updater:check', async () => {
         const latestVersion = r?.updateInfo?.version;
         const hasUpdate = !!(latestVersion && currentVersion !== '0.0.0' && latestVersion !== currentVersion);
         return { success: true, version: latestVersion, hasUpdate, currentVersion };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('updater:install', () => {
     setImmediate(() => {
-        app.removeAllListeners("window-all-closed");
+        app.removeAllListeners('window-all-closed');
         autoUpdater.quitAndInstall(false, true);
     });
 });
@@ -316,13 +390,15 @@ ipcMain.handle('app:version', () => {
         try {
             const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
             v = pkg.version;
-        } catch { v = '2.6.0'; }
+        } catch {
+            v = '2.6.0';
+        }
     }
     return v;
 });
 
 // ==================== PDF ====================
-async function handlePDFGeneration(html, callback) {
+async function handlePDFGeneration(html) {
     const win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } });
     const tempPath = path.join(app.getPath('temp'), `print-${uuidv4()}.html`);
     try {
@@ -350,14 +426,19 @@ async function handlePDFGeneration(html, callback) {
 
 ipcMain.handle('pdf:save', async (_, { html, filename }) => {
     try {
-        const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, { defaultPath: filename || 'document.pdf', filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+        const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+            defaultPath: filename || 'document.pdf',
+            filters: [{ name: 'PDF', extensions: ['pdf'] }]
+        });
         if (canceled || !filePath) return { success: false, canceled: true };
 
         const data = await handlePDFGeneration(html);
         fs.writeFileSync(filePath, data);
         shell.showItemInFolder(filePath);
         return { success: true, path: filePath };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('pdf:print', async (_, { html }) => {
@@ -379,12 +460,16 @@ ipcMain.handle('pdf:print', async (_, { html }) => {
             ])
         `);
 
-        await new Promise((res, rej) => win.webContents.print({ silent: false, printBackground: true }, (ok, err) => {
-            if (ok || err === 'cancelled') res(); else rej(new Error(err));
-        }));
+        await new Promise((res, rej) =>
+            win.webContents.print({ silent: false, printBackground: true }, (ok, err) => {
+                if (ok || err === 'cancelled') res();
+                else rej(new Error(err));
+            })
+        );
         return { success: true };
-    } catch (e) { return { success: false, error: e.message }; }
-    finally {
+    } catch (e) {
+        return { success: false, error: e.message };
+    } finally {
         if (win && !win.isDestroyed()) win.close();
         if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     }
@@ -394,12 +479,20 @@ ipcMain.handle('pdf:generateBuffer', async (_, { html }) => {
     try {
         const data = await handlePDFGeneration(html);
         return { success: true, data: data };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ==================== AUTH ====================
 const loginAttempts = new Map();
-ipcMain.handle('auth:register', async (_, d) => { try { return { success: true, user: db.registerUser(d) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('auth:register', async (_, d) => {
+    try {
+        return { success: true, user: db.registerUser(d) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('auth:login', async (_, d) => {
     const key = d.email;
     const record = loginAttempts.get(key);
@@ -412,18 +505,35 @@ ipcMain.handle('auth:login', async (_, d) => {
         return { success: true, user: result };
     } catch (e) {
         if (!record) loginAttempts.set(key, { count: 1, firstAttempt: Date.now() });
-        else { record.count++; loginAttempts.set(key, record); }
+        else {
+            record.count++;
+            loginAttempts.set(key, record);
+        }
         return { success: false, error: e.message };
     }
 });
-ipcMain.handle('auth:changePassword', async (_, { userId, oldPassword, newPassword }) => { try { db.changePassword(userId, oldPassword, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('auth:resetPasswordMasterKey', async (_, { email, masterKey, newPassword }) => { try { db.resetPasswordWithMasterKey(email, masterKey, newPassword); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('auth:changePassword', async (_, { userId, oldPassword, newPassword }) => {
+    try {
+        db.changePassword(userId, oldPassword, newPassword);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('auth:resetPasswordMasterKey', async (_, { email, masterKey, newPassword }) => {
+    try {
+        db.resetPasswordWithMasterKey(email, masterKey, newPassword);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== DOCUMENTS ====================
 ipcMain.handle('docs:getAll', async (_, { userId, page, pageSize }) => {
-        if (pageSize === -1) return db.getDocuments(userId);
-        return db.getDocumentsPaginated(userId, page || 1, pageSize || 50);
-    });
+    if (pageSize === -1) return db.getDocuments(userId);
+    return db.getDocumentsPaginated(userId, page || 1, pageSize || 50);
+});
 ipcMain.handle('docs:getByType', async (_, { userId, type }) => db.getDocumentsByType(userId, type));
 ipcMain.handle('docs:getById', async (_, id) => db.getDocumentById(id));
 ipcMain.handle('docs:save', async (_, data) => {
@@ -431,7 +541,9 @@ ipcMain.handle('docs:save', async (_, data) => {
         const errors = validateDocSave(data);
         if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
         return { success: true, document: db.saveDocument(data) };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('docs:update', async (_, { docId, updates }) => {
     try {
@@ -440,9 +552,18 @@ ipcMain.handle('docs:update', async (_, { docId, updates }) => {
         const errors = validateDocSave({ ...ex, ...updates, id: docId });
         if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
         return { success: true, document: db.saveDocument({ ...ex, ...updates, id: docId }) };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
-ipcMain.handle('docs:delete', async (_, id) => { try { db.deleteDocument(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('docs:delete', async (_, id) => {
+    try {
+        db.deleteDocument(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('docs:getNextNumber', async (_, { userId, type, year }) => db.getNextDocumentNumber(userId, type, year));
 ipcMain.handle('docs:peekNextNumber', async (_, { userId, type, year }) => db.peekNextDocumentNumber(userId, type, year));
 ipcMain.handle('docs:counterStatus', async (_, { userId, year }) => db.getCounterStatus(userId, year));
@@ -453,21 +574,66 @@ ipcMain.handle('docs:convert', async (_, { sourceId, targetType, userId, year })
         const num = db.getNextDocumentNumber(userId, targetType, year || new Date().getFullYear());
         const note = `← ${src.type.toUpperCase()} ${src.number}`;
         const isFactureOrAvoir = ['facture', 'avoir'].includes(targetType);
-        const newDoc = db.saveDocument({ ...src, id: undefined, type: targetType, number: num, date: new Date().toISOString().split('T')[0], dueDate: isFactureOrAvoir ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, referenceDoc: src.id, notes: src.notes && !src.notes.startsWith('←') ? `${src.notes}\n\n${note}` : note, paymentStatus: 'unpaid', paidAmount: 0 });
+        const newDoc = db.saveDocument({
+            ...src,
+            id: undefined,
+            type: targetType,
+            number: num,
+            date: new Date().toISOString().split('T')[0],
+            dueDate: isFactureOrAvoir ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null,
+            referenceDoc: src.id,
+            notes: src.notes && !src.notes.startsWith('←') ? `${src.notes}\n\n${note}` : note,
+            paymentStatus: 'unpaid',
+            paidAmount: 0
+        });
         return { success: true, document: newDoc };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('docs:duplicate', async (_, { docId, userId }) => {
     try {
         const src = db.getDocumentById(docId);
         if (!src) throw new Error('Introuvable');
         const num = db.getNextDocumentNumber(userId, src.type, new Date().getFullYear());
-        return { success: true, document: db.saveDocument({ ...src, id: undefined, number: num, date: new Date().toISOString().split('T')[0], dueDate: src.type === 'facture' ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null, notes: src.notes || null, paymentStatus: 'unpaid', paidAmount: 0 }) };
-    } catch (e) { return { success: false, error: e.message }; }
+        return {
+            success: true,
+            document: db.saveDocument({
+                ...src,
+                id: undefined,
+                number: num,
+                date: new Date().toISOString().split('T')[0],
+                dueDate: src.type === 'facture' ? new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] : null,
+                notes: src.notes || null,
+                paymentStatus: 'unpaid',
+                paidAmount: 0
+            })
+        };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
-ipcMain.handle('docs:search', async (_, { userId, query }) => { try { return db.searchDocuments(userId, query); } catch { return []; } });
-ipcMain.handle('docs:overdue', async (_, userId) => { try { return db.getOverdueDocuments(userId); } catch { return []; } });
-ipcMain.handle('docs:expiring', async (_, { userId, days }) => { try { return db.getExpiringDocuments(userId, days || 7); } catch { return []; } });
+ipcMain.handle('docs:search', async (_, { userId, query }) => {
+    try {
+        return db.searchDocuments(userId, query);
+    } catch {
+        return [];
+    }
+});
+ipcMain.handle('docs:overdue', async (_, userId) => {
+    try {
+        return db.getOverdueDocuments(userId);
+    } catch {
+        return [];
+    }
+});
+ipcMain.handle('docs:expiring', async (_, { userId, days }) => {
+    try {
+        return db.getExpiringDocuments(userId, days || 7);
+    } catch {
+        return [];
+    }
+});
 ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
     try {
         const doc = db.getDocumentById(docId);
@@ -501,15 +667,32 @@ ipcMain.handle('docs:buildHTML', async (_, { docId, userId }) => {
             timbreFiscal: doc.timbreAmount || 0,
             referenceDoc: doc.referenceDoc || null,
             decimalPlaces: settings?.decimal_places ?? 3,
-            tvaLines: (() => { const items = doc.items || []; const m = {}; items.forEach(it => { const r = Number(it.tva) || 0; const h = (Number(it.quantity)||0) * (Number(it.price)||0); const ta = h * r / 100; if (!m[r]) m[r] = { baseHT: 0, tvaAmount: 0 }; m[r].baseHT += h; m[r].tvaAmount += ta; }); return Object.entries(m).filter(([_, v]) => Math.abs(v.baseHT) > 0.0001).map(([rate, v]) => ({ rate: Number(rate), ...v })).sort((a, b) => b.rate - a.rate); })()
+            tvaLines: (() => {
+                const items = doc.items || [];
+                const m = {};
+                items.forEach(it => {
+                    const r = Number(it.tva) || 0;
+                    const h = (Number(it.quantity) || 0) * (Number(it.price) || 0);
+                    const ta = (h * r) / 100;
+                    if (!m[r]) m[r] = { baseHT: 0, tvaAmount: 0 };
+                    m[r].baseHT += h;
+                    m[r].tvaAmount += ta;
+                });
+                return Object.entries(m)
+                    .filter(([_, v]) => Math.abs(v.baseHT) > 0.0001)
+                    .map(([rate, v]) => ({ rate: Number(rate), ...v }))
+                    .sort((a, b) => b.rate - a.rate);
+            })()
         };
 
         const html = buildInvoiceHTML(data);
         return { success: true, html };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
-ipcMain.handle('docs:generatePDF', async (_, { doc, company, type, theme, decimalPlaces, roundingMethod }) => {
+ipcMain.handle('docs:generatePDF', async (_, { doc, company, decimalPlaces }) => {
     try {
         // Build HTML for the document
         const items = (doc.items || []).map(item => ({
@@ -524,67 +707,36 @@ ipcMain.handle('docs:generatePDF', async (_, { doc, company, type, theme, decima
         const tvaBuckets = {};
         items.forEach(i => {
             const rate = Number(i.tva) || 0;
-            const amount = i.total * rate / 100;
+            const amount = (i.total * rate) / 100;
             if (!tvaBuckets[rate]) tvaBuckets[rate] = 0;
             tvaBuckets[rate] += amount;
         });
-        const totalTva = Object.values(tvaBuckets).reduce((s, v) => s + v, 0);
-        const totalTTC = totalHT + totalTva + (doc.timbreAmount || 0);
 
-        const tvaRows = Object.entries(tvaBuckets)
-            .filter(([_, v]) => v > 0)
-            .sort(([a], [b]) => Number(b) - Number(a))
-            .map(([rate, amount]) => `<div class="row"><span>TVA ${rate}%</span><span>${amount.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>`)
-            .join('');
-
-        // Create full HTML document for PDF generation
-        const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',sans-serif;padding:40px;color:#1e293b;background:#fff}
-.header{display:flex;justify-content:space-between;margin-bottom:40px}
-.header .left h1{font-size:28px;color:#1e3a8a;margin-bottom:4px}
-.header .right{text-align:right;font-size:13px;color:#64748b}
-.client-info{margin-bottom:32px}
-.client-info .label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#64748b;margin-bottom:6px}
-.client-info .name{font-size:15px;font-weight:600}
-table{width:100%;border-collapse:collapse;margin-bottom:32px}
-th{background:#f8fafc;border-bottom:2px solid #1e3a8a;padding:10px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748b}
-td{padding:10px;border-bottom:1px solid #e2e8f0;font-size:13px}
-td:last-child,th:last-child{text-align:right}
-.totals{margin-left:auto;width:300px}
-.totals .row{display:flex;justify-content:space-between;padding:5px 0;color:#64748b;font-size:13px}
-.totals .grand{font-size:18px;font-weight:800;color:#1e3a8a;border-top:2px solid #1e3a8a;padding-top:10px;margin-top:10px}
-.footer{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b}
-</style></head><body>
-<div class="header">
-    <div class="left">
-        <h1>${(doc.type || type || 'FACTURE').toUpperCase()}</h1>
-        <div style="font-size:13px;color:#64748b;margin-top:4px">${escapeHtml(doc.companyName || company?.name || '')}</div>
-    </div>
-    <div class="right">
-        <div style="font-weight:600;font-size:15px"># ${escapeHtml(doc.number)}</div>
-        <div style="margin-top:4px">Date: ${doc.date || ''}</div>
-        ${doc.dueDate ? `<div>Échéance: ${doc.dueDate}</div>` : ''}
-    </div>
-</div>
-<div class="client-info">
-    <div class="label">Facturé à</div>
-    <div class="name">${escapeHtml(doc.clientName)}</div>
-    ${doc.clientEmail ? `<div style="font-size:12px;color:#64748b;margin-top:4px">${escapeHtml(doc.clientEmail)}</div>` : ''}
-</div>
-<table>
-    <thead><tr><th>Description</th><th>Qté</th><th>Prix HT</th><th>TVA</th><th>Total HT</th></tr></thead>
-    <tbody>${items.map(i => `<tr><td>${escapeHtml(i.description)}</td><td>${i.quantity}</td><td>${(i.price).toFixed(decimalPlaces || 3)}</td><td>${i.tva}%</td><td>${i.total.toFixed(decimalPlaces || 3)}</td></tr>`).join('')}</tbody>
-</table>
-<div class="totals">
-    <div class="row"><span>Total HT</span><span>${totalHT.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>
-    ${tvaRows}
-    ${doc.timbreAmount ? `<div class="row"><span>Timbre fiscal</span><span>${(doc.timbreAmount).toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>` : ''}
-    <div class="row grand"><span>Total TTC</span><span>${totalTTC.toFixed(decimalPlaces || 3)} ${doc.currency || 'TND'}</span></div>
-</div>
-${doc.notes ? `<div class="footer">${escapeHtml(doc.notes).replace(/\n/g, '<br>')}</div>` : ''}
-</body></html>`;
+        // Use standard buildInvoiceHTML builder for premium styling
+        const data = {
+            ...doc,
+            companyName: doc.companyName || company?.name || '',
+            companyMF: doc.companyMF || company?.mf || '',
+            companyAddress: doc.companyAddress || company?.address || '',
+            companyBank: doc.companyBank || company?.bank || '',
+            companyRIB: doc.companyRIB || company?.rib || '',
+            logoImage: imagePathToBase64(doc.logoImage) || company?.logo_image || '',
+            stampImage: imagePathToBase64(doc.stampImage) || company?.stamp_image || '',
+            signatureImage: imagePathToBase64(doc.signatureImage) || company?.signature_image || '',
+            totalHT: doc.totalHT || totalHT || 0,
+            totalTTC: doc.totalTTC || doc.totalTTC || 0,
+            timbreFiscal: doc.timbreAmount || 0,
+            decimalPlaces: decimalPlaces ?? 3,
+            tvaLines: Object.entries(tvaBuckets)
+                .filter(([_, v]) => v > 0)
+                .map(([rate, amount]) => ({
+                    rate: Number(rate),
+                    baseHT: items.filter(it => Number(it.tva) === Number(rate)).reduce((s, it) => s + it.total, 0),
+                    tvaAmount: amount
+                }))
+                .sort((a, b) => b.rate - a.rate)
+        };
+        const html = buildInvoiceHTML(data);
 
         const pdfData = await handlePDFGeneration(html);
 
@@ -600,9 +752,22 @@ ${doc.notes ? `<div class="footer">${escapeHtml(doc.notes).replace(/\n/g, '<br>'
         return { success: false, error: e.message };
     }
 });
-ipcMain.handle('payments:add', async (_, d) => { try { return { success: true, payment: db.addPayment(d) }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('payments:add', async (_, d) => {
+    try {
+        return { success: true, payment: db.addPayment(d) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('payments:getAll', async (_, id) => db.getPayments(id));
-ipcMain.handle('payments:delete', async (_, id) => { try { db.deletePayment(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('payments:delete', async (_, id) => {
+    try {
+        db.deletePayment(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== CLIENTS ====================
 ipcMain.handle('clients:getAll', async (_, userId) => db.getClients(userId));
@@ -612,48 +777,138 @@ ipcMain.handle('clients:save', async (_, data) => {
         const errors = validateClientSave(data);
         if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
         return { success: true, client: db.saveClient(data) };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
-ipcMain.handle('clients:delete', async (_, id) => { try { db.deleteClient(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('clients:history', async (_, { userId, clientName }) => { try { return db.getClientHistory(userId, clientName); } catch { return {}; } });
+ipcMain.handle('clients:delete', async (_, id) => {
+    try {
+        db.deleteClient(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('clients:history', async (_, { userId, clientName }) => {
+    try {
+        return db.getClientHistory(userId, clientName);
+    } catch {
+        return {};
+    }
+});
 
 // ==================== SERVICES ====================
 ipcMain.handle('services:getAll', async (_, userId) => db.getServices(userId));
-ipcMain.handle('services:save', async (_, data) => { try { return { success: true, service: db.saveService(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('services:delete', async (_, id) => { try { db.deleteService(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('services:save', async (_, data) => {
+    try {
+        return { success: true, service: db.saveService(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('services:delete', async (_, id) => {
+    try {
+        db.deleteService(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('services:cats:get', async (_, userId) => db.getServiceCategories(userId));
-ipcMain.handle('services:cats:save', async (_, data) => { try { return { success: true, category: db.saveServiceCategory(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('services:cats:del', async (_, id) => { try { db.deleteServiceCategory(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('services:cats:save', async (_, data) => {
+    try {
+        return { success: true, category: db.saveServiceCategory(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('services:cats:del', async (_, id) => {
+    try {
+        db.deleteServiceCategory(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== COMPANY ====================
 ipcMain.handle('company:get', async (_, userId) => db.getCompanySettings(userId));
-ipcMain.handle('company:save', async (_, data) => { try { return { success: true, company: db.saveCompanySettings(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('company:saveImages', async (_, data) => { try { db.saveCompanyImages(data.userId, data); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('company:removeImage', async (_, { userId, imageType }) => { try { db.removeCompanyImage(userId, imageType); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('company:save', async (_, data) => {
+    try {
+        return { success: true, company: db.saveCompanySettings(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('company:saveImages', async (_, data) => {
+    try {
+        db.saveCompanyImages(data.userId, data);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('company:removeImage', async (_, { userId, imageType }) => {
+    try {
+        db.removeCompanyImage(userId, imageType);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== SETTINGS ====================
 ipcMain.handle('settings:get', async (_, userId) => {
     const settings = db.getUserSettings(userId);
     if (settings && settings.smtp_pass && safeStorage.isEncryptionAvailable()) {
-        try { settings.smtp_pass = safeStorage.decryptString(Buffer.from(settings.smtp_pass, 'base64')); } catch { }
+        try {
+            settings.smtp_pass = safeStorage.decryptString(Buffer.from(settings.smtp_pass, 'base64'));
+        } catch {}
     }
     return settings;
 });
 ipcMain.handle('settings:update', async (_, { userId, settings }) => {
     try {
+        const errs = validateSettings(settings);
+        if (errs.length > 0) {
+            return { success: false, error: 'Validation échouée: ' + errs.join(', ') };
+        }
         if (settings.smtp_pass && safeStorage.isEncryptionAvailable()) {
             settings.smtp_pass = safeStorage.encryptString(settings.smtp_pass).toString('base64');
         }
         return { success: true, settings: db.updateUserSettings(userId, settings) };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
-ipcMain.handle('settings:resetCounter', async (_, { userId, type, year }) => { try { db.resetDocumentCounter(userId, type, year || new Date().getFullYear()); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('settings:resetCounter', async (_, { userId, type, year }) => {
+    try {
+        db.resetDocumentCounter(userId, type, year || new Date().getFullYear());
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== THEMES ====================
 ipcMain.handle('theme:get', async (_, userId) => db.getThemeSettings(userId));
-ipcMain.handle('theme:save', async (_, { userId, theme }) => { try { db.saveThemeSettings(userId, theme); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('theme:save', async (_, { userId, theme }) => {
+    try {
+        db.saveThemeSettings(userId, theme);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('doctheme:get', async (_, userId) => db.getDocumentTheme(userId));
-ipcMain.handle('doctheme:save', async (_, { userId, theme }) => { try { db.saveDocumentTheme(userId, theme); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('doctheme:save', async (_, { userId, theme }) => {
+    try {
+        db.saveDocumentTheme(userId, theme);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== STATS ====================
 ipcMain.handle('stats:get', async (_, userId) => db.getDashboardStats(userId));
@@ -664,35 +919,71 @@ ipcMain.handle('stats:expenses', async (_, { userId, year }) => db.getExpenseSum
 // ==================== EXCEL ====================
 ipcMain.handle('export:excel:documents', async (_, { documents, filePath }) => {
     try {
-        if (!filePath) { const r = await dialog.showSaveDialog(mainWindow, { defaultPath: `documents-${Date.now()}.xlsx`, filters: [{ name: 'Excel', extensions: ['xlsx'] }] }); if (r.canceled) return { success: false }; filePath = r.filePath; }
+        if (!filePath) {
+            const r = await dialog.showSaveDialog(mainWindow, {
+                defaultPath: `documents-${Date.now()}.xlsx`,
+                filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+            });
+            if (r.canceled) return { success: false };
+            filePath = r.filePath;
+        }
         excelExporter.exportMultipleDocuments(documents, filePath);
         return { success: true, path: filePath };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('export:excel:clients', async (_, { clients, filePath }) => {
     try {
-        if (!filePath) { const r = await dialog.showSaveDialog(mainWindow, { defaultPath: `clients-${Date.now()}.xlsx`, filters: [{ name: 'Excel', extensions: ['xlsx'] }] }); if (r.canceled) return { success: false }; filePath = r.filePath; }
+        if (!filePath) {
+            const r = await dialog.showSaveDialog(mainWindow, {
+                defaultPath: `clients-${Date.now()}.xlsx`,
+                filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+            });
+            if (r.canceled) return { success: false };
+            filePath = r.filePath;
+        }
         excelExporter.exportClients(clients, filePath);
         return { success: true, path: filePath };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('export:excel:retenues', async (_, { retenues, filePath }) => {
     try {
-        if (!filePath) { const r = await dialog.showSaveDialog(mainWindow, { defaultPath: `retenues-${Date.now()}.xlsx`, filters: [{ name: 'Excel', extensions: ['xlsx'] }] }); if (r.canceled) return { success: false }; filePath = r.filePath; }
+        if (!filePath) {
+            const r = await dialog.showSaveDialog(mainWindow, {
+                defaultPath: `retenues-${Date.now()}.xlsx`,
+                filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+            });
+            if (r.canceled) return { success: false };
+            filePath = r.filePath;
+        }
         const rows = retenues.map(r => ({
-            'Numéro': r.number, 'Date': r.date, 'Année': r.year, 'Mois': r.month,
-            'Retenu par': r.retenuerName, 'MF Retenu': r.retenuerMF || '',
-            'Bénéficiaire': r.beneficiaireName, 'MF Bénéficiaire': r.beneficiaireMF || '',
-            'N° Facture': r.factureNumber || '', 'Date Facture': r.factureDate || '',
-            'Montant Brut': r.montantBrut, 'Taux %': r.tauxRetenue, 'Montant Retenu': r.montantRetenue,
-            'Nature Revenu': r.natureRevenu, 'Statut': r.status
+            Numéro: r.number,
+            Date: r.date,
+            Année: r.year,
+            Mois: r.month,
+            'Retenu par': r.retenuerName,
+            'MF Retenu': r.retenuerMF || '',
+            Bénéficiaire: r.beneficiaireName,
+            'MF Bénéficiaire': r.beneficiaireMF || '',
+            'N° Facture': r.factureNumber || '',
+            'Date Facture': r.factureDate || '',
+            'Montant Brut': r.montantBrut,
+            'Taux %': r.tauxRetenue,
+            'Montant Retenu': r.montantRetenue,
+            'Nature Revenu': r.natureRevenu,
+            Statut: r.status
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Retenues');
         XLSX.writeFile(wb, filePath);
         return { success: true, path: filePath };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('export:xlsx', async (_, { data, headers, filename }) => {
@@ -709,7 +1000,9 @@ ipcMain.handle('export:xlsx', async (_, { data, headers, filename }) => {
         if (canceled) return { success: false, canceled: true };
         fs.writeFileSync(filePath, buf);
         return { success: true, path: filePath };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ==================== CSV ====================
@@ -725,66 +1018,187 @@ ipcMain.handle('export:csv:document', async (_, { document, filePath }) => {
         }
         csvExporter.exportDocument(document, filePath);
         return { success: true, path: filePath };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ==================== NOTES ====================
 ipcMain.handle('notes:getAll', async (_, userId) => db.getNotes(userId));
-ipcMain.handle('notes:save', async (_, data) => { try { return { success: true, note: db.saveNote(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('notes:delete', async (_, id) => { try { db.deleteNote(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('notes:save', async (_, data) => {
+    try {
+        return { success: true, note: db.saveNote(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('notes:delete', async (_, id) => {
+    try {
+        db.deleteNote(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== REMINDERS ====================
 ipcMain.handle('reminders:getAll', async (_, userId) => db.getReminders(userId));
-ipcMain.handle('reminders:save', async (_, data) => { try { return { success: true, reminder: db.saveReminder(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('reminders:delete', async (_, id) => { try { db.deleteReminder(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('reminders:markDone', async (_, id) => { try { db.markReminderDone(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('relances:save', async (_, data) => { try { return { success: true, relance: db.saveRelance(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('relances:getByInvoice', async (_, invoiceId) => { try { return db.getRelancesByInvoice(invoiceId); } catch { return []; } });
-ipcMain.handle('relances:attemptCount', async (_, invoiceId) => { try { return db.getRelanceAttemptCount(invoiceId); } catch { return 0; } });
-ipcMain.handle('rates:getAll', async (_, userId) => { try { return db.getExchangeRates(userId); } catch { return []; } });
-ipcMain.handle('rates:save', async (_, data) => { try { return { success: true, rate: db.saveExchangeRate(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('rates:delete', async (_, { userId, currency }) => { try { db.deleteExchangeRate(userId, currency); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('reminders:save', async (_, data) => {
+    try {
+        return { success: true, reminder: db.saveReminder(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('reminders:delete', async (_, id) => {
+    try {
+        db.deleteReminder(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('reminders:markDone', async (_, id) => {
+    try {
+        db.markReminderDone(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('relances:save', async (_, data) => {
+    try {
+        return { success: true, relance: db.saveRelance(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('relances:getByInvoice', async (_, invoiceId) => {
+    try {
+        return db.getRelancesByInvoice(invoiceId);
+    } catch {
+        return [];
+    }
+});
+ipcMain.handle('relances:attemptCount', async (_, invoiceId) => {
+    try {
+        return db.getRelanceAttemptCount(invoiceId);
+    } catch {
+        return 0;
+    }
+});
+ipcMain.handle('rates:getAll', async (_, userId) => {
+    try {
+        return db.getExchangeRates(userId);
+    } catch {
+        return [];
+    }
+});
+ipcMain.handle('rates:save', async (_, data) => {
+    try {
+        return { success: true, rate: db.saveExchangeRate(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('rates:delete', async (_, { userId, currency }) => {
+    try {
+        db.deleteExchangeRate(userId, currency);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== HR (EMPLOYEES & PAYSLIPS) ====================
 ipcMain.handle('hr:getEmployees', async (_, userId) => db.getEmployees(userId));
-ipcMain.handle('hr:saveEmployee', async (_, data) => { try { return { success: true, employee: db.saveEmployee(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('hr:deleteEmployee', async (_, id) => { try { db.deleteEmployee(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('hr:getPayslips', async (_, userId) => db.getPayslips(userId));
-ipcMain.handle('hr:savePayslip', async (_, data) => { try { return { success: true, payslip: db.savePayslip(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('hr:deletePayslip', async (_, id) => { try { db.deletePayslip(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-
-setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
+ipcMain.handle('hr:saveEmployee', async (_, data) => {
     try {
-        const due = db.getDueReminders();
-        due.forEach(r => {
-            if (Notification.isSupported()) new Notification({ title: '⏰ Rappel Factarlou', body: r.title }).show();
-            mainWindow.webContents.send('reminder:due', r);
-        });
-    } catch { }
-}, 10 * 60 * 1000);
+        return { success: true, employee: db.saveEmployee(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('hr:deleteEmployee', async (_, id) => {
+    try {
+        db.deleteEmployee(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('hr:getPayslips', async (_, userId) => db.getPayslips(userId));
+ipcMain.handle('hr:savePayslip', async (_, data) => {
+    try {
+        return { success: true, payslip: db.savePayslip(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('hr:deletePayslip', async (_, id) => {
+    try {
+        db.deletePayslip(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+setInterval(
+    () => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        try {
+            const due = db.getDueReminders();
+            due.forEach(r => {
+                if (Notification.isSupported()) new Notification({ title: '⏰ Rappel Factarlou', body: r.title }).show();
+                mainWindow.webContents.send('reminder:due', r);
+            });
+        } catch {}
+    },
+    10 * 60 * 1000
+);
 
 // ==================== ACTIVITY LOG ====================
 ipcMain.handle('activity:getAll', async (_, userId) => db.getActivityLog(userId, 50));
-ipcMain.handle('activity:clear', async (_, userId) => { db.clearActivityLog(userId); return { success: true }; });
+ipcMain.handle('activity:clear', async (_, userId) => {
+    db.clearActivityLog(userId);
+    return { success: true };
+});
 
 // ==================== BACKUP ====================
 ipcMain.handle('backup:settings:get', () => backupScheduler.getSettings());
-ipcMain.handle('backup:settings:save', (_, s) => { backupScheduler.saveSettings(s); backupScheduler.start(); return { success: true }; });
+ipcMain.handle('backup:settings:save', (_, s) => {
+    backupScheduler.saveSettings(s);
+    backupScheduler.start();
+    return { success: true };
+});
 ipcMain.handle('backup:create:manual', async () => await backupScheduler.createBackup(true));
 ipcMain.handle('backup:list', () => backupScheduler.getBackupList());
-ipcMain.handle('backup:restore', async (_, p) => { try { await backupScheduler.restoreBackup(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('backup:restore', async (_, p) => {
+    try {
+        await backupScheduler.restoreBackup(p);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 ipcMain.handle('backup:report', async (event, userId) => {
     if (!userId) return null;
     try {
         const rawDb = db.getDatabase();
-        const docs = rawDb.prepare('SELECT COUNT(*) as count, COALESCE(SUM(total_ttc), 0) as total, type FROM documents WHERE user_id = ? GROUP BY type').all(userId);
+        const docs = rawDb
+            .prepare('SELECT COUNT(*) as count, COALESCE(SUM(total_ttc), 0) as total, type FROM documents WHERE user_id = ? GROUP BY type')
+            .all(userId);
         const totalDocs = rawDb.prepare('SELECT COUNT(*) as c FROM documents WHERE user_id = ?').get(userId);
         const totalClients = rawDb.prepare('SELECT COUNT(*) as c FROM clients WHERE user_id = ?').get(userId);
         const totalServices = rawDb.prepare('SELECT COUNT(*) as c FROM services WHERE user_id = ?').get(userId);
-        const totalExpenses = rawDb.prepare('SELECT COUNT(*) as c, COALESCE(SUM(amount_ttc), 0) as total FROM expenses WHERE user_id = ?').get(userId);
-        const totalRetenues = rawDb.prepare('SELECT COUNT(*) as c, COALESCE(SUM(montant_retenue), 0) as total FROM retenues WHERE user_id = ?').get(userId);
+        const totalExpenses = rawDb
+            .prepare('SELECT COUNT(*) as c, COALESCE(SUM(amount_ttc), 0) as total FROM expenses WHERE user_id = ?')
+            .get(userId);
+        const totalRetenues = rawDb
+            .prepare('SELECT COUNT(*) as c, COALESCE(SUM(montant_retenue), 0) as total FROM retenues WHERE user_id = ?')
+            .get(userId);
         const totalContracts = rawDb.prepare('SELECT COUNT(*) as c FROM contracts WHERE user_id = ?').get(userId);
         const companyCount = rawDb.prepare('SELECT COUNT(*) as c FROM companies WHERE user_id = ?').get(userId);
         const user = rawDb.prepare('SELECT username, email FROM users WHERE id = ?').get(userId);
@@ -797,9 +1211,11 @@ ipcMain.handle('backup:report', async (event, userId) => {
             expenses: { count: totalExpenses.c, total: totalExpenses.total },
             retenues: { count: totalRetenues.c, total: totalRetenues.total },
             contracts: totalContracts.c,
-            companies: companyCount.c,
+            companies: companyCount.c
         };
-    } catch (e) { return null; }
+    } catch (e) {
+        return null;
+    }
 });
 
 // ==================== EMAIL ====================
@@ -812,7 +1228,11 @@ ipcMain.handle('email:send', async (_, { userId, to, subject, body, attachments 
 
         let smtpPass = settings.smtp_pass;
         if (smtpPass && safeStorage.isEncryptionAvailable()) {
-            try { smtpPass = safeStorage.decryptString(Buffer.from(smtpPass, 'base64')); } catch (e) { throw new Error('Impossible de déchiffrer le mot de passe SMTP. Veuillez le reconfigurer.'); }
+            try {
+                smtpPass = safeStorage.decryptString(Buffer.from(smtpPass, 'base64'));
+            } catch (e) {
+                throw new Error('Impossible de déchiffrer le mot de passe SMTP. Veuillez le reconfigurer.');
+            }
         }
 
         const transporter = nodemailer.createTransport({
@@ -848,35 +1268,73 @@ ipcMain.handle('email:test', async (_, { host, port, user, pass, secure }) => {
     try {
         const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport({
-            host, port, secure: !!secure,
+            host,
+            port,
+            secure: !!secure,
             auth: { user, pass },
             tls: { rejectUnauthorized: false },
             connectionTimeout: 10000
         });
         await transporter.verify();
         return { success: true };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ==================== CONTRACTS ====================
 ipcMain.handle('contracts:getAll', async (_, userId) => db.getContracts(userId));
 ipcMain.handle('contracts:getById', async (_, id) => db.getContractById(id));
-ipcMain.handle('contracts:save', async (_, data) => { try { return { success: true, contract: db.saveContract(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('contracts:delete', async (_, id) => { try { db.deleteContract(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('contracts:save', async (_, data) => {
+    try {
+        return { success: true, contract: db.saveContract(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('contracts:delete', async (_, id) => {
+    try {
+        db.deleteContract(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== EMPLOYEES ====================
 // ==================== RETENUE À LA SOURCE ====================
 ipcMain.handle('retenues:getAll', async (_, userId) => db.getRetenues(userId));
 ipcMain.handle('retenues:getById', async (_, id) => db.getRetenueById(id));
-ipcMain.handle('retenues:save', async (_, data) => { try { return { success: true, retenue: db.saveRetenue(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('retenues:delete', async (_, id) => { try { db.deleteRetenue(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('retenues:save', async (_, data) => {
+    try {
+        return { success: true, retenue: db.saveRetenue(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('retenues:delete', async (_, id) => {
+    try {
+        db.deleteRetenue(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('retenues:createFromFacture', async (_, { userId, factureId, tauxRetenue }) => {
     try {
         const retenue = db.createRetenueFromFacture(userId, factureId, tauxRetenue || 1.5);
         return { success: true, retenue };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
-ipcMain.handle('retenues:byFacture', async (_, factureId) => { try { return db.getRetenuesByFacture(factureId); } catch { return []; } });
+ipcMain.handle('retenues:byFacture', async (_, factureId) => {
+    try {
+        return db.getRetenuesByFacture(factureId);
+    } catch {
+        return [];
+    }
+});
 ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
     try {
         const retenue = db.getRetenueById(retenueId);
@@ -897,7 +1355,9 @@ ipcMain.handle('retenues:buildHTML', async (_, { retenueId, theme }) => {
 
         const html = buildRetenueHTML({ ...retenue, ...company }, theme || null);
         return { success: true, html };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) => {
@@ -913,14 +1373,23 @@ ipcMain.handle('hr:buildPayslipHTML', async (_, { payslip, employee, company }) 
 
         const html = buildPayslipHTML(payslip, employee, company);
         return { success: true, html };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ==================== POS (Point of Sale) ====================
 ipcMain.handle('pos:getProducts', async (_, userId) => db.getProducts(userId));
 ipcMain.handle('pos:getProductsPaginated', async (_, { userId, page, pageSize }) => db.getProductsPaginated(userId, page, pageSize));
 ipcMain.handle('pos:getProductByBarcode', async (_, { userId, barcode }) => db.getProductByBarcode(userId, barcode));
-ipcMain.handle('pos:updateStock', async (_, { id, quantity }) => { try { db.updateStock(id, quantity); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('pos:updateStock', async (_, { id, quantity }) => {
+    try {
+        db.updateStock(id, quantity);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('pos:saveSale', async (_, data) => {
     try {
         const id = uuidv4();
@@ -930,13 +1399,28 @@ ipcMain.handle('pos:saveSale', async (_, data) => {
         const number = db.getNextDocumentNumber(data.userId, 'ticket', new Date().getFullYear());
         // Create a document for the POS sale
         const docData = {
-            id, userId: data.userId, type: 'ticket', number, date: today,
-            clientName: data.clientName || 'Client du magasin', items: data.items,
-            totalHT: data.totalHT, totalTTC: data.totalTTC, paymentStatus: 'paid',
-            paidAmount: data.totalTTC, paidDate: today, paymentMode: data.paymentMethod,
-            currency: data.currency || 'TND', notes: data.notes || '',
-            isPos: true, posSessionId: data.sessionId || null
+            id,
+            userId: data.userId,
+            type: 'ticket',
+            number,
+            date: today,
+            clientName: data.clientName || 'Client du magasin',
+            items: data.items,
+            totalHT: data.totalHT,
+            totalTTC: data.totalTTC,
+            paymentStatus: 'paid',
+            paidAmount: data.totalTTC,
+            paidDate: today,
+            paymentMode: data.paymentMethod,
+            currency: data.currency || 'TND',
+            notes: data.notes || '',
+            isPos: true,
+            posSessionId: data.sessionId || null
         };
+        const errs = validateDocSave(docData);
+        if (errs.length > 0) {
+            return { success: false, error: 'Validation échouée: ' + errs.join(', ') };
+        }
         // Save as document
         db.saveDocument(docData);
         // Deduct stock for all items in a single transaction
@@ -948,19 +1432,46 @@ ipcMain.handle('pos:saveSale', async (_, data) => {
             db.addPosSaleToSession(data.sessionId, data.totalTTC, data.paymentMethod);
         }
         return { success: true, id, number };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('pos:getSales', async (_, { userId, sessionId }) => db.getPosSales(userId, sessionId));
 ipcMain.handle('pos:getTodaySales', async (_, userId) => db.getTodayPosSales(userId));
 ipcMain.handle('pos:getSaleById', async (_, id) => db.getPosSaleById(id));
-ipcMain.handle('pos:deleteSale', async (_, id) => { try { db.deleteDocument(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('pos:openSession', async (_, { userId, openingBalance }) => { try { return db.openSession(userId, openingBalance); } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('pos:closeSession', async (_, { id, closingCash, closingCard }) => { try { return db.closeSession(id, closingCash, closingCard); } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('pos:deleteSale', async (_, id) => {
+    try {
+        db.deleteDocument(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('pos:openSession', async (_, { userId, openingBalance }) => {
+    try {
+        return db.openSession(userId, openingBalance);
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('pos:closeSession', async (_, { id, closingCash, closingCard }) => {
+    try {
+        return db.closeSession(id, closingCash, closingCard);
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 ipcMain.handle('pos:getActiveSession', async (_, userId) => db.getActiveSession(userId));
 ipcMain.handle('pos:getSessions', async (_, userId) => db.getPosSessions(userId));
 ipcMain.handle('pos:getLowStock', async (_, userId) => db.getLowStockProducts(userId));
 ipcMain.handle('pos:getLoyaltyPoints', async (_, { userId, clientName }) => db.getLoyaltyPoints(userId, clientName));
-ipcMain.handle('pos:addLoyaltyPoints', async (_, { userId, clientName, amount }) => { try { return db.addLoyaltyPoints(userId, clientName, amount); } catch (e) { return 0; } });
+ipcMain.handle('pos:addLoyaltyPoints', async (_, { userId, clientName, amount }) => {
+    try {
+        return db.addLoyaltyPoints(userId, clientName, amount);
+    } catch (e) {
+        return 0;
+    }
+});
 
 // ==================== EXPENSES ====================
 ipcMain.handle('expenses:getAll', async (_, userId) => db.getExpenses(userId));
@@ -970,16 +1481,26 @@ ipcMain.handle('expenses:save', async (_, data) => {
         const errors = validateExpenseSave(data);
         if (errors.length > 0) return { success: false, error: 'Validation échouée: ' + errors.join('; ') };
         return { success: true, expense: db.saveExpense(data) };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('expenses:delete', async (_, id) => {
     try {
         const attachPath = db.deleteExpense(id);
         if (attachPath && fs.existsSync(attachPath)) fs.unlinkSync(attachPath);
         return { success: true };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
-ipcMain.handle('expenses:summary', async (_, { userId, year }) => { try { return db.getExpenseSummary(userId, year); } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('expenses:summary', async (_, { userId, year }) => {
+    try {
+        return db.getExpenseSummary(userId, year);
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== SCANNER ====================
 ipcMain.handle('scanner:pickFile', async () => {
@@ -993,7 +1514,13 @@ ipcMain.handle('scanner:pickFile', async () => {
 ipcMain.handle('scanner:storeFile', async (_, srcPath) => {
     try {
         const resolved = path.resolve(srcPath);
-        const allowed = [app.getPath('home'), app.getPath('downloads'), app.getPath('desktop'), app.getPath('documents'), app.getPath('pictures')];
+        const allowed = [
+            app.getPath('home'),
+            app.getPath('downloads'),
+            app.getPath('desktop'),
+            app.getPath('documents'),
+            app.getPath('pictures')
+        ];
         if (!allowed.some(dir => resolved.startsWith(dir))) {
             return { success: false, error: 'Chemin de fichier non autorisé' };
         }
@@ -1007,7 +1534,9 @@ ipcMain.handle('scanner:storeFile', async (_, srcPath) => {
         const ext = path.extname(srcPath).toLowerCase().slice(1);
         const mime = ext === 'pdf' ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
         return { success: true, path: destPath, originalName: path.basename(srcPath), base64, mimeType: mime, isPdf: ext === 'pdf' };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('scanner:extractPdfText', async (_, filePath) => {
@@ -1015,7 +1544,9 @@ ipcMain.handle('scanner:extractPdfText', async (_, filePath) => {
         const pdfParse = require('pdf-parse');
         const data = await pdfParse(fs.readFileSync(filePath));
         return { success: true, text: data.text };
-    } catch (e) { return { success: false, error: e.message, text: '' }; }
+    } catch (e) {
+        return { success: false, error: e.message, text: '' };
+    }
 });
 
 ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
@@ -1031,12 +1562,18 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
             await ocrWorker.setParameters({
                 tessedit_pageseg_mode: '3', // PSM 3: Fully automatic page segmentation, but no OSD.
                 tessjs_create_hocr: '0',
-                tessjs_create_tsv: '0',
+                tessjs_create_tsv: '0'
             });
         }
 
-        const { data: { text } } = await ocrWorker.recognize(filePath);
-        if (process.env.NODE_ENV === 'development') { console.log('--- RAW OCR START ---'); console.log(text); console.log('--- RAW OCR END ---'); }
+        const {
+            data: { text }
+        } = await ocrWorker.recognize(filePath);
+        if (process.env.NODE_ENV === 'development') {
+            console.log('--- RAW OCR START ---');
+            console.log(text);
+            console.log('--- RAW OCR END ---');
+        }
         return { success: true, text };
     } catch (e) {
         console.error('OCR Error:', e);
@@ -1045,13 +1582,33 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
 });
 
 ipcMain.handle('scanner:openAttachment', async (_, filePath) => {
-    try { shell.openPath(filePath); return { success: true }; }
-    catch (e) { return { success: false, error: e.message }; }
+    try {
+        const resolved = path.resolve(filePath);
+        const attachDir = path.join(app.getPath('userData'), 'attachments');
+        if (!resolved.startsWith(attachDir)) {
+            return { success: false, error: 'Chemin non autorisé' };
+        }
+        shell.openPath(resolved);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('scanner:deleteAttachment', async (_, filePath) => {
-    try { if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath); return { success: true }; }
-    catch (e) { return { success: false, error: e.message }; }
+    try {
+        if (filePath) {
+            const resolved = path.resolve(filePath);
+            const attachDir = path.join(app.getPath('userData'), 'attachments');
+            if (!resolved.startsWith(attachDir)) {
+                return { success: false, error: 'Chemin non autorisé' };
+            }
+            if (fs.existsSync(resolved)) fs.unlinkSync(resolved);
+        }
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ==================== TOOLS ====================
@@ -1062,9 +1619,15 @@ ipcMain.handle('tools:openCalculator', async () => {
             return { success: true };
         }
         calculatorWindow = new BrowserWindow({
-            width: 520, height: 680, title: 'Calculatrice Fiscale — Factarlou',
+            width: 520,
+            height: 680,
+            title: 'Calculatrice Fiscale — Factarlou',
             icon: path.join(__dirname, '../assets/iconblack2.png'),
-            parent: mainWindow, modal: false, resizable: true, minimizable: true, maximizable: false,
+            parent: mainWindow,
+            modal: false,
+            resizable: true,
+            minimizable: true,
+            maximizable: false,
             webPreferences: { contextIsolation: true, nodeIntegration: false }
         });
         const calcPath = path.join(__dirname, 'calculator.html');
@@ -1074,9 +1637,13 @@ ipcMain.handle('tools:openCalculator', async () => {
             const fallback = path.join(path.dirname(__dirname), 'calculator.html');
             await calculatorWindow.loadFile(fs.existsSync(fallback) ? fallback : calcPath);
         }
-        calculatorWindow.on('closed', () => { calculatorWindow = null; });
+        calculatorWindow.on('closed', () => {
+            calculatorWindow = null;
+        });
         return { success: true };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('tools:relanceLetter', async (_, { docId, userId, attempt }) => {
     try {
@@ -1098,7 +1665,9 @@ ipcMain.handle('tools:relanceLetter', async (_, { docId, userId, attempt }) => {
 
         const html = buildRelanceHTML(doc, company, attempt || 1);
         return { success: true, html };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 ipcMain.handle('tools:fiscalSummary', async (_, { userId, year, quarter }) => {
     try {
@@ -1114,7 +1683,9 @@ ipcMain.handle('tools:fiscalSummary', async (_, { userId, year, quarter }) => {
 
         const html = buildFiscalSummaryHTML(summary, company);
         return { success: true, html, summary };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('tools:searchRNE', async (_, mf) => {
@@ -1128,8 +1699,9 @@ ipcMain.handle('tools:searchRNE', async (_, mf) => {
 
         const response = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                Accept: 'application/json, text/plain, */*',
                 'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
             }
         });
@@ -1148,13 +1720,40 @@ ipcMain.handle('tools:searchRNE', async (_, mf) => {
 });
 
 // ==================== FS HELPERS ====================
-ipcMain.handle('fs:openFolder', async (_, p) => { try { shell.openPath(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('fs:selectFolder', async () => { const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; });
+ipcMain.handle('fs:openFolder', async (_, p) => {
+    try {
+        shell.openPath(p);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('fs:selectFolder', async () => {
+    const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+    return r.canceled ? null : r.filePaths[0];
+});
 
 // ==================== RECURRING INVOICES ====================
 ipcMain.handle('recurring:getAll', async (_, userId) => db.getRecurringInvoices(userId));
-ipcMain.handle('recurring:save', async (_, data) => { try { return { success: true, id: db.saveRecurringInvoice(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('recurring:delete', async (_, id) => { try { db.deleteRecurringInvoice(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('recurring:save', async (_, data) => {
+    try {
+        const errs = validateRecurringInvoice(data);
+        if (errs.length > 0) {
+            return { success: false, error: 'Validation échouée: ' + errs.join(', ') };
+        }
+        return { success: true, id: db.saveRecurringInvoice(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('recurring:delete', async (_, id) => {
+    try {
+        db.deleteRecurringInvoice(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 let recurringTimer = null;
 
@@ -1166,7 +1765,10 @@ function startRecurringCron() {
 }
 
 function stopRecurringCron() {
-    if (recurringTimer) { clearInterval(recurringTimer); recurringTimer = null; }
+    if (recurringTimer) {
+        clearInterval(recurringTimer);
+        recurringTimer = null;
+    }
 }
 
 function generateDueRecurring() {
@@ -1175,10 +1777,19 @@ function generateDueRecurring() {
         if (!due || !due.length) return;
         due.forEach(r => {
             try {
-                const items = (r.items_template ? (typeof r.items_template === 'string' ? JSON.parse(r.items_template) : r.items_template) : []);
+                const items = r.items_template
+                    ? typeof r.items_template === 'string'
+                        ? JSON.parse(r.items_template)
+                        : r.items_template
+                    : [];
                 const parsedItems = items.map(line => {
                     const p = (line || '').split('|').map(s => s.trim());
-                    return { description: p[0] || '', quantity: parseFloat(p[1]) || 1, price: parseFloat(p[2]) || 0, tva: parseInt(p[3]) || 19 };
+                    return {
+                        description: p[0] || '',
+                        quantity: parseFloat(p[1]) || 1,
+                        price: parseFloat(p[2]) || 0,
+                        tva: parseInt(p[3]) || 19
+                    };
                 });
                 const now = new Date();
                 const dateStr = now.toISOString().split('T')[0];
@@ -1217,37 +1828,68 @@ function generateDueRecurring() {
                 // Calculate next run
                 const nextDate = new Date();
                 switch (r.frequency) {
-                    case 'weekly': nextDate.setDate(nextDate.getDate() + 7); break;
-                    case 'monthly': nextDate.setMonth(nextDate.getMonth() + 1); break;
-                    case 'quarterly': nextDate.setMonth(nextDate.getMonth() + 3); break;
-                    case 'yearly': nextDate.setFullYear(nextDate.getFullYear() + 1); break;
+                    case 'weekly':
+                        nextDate.setDate(nextDate.getDate() + 7);
+                        break;
+                    case 'monthly':
+                        nextDate.setMonth(nextDate.getMonth() + 1);
+                        break;
+                    case 'quarterly':
+                        nextDate.setMonth(nextDate.getMonth() + 3);
+                        break;
+                    case 'yearly':
+                        nextDate.setFullYear(nextDate.getFullYear() + 1);
+                        break;
                 }
                 nextDate.setDate(r.day_of_month || 15);
                 db.updateRecurringNextRun(r.id, dateStr, nextDate.toISOString().split('T')[0]);
-            } catch (e) { console.error('Failed to generate recurring invoice:', r.id, e); }
+            } catch (e) {
+                console.error('Failed to generate recurring invoice:', r.id, e);
+            }
         });
-    } catch (e) { console.error('Recurring cron error:', e); }
+    } catch (e) {
+        console.error('Recurring cron error:', e);
+    }
 }
 
 // ==================== DOCUMENT TEMPLATES ====================
 ipcMain.handle('templates:getAll', async (_, userId) => db.getTemplates(userId));
-ipcMain.handle('templates:save', async (_, data) => { try { return { success: true, id: db.saveTemplate(data) }; } catch (e) { return { success: false, error: e.message }; } });
-ipcMain.handle('templates:delete', async (_, id) => { try { db.deleteTemplate(id); return { success: true }; } catch (e) { return { success: false, error: e.message }; } });
+ipcMain.handle('templates:save', async (_, data) => {
+    try {
+        return { success: true, id: db.saveTemplate(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('templates:delete', async (_, id) => {
+    try {
+        db.deleteTemplate(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
 
 // ==================== XLSX IMPORT ====================
 ipcMain.handle('import:xlsx', async (_, { filePath }) => {
     try {
-const XLSX = require('xlsx');
         const wb = XLSX.readFile(filePath);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
         return { success: true, data };
-    } catch (e) { return { success: false, error: e.message }; }
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 // ── TEJ EXPORT HANDLERS ──────────────────────────────────────────
 ipcMain.handle('export:tej:getData', async (_, params) => {
-    try { return db.getTEJData(params); } catch (e) { console.error(e); return []; }
+    try {
+        return db.getTEJData(params);
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
 });
 
 ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeActe, company, data }) => {
@@ -1271,26 +1913,46 @@ ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeAct
             const root = create({ version: '1.0', encoding: 'UTF-8' })
                 .ele('DeclarationsRS')
                 .ele('Declarant')
-                .ele('Identifiant').txt(company.mf || '').up()
-                .ele('RaisonSociale').txt(company.name || '').up()
+                .ele('Identifiant')
+                .txt(company.mf || '')
+                .up()
+                .ele('RaisonSociale')
+                .txt(company.name || '')
+                .up()
                 .up()
                 .ele('ReferenceDeclaration')
-                .ele('Annee').txt(year.toString()).up()
-                .ele('Mois').txt(month.toString()).up()
-                .ele('CodeActe').txt(codeActe.toString()).up()
+                .ele('Annee')
+                .txt(year.toString())
+                .up()
+                .ele('Mois')
+                .txt(month.toString())
+                .up()
+                .ele('CodeActe')
+                .txt(codeActe.toString())
+                .up()
                 .up()
                 .ele('AjouterCertificats');
 
             data.forEach(item => {
                 root.ele('Certificat')
                     .ele('Beneficiaire')
-                    .ele('Identifiant').txt(item.beneficiaire_mf || '').up()
-                    .ele('NomPrenomRaisonSociale').txt(item.beneficiaire_name || '').up()
+                    .ele('Identifiant')
+                    .txt(item.beneficiaire_mf || '')
+                    .up()
+                    .ele('NomPrenomRaisonSociale')
+                    .txt(item.beneficiaire_name || '')
+                    .up()
                     .up()
                     .ele('DetailsCertificat')
-                    .ele('DateCertificat').txt(item.date || '').up()
-                    .ele('MontantBrut').txt((item.montant_brut || 0).toFixed(3)).up()
-                    .ele('MontantRetenue').txt((item.montant_retenue || 0).toFixed(3)).up()
+                    .ele('DateCertificat')
+                    .txt(item.date || '')
+                    .up()
+                    .ele('MontantBrut')
+                    .txt((item.montant_brut || 0).toFixed(3))
+                    .up()
+                    .ele('MontantRetenue')
+                    .txt((item.montant_retenue || 0).toFixed(3))
+                    .up()
                     .up()
                     .up();
             });
@@ -1301,26 +1963,48 @@ ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeAct
             const root = create({ version: '1.0', encoding: 'UTF-8' })
                 .ele('DeclarationsTEIF')
                 .ele('Declarant')
-                .ele('Identifiant').txt(company.mf || '').up()
-                .ele('RaisonSociale').txt(company.name || '').up()
+                .ele('Identifiant')
+                .txt(company.mf || '')
+                .up()
+                .ele('RaisonSociale')
+                .txt(company.name || '')
+                .up()
                 .up()
                 .ele('ReferenceDeclaration')
-                .ele('Annee').txt(year.toString()).up()
-                .ele('Mois').txt(month.toString()).up()
-                .ele('CodeActe').txt(codeActe.toString()).up()
+                .ele('Annee')
+                .txt(year.toString())
+                .up()
+                .ele('Mois')
+                .txt(month.toString())
+                .up()
+                .ele('CodeActe')
+                .txt(codeActe.toString())
+                .up()
                 .up()
                 .ele('ListeFactures');
 
             data.forEach(item => {
                 root.ele('Facture')
-                    .ele('Numero').txt(item.number || '').up()
-                    .ele('Date').txt(item.date || '').up()
-                    .ele('Client')
-                    .ele('Identifiant').txt(item.client_mf || '').up()
-                    .ele('Nom').txt(item.client_name || '').up()
+                    .ele('Numero')
+                    .txt(item.number || '')
                     .up()
-                    .ele('MontantHT').txt((item.total_ht || 0).toFixed(3)).up()
-                    .ele('MontantTTC').txt((item.total_ttc || 0).toFixed(3)).up()
+                    .ele('Date')
+                    .txt(item.date || '')
+                    .up()
+                    .ele('Client')
+                    .ele('Identifiant')
+                    .txt(item.client_mf || '')
+                    .up()
+                    .ele('Nom')
+                    .txt(item.client_name || '')
+                    .up()
+                    .up()
+                    .ele('MontantHT')
+                    .txt((item.total_ht || 0).toFixed(3))
+                    .up()
+                    .ele('MontantTTC')
+                    .txt((item.total_ttc || 0).toFixed(3))
+                    .up()
                     .up();
             });
 

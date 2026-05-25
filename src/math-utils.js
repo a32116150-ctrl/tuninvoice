@@ -26,15 +26,9 @@ function parseTVARate(tva) {
  * @returns {Object}
  */
 function calculateTotals(items, options = {}) {
-    const {
-        applyTimbre = false,
-        discountPercent = 0,
-        discountAmount = 0,
-        decimalPlaces = 3,
-        roundingMethod = 'half_up'
-    } = options;
+    const { applyTimbre = false, discountPercent = 0, discountAmount = 0, decimalPlaces = 3, roundingMethod = 'half_up' } = options;
 
-    const round = (value) => {
+    const round = value => {
         const factor = Math.pow(10, decimalPlaces);
         if (roundingMethod === 'ceil') return Math.ceil(value * factor) / factor;
         if (roundingMethod === 'floor') return Math.floor(value * factor) / factor;
@@ -53,11 +47,11 @@ function calculateTotals(items, options = {}) {
 
         if (!tvaByRate[tva]) tvaByRate[tva] = { baseHT: 0, tvaAmount: 0 };
         tvaByRate[tva].baseHT += lineHT;
-        tvaByRate[tva].tvaAmount += lineHT * tva / 100;
+        tvaByRate[tva].tvaAmount += (lineHT * tva) / 100;
     });
 
     // Apply discount
-    const discountDeduction = discountAmount || (totalHTRaw * discountPercent / 100);
+    const discountDeduction = discountAmount || (totalHTRaw * discountPercent) / 100;
     const totalHTAfterDiscount = totalHTRaw - discountDeduction;
 
     // Recalculate TVA on discounted amount

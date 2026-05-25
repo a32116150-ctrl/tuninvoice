@@ -18,8 +18,6 @@ const DOC_PAGE_SIZE = 50;
 let editingContractId = null;
 let confirmCallback = null;
 let currentSettings = {};
-
-// ==================== DECIMAL / ROUNDING ====================
 let currentDecimalPlaces = 3;
 let currentRoundingMethod = 'half_up';
 
@@ -46,14 +44,33 @@ function parseNaturalDate(str) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const matches = {
-        "aujourd'hui": today, "auj": today, "today": today,
-        "demain": new Date(today.getTime() + 86400000), "tomorrow": new Date(today.getTime() + 86400000),
-        "next day": new Date(today.getTime() + 86400000),
-        "hier": new Date(today.getTime() - 86400000), "yesterday": new Date(today.getTime() - 86400000)
+        "aujourd'hui": today,
+        auj: today,
+        today: today,
+        demain: new Date(today.getTime() + 86400000),
+        tomorrow: new Date(today.getTime() + 86400000),
+        'next day': new Date(today.getTime() + 86400000),
+        hier: new Date(today.getTime() - 86400000),
+        yesterday: new Date(today.getTime() - 86400000)
     };
     if (matches[s]) return matches[s];
 
-    const weekdayMap = { lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6, dimanche: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0 };
+    const weekdayMap = {
+        lundi: 1,
+        mardi: 2,
+        mercredi: 3,
+        jeudi: 4,
+        vendredi: 5,
+        samedi: 6,
+        dimanche: 0,
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6,
+        sunday: 0
+    };
 
     // "next monday", "next lundi", "next week", "next month"
     const nextMatch = s.match(/^(next|prochain)\s+(.+)/);
@@ -67,8 +84,16 @@ function parseNaturalDate(str) {
             return new Date(today.getTime() + diff * 86400000);
         }
         if (unit === 'week' || unit === 'semaine') return new Date(today.getTime() + 7 * 86400000);
-        if (unit === 'month' || unit === 'mois') { const d = new Date(today); d.setMonth(d.getMonth() + 1); return d; }
-        if (unit === 'year' || unit === 'an' || unit === 'année') { const d = new Date(today); d.setFullYear(d.getFullYear() + 1); return d; }
+        if (unit === 'month' || unit === 'mois') {
+            const d = new Date(today);
+            d.setMonth(d.getMonth() + 1);
+            return d;
+        }
+        if (unit === 'year' || unit === 'an' || unit === 'année') {
+            const d = new Date(today);
+            d.setFullYear(d.getFullYear() + 1);
+            return d;
+        }
     }
 
     // "+30d", "+2w", "+3m", "+1y", "-7d"
@@ -79,7 +104,10 @@ function parseNaturalDate(str) {
         const d = new Date(today);
         if (unit === 'd' || unit === 'j') d.setDate(d.getDate() + num);
         else if (unit === 'w' || unit === 's') d.setDate(d.getDate() + num * 7);
-        else if (unit === 'm' || unit === 'y') { if (unit === 'm') d.setMonth(d.getMonth() + num); else d.setFullYear(d.getFullYear() + num); }
+        else if (unit === 'm' || unit === 'y') {
+            if (unit === 'm') d.setMonth(d.getMonth() + num);
+            else d.setFullYear(d.getFullYear() + num);
+        }
         return d;
     }
 
@@ -95,17 +123,19 @@ function parseNaturalDate(str) {
 // Hook natural language dates onto date inputs
 function initNaturalDateInputs() {
     document.querySelectorAll('input[type="date"]').forEach(input => {
-        input.addEventListener('input', function() {
+        input.addEventListener('input', function () {
             if (this.value && this.value.length > 4 && this.value.includes('-') === false) {
                 const parsed = parseNaturalDate(this.value);
                 if (parsed) {
                     const iso = parsed.toISOString().split('T')[0];
-                    if (iso !== this.value) { this.value = iso; }
+                    if (iso !== this.value) {
+                        this.value = iso;
+                    }
                 }
             }
         });
         // Also handle blur for expressions typed
-        input.addEventListener('blur', function() {
+        input.addEventListener('blur', function () {
             if (this.value && !/^\d{4}-\d{2}-\d{2}$/.test(this.value)) {
                 const parsed = parseNaturalDate(this.value);
                 if (parsed) this.value = parsed.toISOString().split('T')[0];
@@ -123,7 +153,7 @@ let dragSource = null;
 
 function initItemDrag(row) {
     row.setAttribute('draggable', 'true');
-    row.addEventListener('dragstart', (e) => {
+    row.addEventListener('dragstart', e => {
         dragSource = row;
         row.style.opacity = '0.4';
         e.dataTransfer.effectAllowed = 'move';
@@ -133,13 +163,13 @@ function initItemDrag(row) {
         dragSource = null;
         document.querySelectorAll('#itemsBody tr').forEach(r => r.classList.remove('drag-over'));
     });
-    row.addEventListener('dragover', (e) => {
+    row.addEventListener('dragover', e => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         document.querySelectorAll('#itemsBody tr').forEach(r => r.classList.remove('drag-over'));
         row.classList.add('drag-over');
     });
-    row.addEventListener('drop', (e) => {
+    row.addEventListener('drop', e => {
         e.preventDefault();
         if (dragSource && dragSource !== row) {
             const tbody = document.getElementById('itemsBody');
@@ -160,34 +190,47 @@ function initMFAutoComplete() {
     if (!mfInput) return;
     let dropdown = null;
 
-    mfInput.addEventListener('input', function() {
+    mfInput.addEventListener('input', function () {
         const q = this.value.trim().toLowerCase();
-        if (q.length < 2) { if (dropdown) { dropdown.remove(); dropdown = null; } return; }
+        if (q.length < 2) {
+            if (dropdown) {
+                dropdown.remove();
+                dropdown = null;
+            }
+            return;
+        }
 
-        const matches = allClients.filter(c =>
-            (c.mf && c.mf.toLowerCase().includes(q)) ||
-            (c.name && c.name.toLowerCase().includes(q))
-        ).slice(0, 8);
+        const matches = allClients
+            .filter(c => (c.mf && c.mf.toLowerCase().includes(q)) || (c.name && c.name.toLowerCase().includes(q)))
+            .slice(0, 8);
 
-        if (dropdown) { dropdown.remove(); dropdown = null; }
+        if (dropdown) {
+            dropdown.remove();
+            dropdown = null;
+        }
         if (!matches.length) return;
 
         dropdown = document.createElement('div');
-        dropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.1);z-index:100;max-height:200px;overflow-y:auto;margin-top:2px';
+        dropdown.style.cssText =
+            'position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.1);z-index:100;max-height:200px;overflow-y:auto;margin-top:2px';
 
         matches.forEach(c => {
             const item = document.createElement('div');
-            item.style.cssText = 'padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;border-bottom:1px solid var(--border)';
+            item.style.cssText =
+                'padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;border-bottom:1px solid var(--border)';
             item.innerHTML = `<span><strong>${escapeHtml(c.name)}</strong> ${c.mf ? `<span style="color:var(--text-light)">· ${escapeHtml(c.mf)}</span>` : ''}</span>`;
-            item.onmouseenter = () => item.style.background = 'var(--gray-50)';
-            item.onmouseleave = () => item.style.background = '';
+            item.onmouseenter = () => (item.style.background = 'var(--gray-50)');
+            item.onmouseleave = () => (item.style.background = '');
             item.onclick = () => {
                 document.getElementById('docClientName').value = c.name;
                 document.getElementById('docClientMF').value = c.mf || '';
                 document.getElementById('docClientAddress').value = c.address || '';
                 document.getElementById('docClientPhone').value = c.phone || '';
                 document.getElementById('docClientEmail').value = c.email || '';
-                if (dropdown) { dropdown.remove(); dropdown = null; }
+                if (dropdown) {
+                    dropdown.remove();
+                    dropdown = null;
+                }
             };
             dropdown.appendChild(item);
         });
@@ -198,48 +241,89 @@ function initMFAutoComplete() {
     });
 
     mfInput.addEventListener('blur', () => {
-        setTimeout(() => { if (dropdown) { dropdown.remove(); dropdown = null; } }, 200);
+        setTimeout(() => {
+            if (dropdown) {
+                dropdown.remove();
+                dropdown = null;
+            }
+        }, 200);
     });
 }
 // ==================== TOAST ====================
 function showToast(message, type = 'info', duration = 3500) {
-    const icons = { success: '<i data-lucide="check-circle" class="lucide-sm"></i>', error: '<i data-lucide="x-circle" class="lucide-sm"></i>', info: '<i data-lucide="info" class="lucide-sm"></i>', warning: '<i data-lucide="alert-triangle" class="lucide-sm"></i>' };
+    const icons = {
+        success: '<i data-lucide="check-circle" class="lucide-sm"></i>',
+        error: '<i data-lucide="x-circle" class="lucide-sm"></i>',
+        info: '<i data-lucide="info" class="lucide-sm"></i>',
+        warning: '<i data-lucide="alert-triangle" class="lucide-sm"></i>'
+    };
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${icons[type]}</span><span></span>`; toast.lastElementChild.textContent = message;
+    toast.innerHTML = `<span>${icons[type]}</span><span></span>`;
+    toast.lastElementChild.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => { toast.classList.add('toast-out'); setTimeout(() => toast.remove(), 300); }, duration);
+    setTimeout(() => {
+        toast.classList.add('toast-out');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }
 // ==================== LOADING ====================
-function showLoading(text = 'Traitement en cours...') { document.getElementById('loadingText').textContent = text; document.getElementById('loadingOverlay').classList.remove('hidden'); }
-function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+function showLoading(text = 'Traitement en cours...') {
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+}
 // ==================== CONFIRM MODAL ====================
 function showConfirm(title, message, onConfirm, btnLabel = 'Confirmer', btnClass = 'btn-danger') {
     document.getElementById('confirmTitle').textContent = title;
-    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmMessage').innerHTML = message;
     if (window.lucide) lucide.createIcons();
     const btn = document.getElementById('confirmBtn');
-    btn.textContent = btnLabel; btn.className = `btn ${btnClass}`;
+    btn.textContent = btnLabel;
+    btn.className = `btn ${btnClass}`;
     confirmCallback = onConfirm;
     const cancelBtn = document.querySelector('#confirmModal .btn-secondary');
     if (cancelBtn) cancelBtn.style.display = onConfirm ? 'inline-flex' : 'none';
     document.getElementById('confirmModal').classList.add('active');
 }
 function executeConfirm() {
-    if (typeof confirmCallback === 'function') { const a = confirmCallback; confirmCallback = null; closeConfirm(); a(); }
+    if (typeof confirmCallback === 'function') {
+        const a = confirmCallback;
+        confirmCallback = null;
+        closeConfirm();
+        a();
+    }
 }
-function closeConfirm() { document.getElementById('confirmModal').classList.remove('active'); confirmCallback = null; }
+function closeConfirm() {
+    document.getElementById('confirmModal').classList.remove('active');
+    confirmCallback = null;
+}
 // ==================== BACKUP REPORT ====================
 async function generateBackupReport() {
     showLoading('Génération du rapport...');
     try {
         const data = await window.electronAPI.generateBackupReport(currentUser.id);
-        if (!data) { showToast('Erreur génération rapport', 'error'); hideLoading(); return; }
+        if (!data) {
+            showToast('Erreur génération rapport', 'error');
+            hideLoading();
+            return;
+        }
         hideLoading();
 
-        const formatCurrency = (v) => (v || 0).toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' TND';
-        const docTypeLabel = { facture: 'Factures', devis: 'Devis', bon: 'Bons de Commande', avoir: 'Avoirs', bl: 'Bons de Livraison', ba: 'Bons d\'Achat', bs: 'Bons de Sortie', be: 'Bons d\'Entrée' };
+        const formatCurrency = v => (v || 0).toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' TND';
+        const docTypeLabel = {
+            facture: 'Factures',
+            devis: 'Devis',
+            bon: 'Bons de Commande',
+            avoir: 'Avoirs',
+            bl: 'Bons de Livraison',
+            ba: "Bons d'Achat",
+            bs: 'Bons de Sortie',
+            be: "Bons d'Entrée"
+        };
 
         let byTypeHtml = '';
         (data.documents.byType || []).forEach(d => {
@@ -287,7 +371,10 @@ ${byTypeHtml || '<tr><td colspan="3" style="text-align:center;color:#94a3b8">Auc
 <script>window.print();</script>
 </body></html>`);
         win.document.close();
-    } catch (e) { hideLoading(); showToast('Erreur', 'error'); }
+    } catch (e) {
+        hideLoading();
+        showToast('Erreur', 'error');
+    }
 }
 // ==================== I18N ====================
 window.addEventListener('locale-changed', () => {
@@ -301,7 +388,7 @@ function initClientMap(lat = 36.8065, lng = 10.1815) {
     const container = document.getElementById('clientMapContainer');
     if (!container) return;
     container.style.display = 'block';
-    
+
     if (_clientMap) {
         _clientMap.invalidateSize();
         _clientMap.setView([lat, lng], 13);
@@ -309,15 +396,15 @@ function initClientMap(lat = 36.8065, lng = 10.1815) {
         else _clientMarker = L.marker([lat, lng]).addTo(_clientMap);
         return;
     }
-    
+
     _clientMap = L.map(container, { zoomControl: true }).setView([lat, lng], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19,
+        maxZoom: 19
     }).addTo(_clientMap);
     _clientMarker = L.marker([lat, lng]).addTo(_clientMap);
-    
-    _clientMap.on('click', function(e) {
+
+    _clientMap.on('click', function (e) {
         if (_clientMarker) _clientMarker.setLatLng(e.latlng);
         else _clientMarker = L.marker(e.latlng).addTo(_clientMap);
     });
@@ -374,11 +461,12 @@ function previewCSV(input) {
     const file = input.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         const text = e.target.result;
         const lines = text.split('\n').filter(l => l.trim());
         if (lines.length < 2) {
-            document.getElementById('csvPreviewTable').innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light)">Fichier vide ou invalide</div>';
+            document.getElementById('csvPreviewTable').innerHTML =
+                '<div style="padding:16px;text-align:center;color:var(--text-light)">Fichier vide ou invalide</div>';
             document.getElementById('csvImportBtn').disabled = true;
             return;
         }
@@ -386,15 +474,19 @@ function previewCSV(input) {
         _csvParsedData = lines.slice(1).map(line => {
             const vals = line.split(',').map(v => v.trim());
             const obj = {};
-            headers.forEach((h, i) => obj[h] = vals[i] || '');
+            headers.forEach((h, i) => (obj[h] = vals[i] || ''));
             return obj;
         });
         let html = '<table class="data-table"><thead><tr>';
-        headers.forEach(h => { html += `<th>${escapeHtml(h)}</th>`; });
+        headers.forEach(h => {
+            html += `<th>${escapeHtml(h)}</th>`;
+        });
         html += '</tr></thead><tbody>';
         _csvParsedData.slice(0, 10).forEach(row => {
             html += '<tr>';
-            headers.forEach(h => { html += `<td>${escapeHtml(row[h] || '')}</td>`; });
+            headers.forEach(h => {
+                html += `<td>${escapeHtml(row[h] || '')}</td>`;
+            });
             html += '</tr>';
         });
         if (_csvParsedData.length > 10) {
@@ -403,7 +495,8 @@ function previewCSV(input) {
         html += '</tbody></table>';
         document.getElementById('csvPreviewTable').innerHTML = html;
         document.getElementById('csvImportBtn').disabled = false;
-        document.getElementById('csvImportResult').innerHTML = `<span style="color:var(--success)">✓ ${_csvParsedData.length} entrée(s) détectée(s)</span>`;
+        document.getElementById('csvImportResult').innerHTML =
+            `<span style="color:var(--success)">✓ ${_csvParsedData.length} entrée(s) détectée(s)</span>`;
     };
     reader.readAsText(file);
 }
@@ -414,7 +507,8 @@ async function confirmCSVImport() {
     btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Importation...';
     const type = document.getElementById('csvImportType').value;
-    let success = 0, errors = 0;
+    let success = 0,
+        errors = 0;
     for (const row of _csvParsedData) {
         try {
             if (type === 'clients') {
@@ -424,18 +518,20 @@ async function confirmCSVImport() {
                     mf: row.mf || '',
                     address: row.adresse || row.address || '',
                     phone: row.telephone || row.phone || '',
-                    email: row.email || '',
+                    email: row.email || ''
                 });
             } else {
                 await window.electronAPI.saveService({
                     userId: currentUser.id,
                     name: row.nom || row.name || '',
                     price: parseFloat(row.prix || row.price || 0),
-                    description: row.description || '',
+                    description: row.description || ''
                 });
             }
             success++;
-        } catch { errors++; }
+        } catch {
+            errors++;
+        }
     }
     document.getElementById('csvImportResult').innerHTML = `
         <div style="padding:12px;border-radius:8px;font-weight:600;text-align:center;background:${errors ? '#fef2f2' : '#f0fdf4'};color:${errors ? '#b91c1c' : '#166534'}">
@@ -457,8 +553,16 @@ function escapeHtml(text) {
 
 function formatDate(dateStr) {
     if (!dateStr) return '';
-    try { return new Date(dateStr).toLocaleDateString('fr-FR'); } catch { return dateStr; }
+    try {
+        return new Date(dateStr).toLocaleDateString('fr-FR');
+    } catch {
+        return dateStr;
+    }
 }
 
-function getDocTypeLabel(type) { return currentTheme.titles[type]?.text || type.toUpperCase(); }
-function getDocTypeColor(type) { return currentTheme.titles[type]?.color || '#1e3a8a'; }
+function getDocTypeLabel(type) {
+    return currentTheme.titles[type]?.text || type.toUpperCase();
+}
+function getDocTypeColor(type) {
+    return currentTheme.titles[type]?.color || '#1e3a8a';
+}

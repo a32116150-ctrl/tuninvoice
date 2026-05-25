@@ -13,7 +13,7 @@ class BackupScheduler {
     loadSettings() {
         const userDataPath = app.getPath('userData');
         const settingsPath = path.join(userDataPath, 'backup-settings.json');
-        
+
         if (fs.existsSync(settingsPath)) {
             try {
                 return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
@@ -21,7 +21,7 @@ class BackupScheduler {
                 console.error('Failed to parse backup settings, using defaults:', e.message);
             }
         }
-        
+
         return {
             enabled: true,
             frequency: 'daily',
@@ -44,12 +44,19 @@ class BackupScheduler {
 
         const [hours, minutes] = this.settings.time.split(':');
         let cronPattern;
-        
+
         switch (this.settings.frequency) {
-            case 'daily': cronPattern = `${minutes} ${hours} * * *`; break;
-            case 'weekly': cronPattern = `${minutes} ${hours} * * 0`; break;
-            case 'monthly': cronPattern = `${minutes} ${hours} 1 * *`; break;
-            default: cronPattern = `${minutes} ${hours} * * *`;
+            case 'daily':
+                cronPattern = `${minutes} ${hours} * * *`;
+                break;
+            case 'weekly':
+                cronPattern = `${minutes} ${hours} * * 0`;
+                break;
+            case 'monthly':
+                cronPattern = `${minutes} ${hours} 1 * *`;
+                break;
+            default:
+                cronPattern = `${minutes} ${hours} * * *`;
         }
 
         this.scheduledJob = cron.schedule(cronPattern, () => {
@@ -103,7 +110,8 @@ class BackupScheduler {
 
     cleanOldBackups() {
         try {
-            const files = fs.readdirSync(this.settings.backupPath)
+            const files = fs
+                .readdirSync(this.settings.backupPath)
                 .filter(f => f.startsWith('tuniinvoice-backup-') && f.endsWith('.zip'))
                 .map(f => ({
                     path: path.join(this.settings.backupPath, f),
@@ -122,8 +130,9 @@ class BackupScheduler {
     getBackupList() {
         try {
             if (!fs.existsSync(this.settings.backupPath)) return [];
-            
-            return fs.readdirSync(this.settings.backupPath)
+
+            return fs
+                .readdirSync(this.settings.backupPath)
                 .filter(f => f.startsWith('tuniinvoice-backup-') && f.endsWith('.zip'))
                 .map(f => {
                     const stat = fs.statSync(path.join(this.settings.backupPath, f));
@@ -143,14 +152,14 @@ class BackupScheduler {
     async restoreBackup(backupPath) {
         const extract = require('extract-zip');
         const tempPath = path.join(app.getPath('temp'), 'tuniinvoice-restore');
-        
+
         await extract(backupPath, { dir: tempPath });
-        
+
         const dbFile = path.join(tempPath, 'tuniinvoice.db');
         if (!fs.existsSync(dbFile)) {
             throw new Error('Invalid backup file');
         }
-        
+
         this.db.restore(dbFile);
 
         // Restore attachments directory if present in backup

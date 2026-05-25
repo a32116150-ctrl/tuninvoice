@@ -46,7 +46,7 @@ class ExcelExporter {
     exportMultipleDocuments(documents, filePath) {
         const wb = XLSX.utils.book_new();
         const data = [['Type', 'Numéro', 'Date', 'Client', 'Total HT', 'Total TTC', 'Devise']];
-        
+
         documents.forEach(doc => {
             data.push([doc.type, doc.number, doc.date, doc.clientName, doc.totalHT, doc.totalTTC, doc.currency]);
         });
@@ -63,7 +63,7 @@ class ExcelExporter {
     exportClients(clients, filePath) {
         const wb = XLSX.utils.book_new();
         const data = [['Nom', 'MF', 'Adresse', 'Téléphone', 'Email', 'Date création']];
-        
+
         clients.forEach(client => {
             data.push([client.name, client.mf || '', client.address || '', client.phone || '', client.email || '', client.created_at]);
         });

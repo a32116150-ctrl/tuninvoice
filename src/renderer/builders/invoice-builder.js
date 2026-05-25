@@ -1,8 +1,11 @@
-function esc(t) { if (!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(t) {
+    if (!t) return '';
+    return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 function buildInvoiceHTML(data) {
     const dp = data.decimalPlaces ?? 3;
-    const fmt = (v) => (parseFloat(v) || 0).toFixed(dp);
+    const fmt = v => (parseFloat(v) || 0).toFixed(dp);
     const isStockDoc = ['bl', 'bs', 'be'].includes(data.type);
     const isAvoir = data.type === 'avoir';
     const hidePrices = isStockDoc;
@@ -19,12 +22,13 @@ function buildInvoiceHTML(data) {
     };
     const title = titles[data.type] || data.type.toUpperCase();
 
-    const itemsRows = data.items.map((item, idx) => {
-        const lineHT = (item.quantity * item.price);
-        if (hidePrices) {
-            return `<tr><td>${idx + 1}</td><td>${esc(item.description)}</td><td>${item.quantity}</td></tr>`;
-        }
-        return `
+    const itemsRows = data.items
+        .map((item, idx) => {
+            const lineHT = item.quantity * item.price;
+            if (hidePrices) {
+                return `<tr><td>${idx + 1}</td><td>${esc(item.description)}</td><td>${item.quantity}</td></tr>`;
+            }
+            return `
             <tr>
                 <td>${idx + 1}</td>
                 <td>${esc(item.description)}</td>
@@ -33,7 +37,8 @@ function buildInvoiceHTML(data) {
                 <td>${isAvoir ? `<span style="color:#dc2626">-${fmt(lineHT)}</span>` : fmt(lineHT)}</td>
             </tr>
         `;
-    }).join('');
+        })
+        .join('');
 
     return `
 <!DOCTYPE html>
@@ -77,10 +82,14 @@ td { padding: 12px 5px; border-bottom: 1px solid #f9f9f9; }
     </div>
 </div>
 
-${isAvoir ? `
+${
+    isAvoir
+        ? `
 <div class="avoir-banner">
     <strong>⚠️ DOCUMENT D'AVOIR</strong> — Ce document annule ou réduit la facture référencée ci-dessus. Les montants indiqués sont portés au crédit du client.
-</div>` : ''}
+</div>`
+        : ''
+}
 
 <div style="display:flex; justify-content:space-between;">
     <div>
@@ -101,8 +110,8 @@ ${isAvoir ? `
         <th style="width:40px;">#</th>
         <th>Désignation</th>
         <th style="width:60px;">Qté</th>
-        ${!hidePrices ? `<th style="width:100px;">Prix Unit. HT</th>` : ''}
-        ${!hidePrices ? `<th style="width:100px;">Montant HT</th>` : ''}
+        ${!hidePrices ? '<th style="width:100px;">Prix Unit. HT</th>' : ''}
+        ${!hidePrices ? '<th style="width:100px;">Montant HT</th>' : ''}
     </tr>
 </thead>
 <tbody>
@@ -110,35 +119,51 @@ ${isAvoir ? `
 </tbody>
 </table>
 
-${!hidePrices ? `
+${
+    !hidePrices
+        ? `
 <div class="fiscal-summary">
     <table class="totals-table">
         <tr>
             <td>Total HT</td>
             <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${fmt(data.totalHT)}</td>
         </tr>
-        ${(data.tvaLines || []).map(line => `
+        ${(data.tvaLines || [])
+            .map(
+                line => `
         <tr>
             <td>TVA ${line.rate}%</td>
             <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${fmt(line.tvaAmount)}</td>
-        </tr>`).join('')}
-        ${data.timbreFiscal ? `
+        </tr>`
+            )
+            .join('')}
+        ${
+            data.timbreFiscal
+                ? `
         <tr>
             <td>Timbre Fiscal</td>
             <td>${fmt(data.timbreFiscal)}</td>
-        </tr>` : ''}
+        </tr>`
+                : ''
+        }
         <tr class="total-row">
             <td>TOTAL TTC</td>
             <td style="${isAvoir ? 'color:#dc2626' : ''}">${isAvoir ? '-' : ''}${fmt(data.totalTTC)} ${data.currency || 'TND'}</td>
         </tr>
     </table>
-</div>` : ''}
+</div>`
+        : ''
+}
 
-${data.notes ? `
+${
+    data.notes
+        ? `
 <div style="margin-top:40px; padding:15px; background:#f8f9fa; border-radius:8px;">
     <div style="font-size:11px; text-transform:uppercase; color:#666; margin-bottom:5px;">Notes & Observations</div>
     <div style="white-space:pre-wrap;">${esc(data.notes)}</div>
-</div>` : ''}
+</div>`
+        : ''
+}
 
 <div class="footer">
     <div style="flex:1">
@@ -160,5 +185,9 @@ ${data.notes ? `
 `;
 }
 
-if (typeof window !== 'undefined') { window.buildInvoiceHTML = buildInvoiceHTML; }
-if (typeof module !== 'undefined' && module.exports) { module.exports = { buildInvoiceHTML }; }
+if (typeof window !== 'undefined') {
+    window.buildInvoiceHTML = buildInvoiceHTML;
+}
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { buildInvoiceHTML };
+}

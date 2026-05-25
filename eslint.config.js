@@ -3,7 +3,7 @@ const js = require('@eslint/js');
 module.exports = [
     js.configs.recommended,
     {
-        ignores: ['dist/**', 'node_modules/**', 'broken_state_backup/**', 'fix_*.js', 'replace_*.js']
+        ignores: ['dist/**', 'node_modules/**', 'broken_state_backup/**', 'fix_*.js', 'replace_*.js', 'src/**/*.min.js']
     },
     {
         files: ['src/**/*.js'],
@@ -30,7 +30,9 @@ module.exports = [
                 fetch: 'readonly',
                 alert: 'readonly',
                 Buffer: 'readonly',
-                electronAPI: 'readonly'
+                electronAPI: 'readonly',
+                setImmediate: 'readonly',
+                clearImmediate: 'readonly'
             }
         },
         rules: {

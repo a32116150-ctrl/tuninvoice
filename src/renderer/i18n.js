@@ -20,7 +20,7 @@ const i18n = {
             if (val && typeof val === 'object' && p in val) val = val[p];
             else return fallback || key;
         }
-        return typeof val === 'string' ? val : (fallback || key);
+        return typeof val === 'string' ? val : fallback || key;
     }
 };
 

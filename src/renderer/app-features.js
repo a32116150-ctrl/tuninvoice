@@ -1,50 +1,109 @@
-
-
-
-
-
 // ==================== DOCUMENT VISUAL THEME ====================
 let currentDocumentTheme = null; // full theme object from themes.js THEMES
 let docNumberManuallySet = false; // tracks if user manually edited the doc number field
 
 const DEFAULT_THEMES = {
     classic: {
-        id: 'classic', label: 'Classique', icon: '📜',
-        colors: { primary: '#1e3a8a', secondary: '#334155', accent: '#64748b', bg: '#ffffff', surface: '#f8fafc', border: '#e2e8f0', text: '#1e293b', textLight: '#64748b' },
+        id: 'classic',
+        label: 'Classique',
+        icon: '📜',
+        colors: {
+            primary: '#1e3a8a',
+            secondary: '#334155',
+            accent: '#64748b',
+            bg: '#ffffff',
+            surface: '#f8fafc',
+            border: '#e2e8f0',
+            text: '#1e293b',
+            textLight: '#64748b'
+        },
         fonts: { header: "'Times New Roman', Times, serif", body: "'Times New Roman', Times, serif", size: '13px' },
-        headerStyle: 'left', tableStyle: 'bordered', footerLayout: 'two-columns',
-        showLogo: true, showStamp: true, showSignature: true, showQrCode: false, accentLine: true, borderRadius: '0px'
+        headerStyle: 'left',
+        tableStyle: 'bordered',
+        footerLayout: 'two-columns',
+        showLogo: true,
+        showStamp: true,
+        showSignature: true,
+        showQrCode: false,
+        accentLine: true,
+        borderRadius: '0px'
     },
     modern: {
-        id: 'modern', label: 'Moderne', icon: '✨',
-        colors: { primary: '#0f172a', secondary: '#3b82f6', accent: '#06b6d4', bg: '#ffffff', surface: '#f0f9ff', border: '#bfdbfe', text: '#0f172a', textLight: '#6b7280' },
+        id: 'modern',
+        label: 'Moderne',
+        icon: '✨',
+        colors: {
+            primary: '#0f172a',
+            secondary: '#3b82f6',
+            accent: '#06b6d4',
+            bg: '#ffffff',
+            surface: '#f0f9ff',
+            border: '#bfdbfe',
+            text: '#0f172a',
+            textLight: '#6b7280'
+        },
         fonts: { header: "'Inter', 'Segoe UI', sans-serif", body: "'Inter', 'Segoe UI', sans-serif", size: '13px' },
-        headerStyle: 'center', tableStyle: 'striped', footerLayout: 'simple',
-        showLogo: true, showStamp: false, showSignature: true, showQrCode: true, accentLine: false, borderRadius: '8px'
+        headerStyle: 'center',
+        tableStyle: 'striped',
+        footerLayout: 'simple',
+        showLogo: true,
+        showStamp: false,
+        showSignature: true,
+        showQrCode: true,
+        accentLine: false,
+        borderRadius: '8px'
     },
     executive: {
-        id: 'executive', label: 'Exécutif', icon: '👑',
-        colors: { primary: '#b8942a', secondary: '#2c2c2c', accent: '#c6a43f', bg: '#fffdf5', surface: '#fdf8ec', border: '#e8d5a3', text: '#1a1a1a', textLight: '#6b5c3e' },
+        id: 'executive',
+        label: 'Exécutif',
+        icon: '👑',
+        colors: {
+            primary: '#b8942a',
+            secondary: '#2c2c2c',
+            accent: '#c6a43f',
+            bg: '#fffdf5',
+            surface: '#fdf8ec',
+            border: '#e8d5a3',
+            text: '#1a1a1a',
+            textLight: '#6b5c3e'
+        },
         fonts: { header: "'Georgia', serif", body: "'Lato', 'Helvetica Neue', sans-serif", size: '13px' },
-        headerStyle: 'right', tableStyle: 'minimal', footerLayout: 'with-bank',
-        showLogo: true, showStamp: true, showSignature: true, showQrCode: false, accentLine: true, borderRadius: '4px'
+        headerStyle: 'right',
+        tableStyle: 'minimal',
+        footerLayout: 'with-bank',
+        showLogo: true,
+        showStamp: true,
+        showSignature: true,
+        showQrCode: false,
+        accentLine: true,
+        borderRadius: '4px'
     },
     tunisian: {
-        id: 'tunisian', label: 'Tunisien', icon: '🇹🇳',
-        colors: { primary: '#7c1a1a', secondary: '#c17a54', accent: '#e87b2a', bg: '#fffbf7', surface: '#fdf5ee', border: '#f5cba7', text: '#2d1b0e', textLight: '#7c5c3e' },
+        id: 'tunisian',
+        label: 'Tunisien',
+        icon: '🇹🇳',
+        colors: {
+            primary: '#7c1a1a',
+            secondary: '#c17a54',
+            accent: '#e87b2a',
+            bg: '#fffbf7',
+            surface: '#fdf5ee',
+            border: '#f5cba7',
+            text: '#2d1b0e',
+            textLight: '#7c5c3e'
+        },
         fonts: { header: "'Georgia', serif", body: "'Lato', 'Arial', sans-serif", size: '13px' },
-        headerStyle: 'center', tableStyle: 'bordered', footerLayout: 'two-columns',
-        showLogo: true, showStamp: true, showSignature: true, showQrCode: false, accentLine: true, borderRadius: '2px'
+        headerStyle: 'center',
+        tableStyle: 'bordered',
+        footerLayout: 'two-columns',
+        showLogo: true,
+        showStamp: true,
+        showSignature: true,
+        showQrCode: false,
+        accentLine: true,
+        borderRadius: '2px'
     }
 };
-
-
-
-
-
-
-
-
 
 // ==================== LOAD FORMAT SETTINGS ====================
 async function loadUserFormatSettings() {
@@ -53,7 +112,7 @@ async function loadUserFormatSettings() {
         currentDecimalPlaces = s.decimal_places ?? 3;
         currentRoundingMethod = s.rounding_method || 'half_up';
         currentSettings = s;
-    } catch { }
+    } catch {}
 }
 
 // ==================== LOAD DOCUMENT THEME ====================
@@ -65,7 +124,6 @@ async function loadDocumentTheme() {
         currentDocumentTheme = DEFAULT_THEMES.modern;
     }
 }
-
 
 // ==================== DASHBOARD ====================
 async function loadDashboard() {
@@ -111,33 +169,47 @@ async function autoCreateOverdueReminders() {
         const allDocs = await window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 });
         const docs = allDocs.rows || [];
         const today = new Date().toISOString().split('T')[0];
+
+        // Fetch reminders once before the loop
+        const existing = await window.electronAPI.getReminders(currentUser.id);
+        const existingSet = new Set(existing.filter(r => r.entityType === 'facture' && !r.done).map(r => r.entityId));
+
         for (const doc of docs) {
             if (doc.type !== 'facture' || doc.paymentStatus === 'paid') continue;
             if (!doc.dueDate || doc.dueDate >= today) continue;
-            // Check if a reminder already exists for this invoice
-            const existing = await window.electronAPI.getReminders(currentUser.id);
-            const already = existing.some(r => r.entityType === 'facture' && r.entityId === doc.id && !r.done);
-            if (already) continue;
+
+            // Check if a reminder already exists for this invoice using the Set
+            if (existingSet.has(doc.id)) continue;
+
             // Create reminder 3 days after due date
             const reminderDate = new Date(doc.dueDate);
             reminderDate.setDate(reminderDate.getDate() + 1);
             const title = `Facture ${doc.number} — ${doc.clientName} (${formatAmount(doc.totalTTC - (doc.paidAmount || 0))} TND)`;
             await window.electronAPI.saveReminder({
-                userId: currentUser.id, title,
+                userId: currentUser.id,
+                title,
                 dueDate: reminderDate.toISOString().split('T')[0],
                 dueTime: '09:00',
                 entityType: 'facture',
                 entityId: doc.id
             });
+            // Add this doc.id to the Set to avoid duplicate creations in the same loop
+            existingSet.add(doc.id);
         }
     } catch {}
 }
 
 function renderRecentDocs(docs) {
     const container = document.getElementById('recentDocsTable');
-    if (!docs.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="file-text" class="lucide-sm"></i></div><h3>Aucun document</h3><p>Créez votre premier document</p></div>`; if (window.lucide) lucide.createIcons(); return; }
+    if (!docs.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="file-text" class="lucide-sm"></i></div><h3>Aucun document</h3><p>Créez votre premier document</p></div>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
     container.innerHTML = `<table><thead><tr><th>Type</th><th>N°</th><th>Client</th><th>Date</th><th>Total TTC</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
-        ${docs.map(doc => `<tr>
+        ${docs
+            .map(
+                doc => `<tr>
             <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
             <td style="font-family:monospace;font-size:0.82rem">${doc.number}</td>
             <td>${escapeHtml(doc.clientName)}</td>
@@ -154,7 +226,9 @@ function renderRecentDocs(docs) {
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 </button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
-            </td></tr>`).join('')}
+            </td></tr>`
+            )
+            .join('')}
     </tbody></table>`;
     if (window.lucide) lucide.createIcons();
 }
@@ -163,7 +237,11 @@ function renderPaymentBadge(doc) {
     if (doc.type === 'ticket') return `<span class="badge badge-paid"><i data-lucide="check-circle" class="lucide-sm"></i> Payée</span>`;
     if (doc.type !== 'facture') return '—';
     const status = doc.paymentStatus || 'unpaid';
-    const map = { paid: '<i data-lucide="check-circle" class="lucide-sm"></i> Payée', partial: '<i data-lucide="clock" class="lucide-sm"></i> Partiel', unpaid: '<i data-lucide="x-circle" class="lucide-sm"></i> Impayée' };
+    const map = {
+        paid: '<i data-lucide="check-circle" class="lucide-sm"></i> Payée',
+        partial: '<i data-lucide="clock" class="lucide-sm"></i> Partiel',
+        unpaid: '<i data-lucide="x-circle" class="lucide-sm"></i> Impayée'
+    };
     const cls = { paid: 'badge-paid', partial: 'badge-partial', unpaid: 'badge-unpaid' };
     return `<span class="badge ${cls[status] || 'badge-unpaid'}" onclick="openPaymentModal('${doc.id}')" style="cursor:pointer" title="Gérer paiement">${map[status] || status}</span>`;
 }
@@ -185,7 +263,6 @@ function resizeCanvas(canvas) {
     }
 }
 
-
 function renderRevenueChart(monthlyData) {
     const canvas = document.getElementById('revenueChart');
     if (!canvas) return;
@@ -193,11 +270,14 @@ function renderRevenueChart(monthlyData) {
     const ctx = canvas.getContext('2d');
     const ratio = window.devicePixelRatio || 1;
     ctx.scale(ratio, ratio);
-    const W = canvas.width / ratio, H = canvas.height / ratio;
+    const W = canvas.width / ratio,
+        H = canvas.height / ratio;
 
-    const months = [], values = [];
+    const months = [],
+        values = [];
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(); d.setMonth(d.getMonth() - i);
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         months.push(d.toLocaleDateString('fr-FR', { month: 'short' }));
         const found = monthlyData.find(m => m.month === key);
@@ -213,11 +293,14 @@ function renderExpenseChart(monthlyData) {
     const ctx = canvas.getContext('2d');
     const ratio = window.devicePixelRatio || 1;
     ctx.scale(ratio, ratio);
-    const W = canvas.width / ratio, H = canvas.height / ratio;
+    const W = canvas.width / ratio,
+        H = canvas.height / ratio;
 
-    const months = [], values = [];
+    const months = [],
+        values = [];
     for (let i = 5; i >= 0; i--) {
-        const d = new Date(); d.setMonth(d.getMonth() - i);
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         months.push(d.toLocaleDateString('fr-FR', { month: 'short' }));
         const found = monthlyData.find(m => m.month === key);
@@ -228,16 +311,23 @@ function renderExpenseChart(monthlyData) {
 
 function drawBarChart(ctx, W, H, labels, values, color) {
     const pad = { top: 30, right: 20, bottom: 40, left: 60 };
-    const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+    const cW = W - pad.left - pad.right,
+        cH = H - pad.top - pad.bottom;
     const max = Math.max(...values, 1) * 1.1;
 
     ctx.clearRect(0, 0, W, H);
     // Grid & Y-Axis
-    ctx.strokeStyle = '#f3f4f6'; ctx.lineWidth = 1;
-    ctx.fillStyle = '#9ca3af'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+    ctx.strokeStyle = '#f3f4f6';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
     for (let i = 0; i <= 4; i++) {
         const y = pad.top + (cH / 4) * i;
-        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + cW, y);
+        ctx.stroke();
         const val = max - (max / 4) * i;
         ctx.fillText(val >= 1000 ? (val / 1000).toFixed(1) + 'k' : Math.round(val), pad.left - 10, y + 4);
     }
@@ -250,25 +340,30 @@ function drawBarChart(ctx, W, H, labels, values, color) {
         const y = pad.top + cH - bH;
 
         const grad = ctx.createLinearGradient(0, y, 0, y + bH);
-        grad.addColorStop(0, color); grad.addColorStop(1, color + '99');
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, color + '99');
         ctx.fillStyle = grad;
 
         if (ctx.roundRect) {
-            ctx.beginPath(); ctx.roundRect(x, y, barW, bH, [4, 4, 0, 0]); ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(x, y, barW, bH, [4, 4, 0, 0]);
+            ctx.fill();
         } else {
             ctx.fillRect(x, y, barW, bH);
         }
 
         // Labels
-        ctx.fillStyle = '#4b5563'; ctx.textAlign = 'center'; ctx.font = '11px sans-serif';
+        ctx.fillStyle = '#4b5563';
+        ctx.textAlign = 'center';
+        ctx.font = '11px sans-serif';
         ctx.fillText(labels[i], x + barW / 2, pad.top + cH + 20);
         if (v > 0) {
-            ctx.fillStyle = color; ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = color;
+            ctx.font = 'bold 11px sans-serif';
             ctx.fillText(v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v), x + barW / 2, y - 8);
         }
     });
 }
-
 
 function renderTypeDonutChart(breakdown) {
     const canvas = document.getElementById('typeDonutChart');
@@ -277,68 +372,122 @@ function renderTypeDonutChart(breakdown) {
     const ctx = canvas.getContext('2d');
     const ratio = window.devicePixelRatio || 1;
     ctx.scale(ratio, ratio);
-    const W = canvas.width / ratio, H = canvas.height / ratio;
+    const W = canvas.width / ratio,
+        H = canvas.height / ratio;
 
     const colors = { facture: '#3b82f6', devis: '#f59e0b', bon: '#10b981' };
     const labels = { facture: 'Factures', devis: 'Devis', bon: 'Bons' };
     const total = breakdown.reduce((s, b) => s + b.count, 0);
-    const cx = W / 2, cy = H / 2 - 20, r = Math.min(W, H) * 0.35;
+    const cx = W / 2,
+        cy = H / 2 - 20,
+        r = Math.min(W, H) * 0.35;
 
     ctx.clearRect(0, 0, W, H);
     if (total === 0) {
-        ctx.fillStyle = '#d1d5db'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#9ca3af'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Aucun document', cx, cy + 4); return;
+        ctx.fillStyle = '#d1d5db';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Aucun document', cx, cy + 4);
+        return;
     }
     let start = -Math.PI / 2;
     breakdown.forEach(b => {
         const slice = (b.count / total) * Math.PI * 2;
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, start + slice); ctx.closePath();
-        ctx.fillStyle = colors[b.type] || '#6b7280'; ctx.fill(); start += slice;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, start, start + slice);
+        ctx.closePath();
+        ctx.fillStyle = colors[b.type] || '#6b7280';
+        ctx.fill();
+        start += slice;
     });
-    ctx.beginPath(); ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
-    ctx.fillStyle = '#111'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(total, cx, cy + 4);
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px sans-serif'; ctx.fillText('documents', cx, cy + 18);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(total, cx, cy + 4);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('documents', cx, cy + 18);
     let ly = cy + r + 22;
     breakdown.forEach(b => {
         const lx = cx - 60;
-        ctx.fillStyle = colors[b.type] || '#6b7280'; ctx.fillRect(lx, ly - 8, 12, 12);
-        ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
-        ctx.fillText(`${labels[b.type] || b.type}: ${b.count}`, lx + 16, ly + 2); ly += 18;
+        ctx.fillStyle = colors[b.type] || '#6b7280';
+        ctx.fillRect(lx, ly - 8, 12, 12);
+        ctx.fillStyle = '#374151';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${labels[b.type] || b.type}: ${b.count}`, lx + 16, ly + 2);
+        ly += 18;
     });
 }
 
 function renderTopClients(topClients) {
     const el = document.getElementById('topClientsTable');
     if (!el) return;
-    if (!topClients.length) { el.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem;padding:12px">Aucune donnée</p>'; return; }
+    if (!topClients.length) {
+        el.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem;padding:12px">Aucune donnée</p>';
+        return;
+    }
     const max = Math.max(...topClients.map(c => c.revenue), 1);
-    el.innerHTML = topClients.map((c, i) => `
+    el.innerHTML = topClients
+        .map(
+            (c, i) => `
         <div style="margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px">
                 <span style="font-weight:600;color:#374151">${i + 1}. ${escapeHtml(c.client_name)}</span>
                 <span style="color:#6b7280">${formatAmount(c.revenue)} TND</span>
             </div>
             <div style="background:#e5e7eb;border-radius:4px;height:6px">
-                <div style="background:${currentDocumentTheme?.colors?.primary || '#3b82f6'};width:${Math.round(c.revenue / max * 100)}%;height:6px;border-radius:4px"></div>
+                <div style="background:${currentDocumentTheme?.colors?.primary || '#3b82f6'};width:${Math.round((c.revenue / max) * 100)}%;height:6px;border-radius:4px"></div>
             </div>
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
 }
 
 function renderRecentActivity(activities) {
     const el = document.getElementById('recentActivityList');
     if (!el) return;
-    const icons = { create_document: '<i data-lucide="file-text" class="lucide-sm"></i>', update_document: '<i data-lucide="edit" class="lucide-sm"></i>', create_client: '<i data-lucide="user" class="lucide-sm"></i>', default: '<i data-lucide="bell" class="lucide-sm"></i>' };
-    const labels = { create_document: 'Document créé', update_document: 'Document modifié', create_client: 'Client ajouté', default: 'Action' };
-    if (!activities.length) { el.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem;padding:12px">Aucune activité récente</p>'; return; }
-    el.innerHTML = activities.map(a => `
+    const icons = {
+        create_document: '<i data-lucide="file-text" class="lucide-sm"></i>',
+        update_document: '<i data-lucide="edit" class="lucide-sm"></i>',
+        create_client: '<i data-lucide="user" class="lucide-sm"></i>',
+        default: '<i data-lucide="bell" class="lucide-sm"></i>'
+    };
+    const labels = {
+        create_document: 'Document créé',
+        update_document: 'Document modifié',
+        create_client: 'Client ajouté',
+        default: 'Action'
+    };
+    if (!activities.length) {
+        el.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem;padding:12px">Aucune activité récente</p>';
+        return;
+    }
+    el.innerHTML = activities
+        .map(
+            a => `
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6">
             <span>${icons[a.action] || icons.default}</span>
             <div>
                 <div style="font-size:0.85rem;font-weight:500;color:#374151">${escapeHtml(a.entity_label || labels[a.action] || a.action)}</div>
                 <div style="font-size:0.75rem;color:#9ca3af">${formatDate(a.created_at?.split('T')[0] || a.created_at)}</div>
             </div>
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
     if (window.lucide) lucide.createIcons();
 }
 
@@ -350,15 +499,20 @@ async function renderDashboardNotes() {
         const notes = await window.electronAPI.getNotes(currentUser.id);
         const recent = notes.slice(0, 4);
         if (!recent.length) {
-            container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem">Aucune note — <a href="#" onclick="navigateTo(\'notes\');return false" style="color:var(--primary)">Créer une note</a></div>';
+            container.innerHTML =
+                '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem">Aucune note — <a href="#" onclick="navigateTo(\'notes\');return false" style="color:var(--primary)">Créer une note</a></div>';
             return;
         }
-        container.innerHTML = recent.map(note => `
+        container.innerHTML = recent
+            .map(
+                note => `
             <div class="note-card" style="background:${note.color || '#fef9c3'};border-radius:10px;padding:12px;position:relative;min-height:80px;box-shadow:0 1px 4px rgba(0,0,0,0.06);cursor:pointer" onclick="navigateTo('notes')">
                 ${note.pinned ? '<i data-lucide="pin" style="position:absolute;top:6px;right:6px;font-size:0.75rem;opacity:0.5"></i>' : ''}
                 ${note.title ? `<div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;color:#1e293b">${escapeHtml(note.title)}</div>` : ''}
                 <div style="font-size:0.8rem;color:#374151;line-height:1.4;word-break:break-word">${escapeHtml(note.content || '').substring(0, 80)}${(note.content || '').length > 80 ? '…' : ''}</div>
-            </div>`).join('');
+            </div>`
+            )
+            .join('');
         if (window.lucide) lucide.createIcons();
     } catch {}
 }
@@ -368,9 +522,10 @@ let currentPaymentDocId = null;
 
 async function openPaymentModal(docId) {
     currentPaymentDocId = docId;
-    const doc = allDocuments.find(d => d.id === docId) || await window.electronAPI.getDocument(docId);
+    const doc = allDocuments.find(d => d.id === docId) || (await window.electronAPI.getDocument(docId));
     if (!doc) return;
-    document.getElementById('paymentDocInfo').textContent = `${doc.number} — ${escapeHtml(doc.clientName)} — Total: ${formatAmount(doc.totalTTC)} ${doc.currency}`;
+    document.getElementById('paymentDocInfo').textContent =
+        `${doc.number} — ${escapeHtml(doc.clientName)} — Total: ${formatAmount(doc.totalTTC)} ${doc.currency}`;
     document.getElementById('paymentDate').valueAsDate = new Date();
     document.getElementById('paymentAmount').value = formatAmount(Math.max(0, doc.totalTTC - (doc.paidAmount || 0)));
     document.getElementById('paymentMethod').value = 'Virement bancaire';
@@ -380,31 +535,45 @@ async function openPaymentModal(docId) {
     document.getElementById('paymentModal').classList.add('active');
 }
 
-function closePaymentModal() { document.getElementById('paymentModal').classList.remove('active'); currentPaymentDocId = null; }
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.remove('active');
+    currentPaymentDocId = null;
+}
 
 async function loadPaymentHistory(docId, doc) {
     const payments = await window.electronAPI.getPayments(docId);
     const el = document.getElementById('paymentHistory');
-    if (!payments || !payments.length) { el.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem">Aucun paiement enregistré</p>'; return; }
+    if (!payments || !payments.length) {
+        el.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem">Aucun paiement enregistré</p>';
+        return;
+    }
     const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
     el.innerHTML = `
         <div style="margin-bottom:8px;font-size:0.85rem;color:#374151"><strong>Total encaissé:</strong> ${formatAmount(totalPaid)} ${doc?.currency || 'TND'} / ${formatAmount(doc?.totalTTC || 0)} ${doc?.currency || 'TND'}</div>
-        ${payments.map(p => `
+        ${payments
+            .map(
+                p => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:0.85rem">
                 <div><strong>${formatAmount(p.amount)} TND</strong> — ${escapeHtml(p.method || 'N/A')} <span style="color:#9ca3af">${formatDate(p.date)}</span> ${p.reference ? `<span style="color:#6b7280">(${escapeHtml(p.reference)})</span>` : ''}</div>
                 <button class="btn-icon btn-delete" onclick="deletePayment('${p.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
-            </div>`).join('')}`;
+            </div>`
+            )
+            .join('')}`;
 }
 
 async function savePayment() {
     if (!currentPaymentDocId) return;
     const amount = parseFloat(document.getElementById('paymentAmount').value);
-    if (!amount || amount <= 0) { showToast('Montant invalide', 'warning'); return; }
+    if (!amount || amount <= 0) {
+        showToast('Montant invalide', 'warning');
+        return;
+    }
     try {
         await window.electronAPI.addPayment({
             userId: currentUser.id,
             documentId: currentPaymentDocId,
-            amount, method: document.getElementById('paymentMethod').value,
+            amount,
+            method: document.getElementById('paymentMethod').value,
             reference: document.getElementById('paymentRef').value,
             date: document.getElementById('paymentDate').value,
             notes: document.getElementById('paymentNotes').value
@@ -413,8 +582,13 @@ async function savePayment() {
         await loadDocuments();
         const doc = allDocuments.find(d => d.id === currentPaymentDocId);
         await loadPaymentHistory(currentPaymentDocId, doc);
-        if (doc) { document.getElementById('paymentDocInfo').textContent = `${doc.number} — ${escapeHtml(doc.clientName)} — Total: ${formatAmount(doc.totalTTC)} ${doc.currency}`; }
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+        if (doc) {
+            document.getElementById('paymentDocInfo').textContent =
+                `${doc.number} — ${escapeHtml(doc.clientName)} — Total: ${formatAmount(doc.totalTTC)} ${doc.currency}`;
+        }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    }
 }
 
 async function deletePayment(paymentId) {
@@ -425,23 +599,22 @@ async function deletePayment(paymentId) {
         await loadDocuments();
         const doc = allDocuments.find(d => d.id === currentPaymentDocId);
         await loadPaymentHistory(currentPaymentDocId, doc);
-    } catch (e) { showToast('Erreur suppression', 'error'); }
+    } catch (e) {
+        showToast('Erreur suppression', 'error');
+    }
 }
 
 // ==================== CUSTOM FIELDS ====================
-let _customFields = [];
 
 function addCustomField(key, value) {
     const container = document.getElementById('customFieldsContainer');
     if (!container) return;
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center';
-    const idx = _customFields.length;
-    _customFields.push({ key: key || '', value: value || '' });
     div.innerHTML = `
         <input type="text" class="cf-key" placeholder="Nom du champ" value="${escapeHtml(key || '')}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem">
         <input type="text" class="cf-value" placeholder="Valeur" value="${escapeHtml(value || '')}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem">
-        <button type="button" class="btn-icon btn-delete" onclick="this.parentElement.remove();_customFields.splice(${idx},1)" title="Supprimer"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+        <button type="button" class="btn-icon btn-delete" onclick="this.parentElement.remove()" title="Supprimer"><i data-lucide="x" style="width:14px;height:14px"></i></button>
     `;
     container.appendChild(div);
     if (window.lucide) lucide.createIcons();
@@ -451,7 +624,6 @@ function loadCustomFields(fields) {
     const container = document.getElementById('customFieldsContainer');
     if (!container) return;
     container.innerHTML = '';
-    _customFields = [];
     (fields || []).forEach(f => addCustomField(f.key, f.value));
 }
 
@@ -475,11 +647,14 @@ async function initNewDocument() {
     const lastDocType = localStorage.getItem('tuni_last_doc_type');
     if (lastDocType && ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir'].includes(lastDocType)) {
         currentDocType = lastDocType;
-        document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === lastDocType);
-        document.querySelectorAll('.doc-type-card').forEach(c => c.classList.toggle('active', c.querySelector(`input[value="${lastDocType}"]`) !== null));
+        document.querySelectorAll('input[name="docType"]').forEach(r => (r.checked = r.value === lastDocType));
+        document
+            .querySelectorAll('.doc-type-card')
+            .forEach(c => c.classList.toggle('active', c.querySelector(`input[value="${lastDocType}"]`) !== null));
     }
     document.getElementById('docDate').valueAsDate = new Date();
-    const due = new Date(); due.setDate(due.getDate() + 30);
+    const due = new Date();
+    due.setDate(due.getDate() + 30);
     document.getElementById('docDueDate').valueAsDate = due;
     // Apply default currency from user settings
     try {
@@ -491,13 +666,19 @@ async function initNewDocument() {
     } catch {}
     const docNumInput = document.getElementById('docNumber');
     try {
-        const number = await window.electronAPI.peekNextDocNumber({ userId: currentUser.id, type: currentDocType, year: new Date().getFullYear() });
+        const number = await window.electronAPI.peekNextDocNumber({
+            userId: currentUser.id,
+            type: currentDocType,
+            year: new Date().getFullYear()
+        });
         docNumInput.value = number;
         docNumberManuallySet = false;
-    } catch { }
+    } catch {}
     if (!docNumInput.dataset.manualInit) {
         docNumInput.dataset.manualInit = '1';
-        docNumInput.addEventListener('input', () => { docNumberManuallySet = true; });
+        docNumInput.addEventListener('input', () => {
+            docNumberManuallySet = true;
+        });
     }
     restoreDraft();
     await loadCompanyIntoForm();
@@ -518,7 +699,7 @@ async function initNewDocument() {
 
 async function loadCompanyIntoForm() {
     try {
-        const c = await window.electronAPI.getCompany(currentUser.id) || {};
+        const c = (await window.electronAPI.getCompany(currentUser.id)) || {};
         document.getElementById('docCompanyName').value = c.name || currentUser.company || '';
         document.getElementById('docCompanyMF').value = c.mf || currentUser.mf || '';
         document.getElementById('docCompanyAddress').value = c.address || '';
@@ -530,7 +711,7 @@ async function loadCompanyIntoForm() {
         if (c.logo_image) logoImage = c.logo_image;
         if (c.stamp_image) stampImage = c.stamp_image;
         if (c.signature_image) signatureImage = c.signature_image;
-    } catch { }
+    } catch {}
 }
 
 function selectDocType(type, element) {
@@ -538,14 +719,19 @@ function selectDocType(type, element) {
     document.querySelectorAll('.doc-type-card').forEach(c => c.classList.remove('active'));
     if (element) element.classList.add('active');
     const radio = document.querySelector(`input[name="docType"][value="${type}"]`);
-    if (radio) { radio.checked = true; updateDocType(); }
+    if (radio) {
+        radio.checked = true;
+        updateDocType();
+    }
 }
 
 async function updateDocType() {
     const radio = document.querySelector('input[name="docType"]:checked');
     if (!radio) return;
     currentDocType = radio.value;
-    try { localStorage.setItem('tuni_last_doc_type', currentDocType); } catch {}
+    try {
+        localStorage.setItem('tuni_last_doc_type', currentDocType);
+    } catch {}
 
     const isStockDoc = ['bl', 'bs', 'be'].includes(currentDocType);
     const isAvoir = currentDocType === 'avoir';
@@ -583,7 +769,7 @@ async function updateDocType() {
         document.getElementById('docNumber').value = number;
         docNumberManuallySet = false;
     } catch (err) {
-        console.error("Failed to update doc number:", err);
+        console.error('Failed to update doc number:', err);
     }
 }
 
@@ -608,8 +794,8 @@ function addItem(data) {
         <td><input type="number" class="item-input" id="qty${itemCount}"   value="${qty}" min="0.001" step="0.001" onchange="calculateTotals()"></td>
         <td><input type="number" class="item-input" id="price${itemCount}" value="${price}" min="0" step="0.001" onchange="calculateTotals()"></td>
         <td><select class="tva-select" id="tva${itemCount}" onchange="calculateTotals()">
-            <option value="19" ${tva===19?'selected':''}>19%</option><option value="13" ${tva===13?'selected':''}>13%</option>
-            <option value="7" ${tva===7?'selected':''}>7%</option><option value="0" ${tva===0?'selected':''}>0%</option>
+            <option value="19" ${tva === 19 ? 'selected' : ''}>19%</option><option value="13" ${tva === 13 ? 'selected' : ''}>13%</option>
+            <option value="7" ${tva === 7 ? 'selected' : ''}>7%</option><option value="0" ${tva === 0 ? 'selected' : ''}>0%</option>
         </select></td>
         <td style="text-align:right;font-weight:500" id="total${itemCount}">0.${'0'.repeat(currentDecimalPlaces)}</td>
         <td><button type="button" class="btn-icon btn-delete" onclick="removeItem(this)"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>`;
@@ -627,8 +813,14 @@ function updateItemCount() {
 }
 
 function removeItem(btn) {
-    if (document.getElementById('itemsBody').children.length <= 1) { showToast('Au moins une ligne requise', 'warning'); return; }
-    btn.closest('tr').remove(); renumberItems(); calculateTotals(); updateItemCount();
+    if (document.getElementById('itemsBody').children.length <= 1) {
+        showToast('Au moins une ligne requise', 'warning');
+        return;
+    }
+    btn.closest('tr').remove();
+    renumberItems();
+    calculateTotals();
+    updateItemCount();
 }
 
 function renumberItems() {
@@ -637,14 +829,21 @@ function renumberItems() {
         itemCount++;
         const numSpan = row.querySelector('.item-num');
         if (numSpan) numSpan.textContent = itemCount;
-        row.cells[0].childNodes.forEach(cn => { if (cn.nodeType === 3) cn.textContent = ''; });
+        row.cells[0].childNodes.forEach(cn => {
+            if (cn.nodeType === 3) cn.textContent = '';
+        });
         if (!numSpan) row.cells[0].textContent = itemCount;
-        row.querySelectorAll('[id]').forEach(el => { el.id = el.id.replace(/\d+$/, '') + itemCount; });
+        row.querySelectorAll('[id]').forEach(el => {
+            el.id = el.id.replace(/\d+$/, '') + itemCount;
+        });
     });
 }
 
 function calculateTotals() {
-    let totalHTRaw = 0, tva19 = 0, tva13 = 0, tva7 = 0;
+    let totalHTRaw = 0,
+        tva19 = 0,
+        tva13 = 0,
+        tva7 = 0;
     for (let i = 1; i <= itemCount; i++) {
         const qty = parseFloat(document.getElementById(`qty${i}`)?.value) || 0;
         const price = parseFloat(document.getElementById(`price${i}`)?.value) || 0;
@@ -667,7 +866,7 @@ function calculateTotals() {
         tva7 *= f;
     }
     const applyTimbre = document.getElementById('applyTimbre').checked;
-    timbreAmount = (applyTimbre && totalHTRaw > 1000) ? 1.000 : 0;
+    timbreAmount = applyTimbre && totalHTRaw > 1000 ? 1.0 : 0;
     document.getElementById('timbreDisplay').textContent = formatAmount(timbreAmount) + ' TND';
 
     // Raw total TTC (full precision)
@@ -719,12 +918,21 @@ function updateEquivalent(docCurrency, total) {
     const row = document.getElementById('equivRow');
     const amt = document.getElementById('equivAmount');
     if (!row || !amt) return;
-    if (docCurrency === 'TND') { row.style.display = 'none'; return; }
+    if (docCurrency === 'TND') {
+        row.style.display = 'none';
+        return;
+    }
     // Show equivalent in TND using stored rate
     const rateEl = document.getElementById('rate' + docCurrency);
-    if (!rateEl) { row.style.display = 'none'; return; }
+    if (!rateEl) {
+        row.style.display = 'none';
+        return;
+    }
     const rate = parseFloat(rateEl.value);
-    if (!rate || rate <= 0) { row.style.display = 'none'; return; }
+    if (!rate || rate <= 0) {
+        row.style.display = 'none';
+        return;
+    }
     const equiv = total / rate;
     row.style.display = 'flex';
     amt.textContent = formatAmount(equiv) + ' TND';
@@ -748,7 +956,7 @@ async function loadServicesDropdown() {
             o.textContent = `${s.name} - ${formatAmount(parseFloat(s.price))} TND (${s.tva}%)`;
             select.appendChild(o);
         });
-    } catch { }
+    } catch {}
 }
 
 function addPresetService() {
@@ -767,25 +975,42 @@ function addPresetService() {
 // ==================== COMPANY IMAGES ====================
 function handleCompanyImageUpload(input, type) {
     if (!input.files?.[0]) return;
-    if (input.files[0].size > 5 * 1024 * 1024) { showToast('Image trop lourde (max 5 MB)', 'warning'); return; }
+    if (input.files[0].size > 5 * 1024 * 1024) {
+        showToast('Image trop lourde (max 5 MB)', 'warning');
+        return;
+    }
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = async e => {
         const data = e.target.result;
         const cap = type.charAt(0).toUpperCase() + type.slice(1);
         const previewEl = document.getElementById(`company${cap}Preview`);
         const placeholderEl = document.getElementById(`company${cap}Placeholder`);
         const boxEl = document.getElementById(`company${cap}Box`);
-        if (previewEl) { previewEl.src = data; previewEl.classList.remove('hidden'); }
+        if (previewEl) {
+            previewEl.src = data;
+            previewEl.classList.remove('hidden');
+        }
         if (placeholderEl) placeholderEl.classList.add('hidden');
         if (boxEl) boxEl.classList.add('has-image');
         try {
             const payload = { userId: currentUser.id };
-            if (type === 'logo') { payload.logoImage = data; logoImage = data; }
-            if (type === 'stamp') { payload.stampImage = data; stampImage = data; }
-            if (type === 'signature') { payload.signatureImage = data; signatureImage = data; }
+            if (type === 'logo') {
+                payload.logoImage = data;
+                logoImage = data;
+            }
+            if (type === 'stamp') {
+                payload.stampImage = data;
+                stampImage = data;
+            }
+            if (type === 'signature') {
+                payload.signatureImage = data;
+                signatureImage = data;
+            }
             await window.electronAPI.saveCompanyImages(payload);
             showToast(`${cap} enregistré`, 'success');
-        } catch { showToast('Erreur sauvegarde image', 'error'); }
+        } catch {
+            showToast('Erreur sauvegarde image', 'error');
+        }
     };
     reader.readAsDataURL(input.files[0]);
 }
@@ -796,15 +1021,22 @@ async function removeCompanyImage(type) {
     const placeholderEl = document.getElementById(`company${cap}Placeholder`);
     const boxEl = document.getElementById(`company${cap}Box`);
     const inputEl = document.getElementById(`company${cap}Input`);
-    if (previewEl) { previewEl.src = ''; previewEl.classList.add('hidden'); }
+    if (previewEl) {
+        previewEl.src = '';
+        previewEl.classList.add('hidden');
+    }
     if (placeholderEl) placeholderEl.classList.remove('hidden');
     if (boxEl) boxEl.classList.remove('has-image');
     if (inputEl) inputEl.value = '';
     if (type === 'logo') logoImage = null;
     if (type === 'stamp') stampImage = null;
     if (type === 'signature') signatureImage = null;
-    try { await window.electronAPI.removeCompanyImage({ userId: currentUser.id, imageType: type }); showToast(`${cap} supprimé`, 'info'); }
-    catch { showToast('Erreur suppression image', 'error'); }
+    try {
+        await window.electronAPI.removeCompanyImage({ userId: currentUser.id, imageType: type });
+        showToast(`${cap} supprimé`, 'info');
+    } catch {
+        showToast('Erreur suppression image', 'error');
+    }
 }
 
 // ==================== CLIENTS DROPDOWN ====================
@@ -816,9 +1048,10 @@ async function loadClientsDropdown() {
         clients.forEach(c => {
             const o = document.createElement('option');
             o.value = JSON.stringify({ name: c.name, mf: c.mf, address: c.address, phone: c.phone, email: c.email });
-            o.textContent = c.name; select.appendChild(o);
+            o.textContent = c.name;
+            select.appendChild(o);
         });
-    } catch { }
+    } catch {}
 }
 
 function loadSavedClient() {
@@ -865,7 +1098,7 @@ function openClientModal(clientId = null) {
     setTimeout(() => document.getElementById('newClientName').focus(), 100);
     const addrInput = document.getElementById('newClientAddress');
     if (addrInput) {
-        addrInput.onchange = function() {
+        addrInput.onchange = function () {
             geocodeAddress(this.value);
         };
     }
@@ -874,12 +1107,17 @@ function openClientModal(clientId = null) {
 function closeClientModal() {
     hideClientMap();
     document.getElementById('clientModal').classList.remove('active');
-    ['newClientName', 'newClientMF', 'newClientAddress', 'newClientPhone', 'newClientEmail'].forEach(id => document.getElementById(id).value = '');
+    ['newClientName', 'newClientMF', 'newClientAddress', 'newClientPhone', 'newClientEmail'].forEach(
+        id => (document.getElementById(id).value = '')
+    );
 }
 
 async function saveNewClient() {
     const name = document.getElementById('newClientName').value.trim();
-    if (!name) { showToast('Le nom est obligatoire', 'warning'); return; }
+    if (!name) {
+        showToast('Le nom est obligatoire', 'warning');
+        return;
+    }
     const data = {
         id: currentClientId,
         userId: currentUser.id,
@@ -892,22 +1130,35 @@ async function saveNewClient() {
     try {
         await window.electronAPI.saveClient(data);
         showToast(currentClientId ? `Client "${name}" mis à jour` : `Client "${name}" ajouté`, 'success');
-        closeClientModal(); await loadClientsDropdown(); await loadClients();
-    } catch { showToast("Erreur lors de l'enregistrement", 'error'); }
+        closeClientModal();
+        await loadClientsDropdown();
+        await loadClients();
+    } catch {
+        showToast("Erreur lors de l'enregistrement", 'error');
+    }
 }
 
 // ==================== SERVICES PAGE ====================
 async function loadServices() {
     if (!currentUser) return;
-    try { allServices = await window.electronAPI.getServices(currentUser.id); renderServicesTable(allServices); }
-    catch { showToast('Erreur chargement services', 'error'); }
+    try {
+        allServices = await window.electronAPI.getServices(currentUser.id);
+        renderServicesTable(allServices);
+    } catch {
+        showToast('Erreur chargement services', 'error');
+    }
 }
 
 function renderServicesTable(services = allServices) {
     const container = document.getElementById('servicesTable');
-    if (!services.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛍️</div><h3>Aucun service</h3><p>Ajoutez vos produits et services pour un remplissage rapide des documents</p></div>`; return; }
+    if (!services.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛍️</div><h3>Aucun service</h3><p>Ajoutez vos produits et services pour un remplissage rapide des documents</p></div>`;
+        return;
+    }
     container.innerHTML = `<table><thead><tr><th style="width:32px">...</th><th>Nom</th><th>Description</th><th>Catégorie</th><th>Prix HT</th><th>TVA</th><th>Actions</th></tr></thead><tbody>
-        ${services.map(s => `<tr>
+        ${services
+            .map(
+                s => `<tr>
             <td><input type="checkbox" class="service-checkbox" data-service-id="${s.id}" onchange="updateSelectedServices()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td style="font-weight:600">${escapeHtml(s.name)}</td>
             <td>${escapeHtml(s.description) || '—'}</td>
@@ -917,22 +1168,21 @@ function renderServicesTable(services = allServices) {
             <td class="actions-cell">
                 <button class="btn-icon btn-edit"   onclick="editService('${s.id}')"         title="Modifier">✏️</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteService('${s.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
-            </td></tr>`).join('')}
+            </td></tr>`
+            )
+            .join('')}
     </tbody></table>`;
 }
 
 function filterServices() {
     const q = (document.getElementById('searchServices')?.value || '').toLowerCase();
     const cat = document.getElementById('filterServiceCategory')?.value || '';
-    const filtered = allServices.filter(s =>
-        (s.name || '').toLowerCase().includes(q) &&
-        (!cat || (s.category || '') === cat)
-    );
+    const filtered = allServices.filter(s => (s.name || '').toLowerCase().includes(q) && (!cat || (s.category || '') === cat));
     renderServicesTable(filtered);
 }
 
 function toggleSelectAllServices(el) {
-    document.querySelectorAll('.service-checkbox').forEach(cb => cb.checked = el.checked);
+    document.querySelectorAll('.service-checkbox').forEach(cb => (cb.checked = el.checked));
     updateSelectedServices();
 }
 function updateSelectedServices() {
@@ -948,7 +1198,10 @@ async function deleteSelectedServices() {
     showConfirm('Supprimer', `Supprimer ${ids.length} service(s) ? Cette action est irréversible.`, async () => {
         let done = 0;
         for (const id of ids) {
-            try { await window.electronAPI.deleteService(id); done++; } catch {}
+            try {
+                await window.electronAPI.deleteService(id);
+                done++;
+            } catch {}
         }
         await loadServices();
         showToast(`${done} service(s) supprimé(s)`, 'success');
@@ -958,7 +1211,7 @@ async function deleteSelectedServices() {
 function openServiceModal() {
     editingServiceId = null;
     document.getElementById('serviceModalTitle').textContent = '➕ Nouveau Service';
-    ['serviceName', 'serviceDescription', 'svBarcode'].forEach(id => document.getElementById(id).value = '');
+    ['serviceName', 'serviceDescription', 'svBarcode'].forEach(id => (document.getElementById(id).value = ''));
     document.getElementById('servicePrice').value = '0.000';
     document.getElementById('serviceTva').value = '19';
     document.getElementById('svCategory').value = '';
@@ -967,14 +1220,22 @@ function openServiceModal() {
     document.getElementById('serviceModal').classList.add('active');
 }
 
-function closeServiceModal() { document.getElementById('serviceModal').classList.remove('active'); editingServiceId = null; }
+function closeServiceModal() {
+    document.getElementById('serviceModal').classList.remove('active');
+    editingServiceId = null;
+}
 
 async function saveService() {
     const name = document.getElementById('serviceName').value.trim();
-    if (!name) { showToast('Le nom du service est requis', 'warning'); return; }
+    if (!name) {
+        showToast('Le nom du service est requis', 'warning');
+        return;
+    }
     try {
         await window.electronAPI.saveService({
-            id: editingServiceId, userId: currentUser.id, name,
+            id: editingServiceId,
+            userId: currentUser.id,
+            name,
             description: document.getElementById('serviceDescription').value.trim(),
             price: parseFloat(document.getElementById('servicePrice').value) || 0,
             tva: parseFloat(document.getElementById('serviceTva').value) || 19,
@@ -984,8 +1245,12 @@ async function saveService() {
             minStock: parseInt(document.getElementById('svMinStock').value) || 0
         });
         showToast(editingServiceId ? 'Service mis à jour' : 'Service créé', 'success');
-        closeServiceModal(); await loadServices(); await loadServicesDropdown();
-    } catch { showToast("Erreur lors de l'enregistrement", 'error'); }
+        closeServiceModal();
+        await loadServices();
+        await loadServicesDropdown();
+    } catch {
+        showToast("Erreur lors de l'enregistrement", 'error');
+    }
 }
 
 async function editService(serviceId) {
@@ -1007,14 +1272,20 @@ async function editService(serviceId) {
 function confirmDeleteService(serviceId) {
     const s = allServices.find(x => x.id === serviceId);
     showConfirm('Supprimer', `Supprimer "${s?.name}" ?`, async () => {
-        try { await window.electronAPI.deleteService(serviceId); showToast('Service supprimé', 'info'); await loadServices(); await loadServicesDropdown(); }
-        catch { showToast('Erreur suppression', 'error'); }
+        try {
+            await window.electronAPI.deleteService(serviceId);
+            showToast('Service supprimé', 'info');
+            await loadServices();
+            await loadServicesDropdown();
+        } catch {
+            showToast('Erreur suppression', 'error');
+        }
     });
 }
 
 async function exportServicesXLSX() {
-    const data = allServices.map(s => ({ 'Nom': s.name, 'Prix': s.price || 0, 'Description': s.description || '' }));
-    const result = await window.electronAPI.exportXLSX({ data, headers: ['Nom','Prix','Description'], filename: 'services.xlsx' });
+    const data = allServices.map(s => ({ Nom: s.name, Prix: s.price || 0, Description: s.description || '' }));
+    const result = await window.electronAPI.exportXLSX({ data, headers: ['Nom', 'Prix', 'Description'], filename: 'services.xlsx' });
     if (result?.success) showToast('Excel exporté', 'success');
 }
 
@@ -1027,7 +1298,7 @@ async function loadSerialSettings() {
         document.getElementById('prefixDevis').value = currentSettings.prefix_devis || 'DEV';
         document.getElementById('prefixBon').value = currentSettings.prefix_bon || 'BC';
         updateSerialPreview();
-    } catch { }
+    } catch {}
 }
 
 function updateSerialPreview() {
@@ -1036,23 +1307,44 @@ function updateSerialPreview() {
 }
 
 async function saveSerialSettings() {
-    const settings = { prefix_facture: document.getElementById('prefixFacture').value.toUpperCase(), prefix_devis: document.getElementById('prefixDevis').value.toUpperCase(), prefix_bon: document.getElementById('prefixBon').value.toUpperCase() };
-    try { await window.electronAPI.updateSettings({ userId: currentUser.id, settings }); showToast('Paramètres de numérotation enregistrés', 'success'); await loadSerialSettings(); }
-    catch { showToast("Erreur d'enregistrement", 'error'); }
+    const settings = {
+        prefix_facture: document.getElementById('prefixFacture').value.toUpperCase(),
+        prefix_devis: document.getElementById('prefixDevis').value.toUpperCase(),
+        prefix_bon: document.getElementById('prefixBon').value.toUpperCase()
+    };
+    try {
+        await window.electronAPI.updateSettings({ userId: currentUser.id, settings });
+        showToast('Paramètres de numérotation enregistrés', 'success');
+        await loadSerialSettings();
+    } catch {
+        showToast("Erreur d'enregistrement", 'error');
+    }
 }
 
 function openResetCounterModal() {
-    showConfirm('🔄 Réinitialiser le compteur', "Cela réinitialisera la séquence à 001. Continuer ?", async () => {
-        try {
-            await window.electronAPI.resetCounter({ userId: currentUser.id, type: 'all', year: new Date().getFullYear() });
-            showToast('Compteur réinitialisé', 'success');
-            await loadSerialSettings();
-            if (document.getElementById('page-new-document').classList.contains('active')) {
-                const number = await window.electronAPI.peekNextDocNumber({ userId: currentUser.id, type: currentDocType, year: new Date().getFullYear() });
-                document.getElementById('docNumber').value = number;
+    showConfirm(
+        '🔄 Réinitialiser le compteur',
+        'Cela réinitialisera la séquence à 001. Continuer ?',
+        async () => {
+            try {
+                await window.electronAPI.resetCounter({ userId: currentUser.id, type: 'all', year: new Date().getFullYear() });
+                showToast('Compteur réinitialisé', 'success');
+                await loadSerialSettings();
+                if (document.getElementById('page-new-document').classList.contains('active')) {
+                    const number = await window.electronAPI.peekNextDocNumber({
+                        userId: currentUser.id,
+                        type: currentDocType,
+                        year: new Date().getFullYear()
+                    });
+                    document.getElementById('docNumber').value = number;
+                }
+            } catch {
+                showToast('Erreur', 'error');
             }
-        } catch { showToast('Erreur', 'error'); }
-    }, 'Réinitialiser', 'btn-warning');
+        },
+        'Réinitialiser',
+        'btn-warning'
+    );
 }
 
 // ==================== FORMAT SETTINGS ====================
@@ -1072,7 +1364,9 @@ async function saveFormatSettings() {
         currentRoundingMethod = rm;
         showToast('Format des nombres enregistré', 'success');
         calculateTotals(); // refresh display
-    } catch { showToast("Erreur d'enregistrement", 'error'); }
+    } catch {
+        showToast("Erreur d'enregistrement", 'error');
+    }
 }
 
 // ==================== CLIENT MF PASTE DETECTION ====================
@@ -1080,7 +1374,7 @@ function initClientMFPaste() {
     const mfInput = document.getElementById('docClientMF');
     if (!mfInput || mfInput.dataset.pasteInit) return;
     mfInput.dataset.pasteInit = '1';
-    mfInput.addEventListener('paste', function(e) {
+    mfInput.addEventListener('paste', function (e) {
         setTimeout(async () => {
             const val = this.value.trim();
             if (val.length >= 7) {
@@ -1089,7 +1383,10 @@ function initClientMFPaste() {
                     if (res && res.success && res.data) {
                         const d = res.data;
                         const name = d.denominationLatin || d.nomEtPrenomFr || '';
-                        const address = [d.rueFr, d.codePostal, d.villeFr].filter(x => x).map(x => x.trim()).join(' ');
+                        const address = [d.rueFr, d.codePostal, d.villeFr]
+                            .filter(x => x)
+                            .map(x => x.trim())
+                            .join(' ');
                         if (name) {
                             document.getElementById('docClientName').value = name;
                             document.getElementById('docClientAddress').value = address;
@@ -1103,28 +1400,61 @@ function initClientMFPaste() {
 }
 
 // ==================== PREVIEW & SAVE ====================
-function previewDocument() { if (!validateDocumentForm()) return; generatePreviewHTML(); document.getElementById('previewModal').classList.add('active'); }
-function closePreview() { document.getElementById('previewModal').classList.remove('active'); }
+function previewDocument() {
+    if (!validateDocumentForm()) return;
+    generatePreviewHTML();
+    document.getElementById('previewModal').classList.add('active');
+}
+function closePreview() {
+    document.getElementById('previewModal').classList.remove('active');
+}
 
 function validateDocumentForm() {
-    if (!document.getElementById('docCompanyName').value.trim()) { showToast('La raison sociale est requise', 'warning'); return false; }
-    if (!document.getElementById('docClientName').value.trim()) { showToast('Le nom du client est requis', 'warning'); return false; }
+    if (!document.getElementById('docCompanyName').value.trim()) {
+        showToast('La raison sociale est requise', 'warning');
+        return false;
+    }
+    if (!document.getElementById('docClientName').value.trim()) {
+        showToast('Le nom du client est requis', 'warning');
+        return false;
+    }
     let hasItem = false;
-    for (let i = 1; i <= itemCount; i++) if (document.getElementById(`desc${i}`)?.value.trim()) { hasItem = true; break; }
-    if (!hasItem) { showToast('Ajoutez au moins un article', 'warning'); return false; }
+    for (let i = 1; i <= itemCount; i++)
+        if (document.getElementById(`desc${i}`)?.value.trim()) {
+            hasItem = true;
+            break;
+        }
+    if (!hasItem) {
+        showToast('Ajoutez au moins un article', 'warning');
+        return false;
+    }
     return true;
 }
 
 function generatePreviewHTML() {
     const get = id => document.getElementById(id)?.value || '';
-    const companyName = get('docCompanyName'), companyMF = get('docCompanyMF'), companyAddress = get('docCompanyAddress');
-    const companyPhone = get('docCompanyPhone'), companyEmail = get('docCompanyEmail'), companyRC = get('docCompanyRC');
-    const clientName = get('docClientName'), clientMF = get('docClientMF'), clientAddress = get('docClientAddress');
-    const clientPhone = get('docClientPhone'), clientEmail = get('docClientEmail');
-    const docNumber = get('docNumber'), docDate = get('docDate'), docDueDate = get('docDueDate');
-    const currency = get('docCurrency'), paymentMode = get('docPayment'), notes = get('docNotes');
+    const companyName = get('docCompanyName'),
+        companyMF = get('docCompanyMF'),
+        companyAddress = get('docCompanyAddress');
+    const companyPhone = get('docCompanyPhone'),
+        companyEmail = get('docCompanyEmail'),
+        companyRC = get('docCompanyRC');
+    const clientName = get('docClientName'),
+        clientMF = get('docClientMF'),
+        clientAddress = get('docClientAddress');
+    const clientPhone = get('docClientPhone'),
+        clientEmail = get('docClientEmail');
+    const docNumber = get('docNumber'),
+        docDate = get('docDate'),
+        docDueDate = get('docDueDate');
+    const currency = get('docCurrency'),
+        paymentMode = get('docPayment'),
+        notes = get('docNotes');
 
-    let totalHTRaw = 0, tva19 = 0, tva13 = 0, tva7 = 0;
+    let totalHTRaw = 0,
+        tva19 = 0,
+        tva13 = 0,
+        tva7 = 0;
     const items = [];
     for (let i = 1; i <= itemCount; i++) {
         const desc = document.getElementById(`desc${i}`)?.value.trim();
@@ -1132,8 +1462,11 @@ function generatePreviewHTML() {
         const price = parseFloat(document.getElementById(`price${i}`)?.value) || 0;
         const tva = parseFloat(document.getElementById(`tva${i}`)?.value) || 0;
         if (!desc) continue;
-        const line = qty * price; totalHTRaw += line;
-        if (tva === 19) tva19 += line * 0.19; else if (tva === 13) tva13 += line * 0.13; else if (tva === 7) tva7 += line * 0.07;
+        const line = qty * price;
+        totalHTRaw += line;
+        if (tva === 19) tva19 += line * 0.19;
+        else if (tva === 13) tva13 += line * 0.13;
+        else if (tva === 7) tva7 += line * 0.07;
         items.push({ description: desc, quantity: qty, price, tva });
     }
     const totalTTCRaw = totalHTRaw + tva19 + tva13 + tva7 + timbreAmount;
@@ -1153,14 +1486,34 @@ function generatePreviewHTML() {
             accentLine: currentCompanySettings?.show_accent !== 0
         },
         typeLabel,
-        companyName, companyMF, companyAddress, companyPhone, companyEmail, companyRC,
-        clientName, clientMF, clientAddress, clientPhone, clientEmail,
-        docNumber, docDate, docDueDate, currency, paymentMode, notes,
-        logoImage: (currentCompanySettings?.show_logo !== 0) ? logoImage : null,
-        stampImage: (currentCompanySettings?.show_stamp !== 0) ? stampImage : null,
-        signatureImage: (currentCompanySettings?.show_signature !== 0) ? signatureImage : null,
-        items, totalHT: totalHTRaw, tva19, tva13, tva7,
-        totalTTC: totalTTCRounded, timbreAmount, roundingAdjustment,
+        companyName,
+        companyMF,
+        companyAddress,
+        companyPhone,
+        companyEmail,
+        companyRC,
+        clientName,
+        clientMF,
+        clientAddress,
+        clientPhone,
+        clientEmail,
+        docNumber,
+        docDate,
+        docDueDate,
+        currency,
+        paymentMode,
+        notes,
+        logoImage: currentCompanySettings?.show_logo !== 0 ? logoImage : null,
+        stampImage: currentCompanySettings?.show_stamp !== 0 ? stampImage : null,
+        signatureImage: currentCompanySettings?.show_signature !== 0 ? signatureImage : null,
+        items,
+        totalHT: totalHTRaw,
+        tva19,
+        tva13,
+        tva7,
+        totalTTC: totalTTCRounded,
+        timbreAmount,
+        roundingAdjustment,
         formatAmount
     });
 
@@ -1174,15 +1527,18 @@ function buildThemedInvoicePreview(d) {
     const t = d.theme || DEFAULT_THEMES.modern;
     const c = t.colors;
     const f = t.fonts;
-    const fa = (v) => d.formatAmount ? d.formatAmount(v) : (v || 0).toFixed(3);
+    const fa = v => (d.formatAmount ? d.formatAmount(v) : (v || 0).toFixed(3));
 
-    const tableCSS = t.tableStyle === 'bordered'
-        ? `table{border-collapse:collapse;width:100%} th,td{border:1px solid ${c.border};padding:8px 10px} thead tr{background:${c.surface}}`
-        : t.tableStyle === 'striped'
-            ? `table{border-collapse:collapse;width:100%} th{border-bottom:2px solid ${c.primary};padding:10px;color:${c.textLight};font-size:11px;text-transform:uppercase} td{padding:10px;border-bottom:1px solid ${c.border}} tbody tr:nth-child(odd){background:${c.surface}}`
-            : `table{border-collapse:collapse;width:100%} th{border-bottom:2px solid ${c.primary};padding:10px 4px;color:${c.textLight};font-size:11px;text-transform:uppercase} td{padding:12px 4px;border-bottom:1px solid ${c.border}}`;
+    const tableCSS =
+        t.tableStyle === 'bordered'
+            ? `table{border-collapse:collapse;width:100%} th,td{border:1px solid ${c.border};padding:8px 10px} thead tr{background:${c.surface}}`
+            : t.tableStyle === 'striped'
+              ? `table{border-collapse:collapse;width:100%} th{border-bottom:2px solid ${c.primary};padding:10px;color:${c.textLight};font-size:11px;text-transform:uppercase} td{padding:10px;border-bottom:1px solid ${c.border}} tbody tr:nth-child(odd){background:${c.surface}}`
+              : `table{border-collapse:collapse;width:100%} th{border-bottom:2px solid ${c.primary};padding:10px 4px;color:${c.textLight};font-size:11px;text-transform:uppercase} td{padding:12px 4px;border-bottom:1px solid ${c.border}}`;
 
-    const itemsRows = d.items.map((item, i) => `
+    const itemsRows = d.items
+        .map(
+            (item, i) => `
         <tr>
             <td style="color:${c.textLight};font-size:12px">${i + 1}</td>
             <td>${escapeHtml(item.description)}</td>
@@ -1190,9 +1546,13 @@ function buildThemedInvoicePreview(d) {
             <td style="text-align:right">${fa(item.price)}</td>
             <td style="text-align:center">${item.tva}%</td>
             <td style="text-align:right;font-weight:600">${fa(item.quantity * item.price)}</td>
-        </tr>`).join('');
+        </tr>`
+        )
+        .join('');
 
-    const logoHtml = d.logoImage ? `<img src="${d.logoImage}" style="max-width:130px;max-height:65px;object-fit:contain;margin-bottom:8px;display:block${t.headerStyle === 'center' ? ';margin:0 auto 8px auto' : ''}">` : '';
+    const logoHtml = d.logoImage
+        ? `<img src="${d.logoImage}" style="max-width:130px;max-height:65px;object-fit:contain;margin-bottom:8px;display:block${t.headerStyle === 'center' ? ';margin:0 auto 8px auto' : ''}">`
+        : '';
 
     let headerHtml;
     if (t.headerStyle === 'center') {
@@ -1212,7 +1572,9 @@ function buildThemedInvoicePreview(d) {
         headerHtml = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px">${t.headerStyle === 'right' ? right + left : left + right}</div>`;
     }
 
-    const accentBar = t.accentLine ? `<div style="height:4px;background:linear-gradient(90deg,${c.primary},${c.accent || c.secondary})"></div>` : '';
+    const accentBar = t.accentLine
+        ? `<div style="height:4px;background:linear-gradient(90deg,${c.primary},${c.accent || c.secondary})"></div>`
+        : '';
 
     return `<div style="font-family:${f.body};color:${c.text};padding:40px;max-width:900px;margin:auto;font-size:${f.size};background:${c.bg}">
         ${accentBar}
@@ -1261,8 +1623,12 @@ function buildThemedInvoicePreview(d) {
 }
 
 let _docFormDirty = false;
-function markDocDirty() { _docFormDirty = true; }
-function resetDocDirty() { _docFormDirty = false; }
+function markDocDirty() {
+    _docFormDirty = true;
+}
+function resetDocDirty() {
+    _docFormDirty = false;
+}
 function watchDocFormDirty() {
     const form = document.querySelector('.document-form');
     if (!form) return;
@@ -1273,11 +1639,14 @@ function watchDocFormDirty() {
         el.addEventListener('change', markDocDirty);
     });
 }
-window.addEventListener('beforeunload', (e) => {
-    if (_docFormDirty) { e.preventDefault(); e.returnValue = ''; }
+window.addEventListener('beforeunload', e => {
+    if (_docFormDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
 });
 // Intercept navigation to check for unsaved changes
-document.addEventListener('click', (e) => {
+document.addEventListener('click', e => {
     const navItem = e.target.closest('.nav-item');
     if (navItem && _docFormDirty && document.getElementById('page-new-document')?.classList.contains('active')) {
         if (!confirm('Vous avez des modifications non enregistrées. Quitter quand même ?')) {
@@ -1315,14 +1684,21 @@ async function saveAndDownloadPDF() {
                 showToast('PDF enregistré avec succès', 'success');
                 setTimeout(async () => {
                     if (localStorage.getItem('tuni_autobackup') === 'true') {
-                        try { await window.electronAPI.createManualBackup(); } catch {}
+                        try {
+                            await window.electronAPI.createManualBackup();
+                        } catch {}
                     }
                 }, 500);
             }
-            resetDocDirty(); resetDocumentForm(); navigateTo('documents');
+            resetDocDirty();
+            resetDocumentForm();
+            navigateTo('documents');
         }
-    } catch { showToast("Erreur lors de l'enregistrement", 'error'); }
-    finally { hideLoading(); }
+    } catch {
+        showToast("Erreur lors de l'enregistrement", 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // ==================== PDF HELPERS ====================
@@ -1338,10 +1714,15 @@ async function downloadPDF() {
     showLoading('Génération du PDF...');
     try {
         const result = await window.electronAPI.savePDF({ html, filename: `${docNumber}.pdf` });
-        if (result.success) { showToast('PDF enregistré', 'success'); closePreview(); }
-        else if (!result.canceled) showToast('Erreur PDF', 'error');
-    } catch (e) { showToast('Erreur PDF: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+        if (result.success) {
+            showToast('PDF enregistré', 'success');
+            closePreview();
+        } else if (!result.canceled) showToast('Erreur PDF', 'error');
+    } catch (e) {
+        showToast('Erreur PDF: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 async function printDocument() {
@@ -1351,8 +1732,11 @@ async function printDocument() {
     try {
         const result = await window.electronAPI.printPDF({ html });
         if (!result.success && result.error) showToast('Erreur impression: ' + result.error, 'error');
-    } catch (e) { showToast('Erreur impression: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur impression: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 async function downloadDocPDF(docId) {
@@ -1369,8 +1753,11 @@ async function downloadDocPDF(docId) {
     try {
         const result = await window.electronAPI.savePDF({ html, filename });
         if (result.success) showToast('PDF enregistré: ' + result.path, 'success');
-    } catch (e) { showToast('Erreur PDF: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur PDF: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // ==================== AUTO-SAVE DRAFT ====================
@@ -1398,11 +1785,16 @@ function collectFormData() {
         referenceDoc: get('docReference'),
         currency: get('docCurrency'),
         paymentMode: get('docPayment'),
-        companyName: get('docCompanyName'), companyMF: get('docCompanyMF'),
-        companyAddress: get('docCompanyAddress'), companyPhone: get('docCompanyPhone'),
-        companyEmail: get('docCompanyEmail'), companyRC: get('docCompanyRC'),
-        clientName: get('docClientName'), clientMF: get('docClientMF'),
-        clientAddress: get('docClientAddress'), clientPhone: get('docClientPhone'),
+        companyName: get('docCompanyName'),
+        companyMF: get('docCompanyMF'),
+        companyAddress: get('docCompanyAddress'),
+        companyPhone: get('docCompanyPhone'),
+        companyEmail: get('docCompanyEmail'),
+        companyRC: get('docCompanyRC'),
+        clientName: get('docClientName'),
+        clientMF: get('docClientMF'),
+        clientAddress: get('docClientAddress'),
+        clientPhone: get('docClientPhone'),
         clientEmail: get('docClientEmail'),
         items,
         applyTimbre: document.getElementById('applyTimbre')?.checked || false,
@@ -1430,7 +1822,10 @@ function restoreDraft() {
         if (!raw) return;
         const draft = JSON.parse(raw);
         if (!draft.clientName && draft.items.length === 0) return;
-        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val || '';
+        };
         setVal('docNumber', draft.number);
         setVal('docDate', draft.date);
         setVal('docDueDate', draft.dueDate);
@@ -1466,7 +1861,7 @@ function clearDraft() {
 }
 
 // Hook auto-save onto form inputs
-document.addEventListener('input', (e) => {
+document.addEventListener('input', e => {
     if (e.target.closest('#page-new-document')) autoSaveDraft();
 });
 
@@ -1481,7 +1876,10 @@ function collectDocumentData() {
         const tva = parseFloat(document.getElementById(`tva${i}`)?.value) || 0;
         items.push({ description: desc, quantity: qty, price, tva, total: qty * price });
     }
-    let totalHTRaw = 0, tva19 = 0, tva13 = 0, tva7 = 0;
+    let totalHTRaw = 0,
+        tva19 = 0,
+        tva13 = 0,
+        tva7 = 0;
     items.forEach(item => {
         totalHTRaw += item.total;
         if (item.tva === 19) tva19 += item.total * 0.19;
@@ -1501,23 +1899,38 @@ function collectDocumentData() {
         referenceDoc: get('docReference') || null,
         currency: get('docCurrency') || 'TND',
         paymentMode: get('docPayment'),
-        companyName: get('docCompanyName'), companyMF: get('docCompanyMF'),
-        companyAddress: get('docCompanyAddress'), companyPhone: get('docCompanyPhone'),
-        companyEmail: get('docCompanyEmail'), companyRC: get('docCompanyRC'),
-        companyBank: get('docCompanyBank'), companyRIB: get('docCompanyRIB'),
-        clientName: get('docClientName'), clientMF: get('docClientMF'),
-        clientAddress: get('docClientAddress'), clientPhone: get('docClientPhone'), clientEmail: get('docClientEmail'),
+        companyName: get('docCompanyName'),
+        companyMF: get('docCompanyMF'),
+        companyAddress: get('docCompanyAddress'),
+        companyPhone: get('docCompanyPhone'),
+        companyEmail: get('docCompanyEmail'),
+        companyRC: get('docCompanyRC'),
+        companyBank: get('docCompanyBank'),
+        companyRIB: get('docCompanyRIB'),
+        clientName: get('docClientName'),
+        clientMF: get('docClientMF'),
+        clientAddress: get('docClientAddress'),
+        clientPhone: get('docClientPhone'),
+        clientEmail: get('docClientEmail'),
         items,
         applyTimbre: document.getElementById('applyTimbre').checked,
-        timbreAmount, roundingAdjustment,
-        totalHT: roundValue(totalHTRaw), totalTTC: totalTTCRounded,
-        logoImage, stampImage, signatureImage,
+        timbreAmount,
+        roundingAdjustment,
+        totalHT: roundValue(totalHTRaw),
+        totalTTC: totalTTCRounded,
+        logoImage,
+        stampImage,
+        signatureImage,
         notes: get('docNotes'),
         internalNotes: document.getElementById('docInternalNotes')?.value || '',
         customFields: collectCustomFields(),
         recurring: document.getElementById('docRecurring')?.checked || false,
-        recurringFrequency: document.getElementById('docRecurring')?.checked ? document.getElementById('recurringFrequency')?.value || 'monthly' : null,
-        recurringEndDate: document.getElementById('docRecurring')?.checked ? document.getElementById('recurringEndDate')?.value || null : null
+        recurringFrequency: document.getElementById('docRecurring')?.checked
+            ? document.getElementById('recurringFrequency')?.value || 'monthly'
+            : null,
+        recurringEndDate: document.getElementById('docRecurring')?.checked
+            ? document.getElementById('recurringEndDate')?.value || null
+            : null
     };
 }
 function toggleRecurringFields() {
@@ -1526,13 +1939,19 @@ function toggleRecurringFields() {
 }
 
 function resetDocumentForm() {
-    ['docClientName', 'docClientMF', 'docClientAddress', 'docClientPhone', 'docClientEmail', 'docNotes'].forEach(id => document.getElementById(id).value = '');
+    ['docClientName', 'docClientMF', 'docClientAddress', 'docClientPhone', 'docClientEmail', 'docNotes'].forEach(
+        id => (document.getElementById(id).value = '')
+    );
     document.getElementById('docInternalNotes').value = '';
     document.getElementById('applyTimbre').checked = false;
     const recCb = document.getElementById('docRecurring');
-    if (recCb) { recCb.checked = false; document.getElementById('recurringOptions').style.display = 'none'; }
+    if (recCb) {
+        recCb.checked = false;
+        document.getElementById('recurringOptions').style.display = 'none';
+    }
     document.getElementById('itemsBody').innerHTML = '';
-    itemCount = 0; editingDocId = null;
+    itemCount = 0;
+    editingDocId = null;
     clearDraft();
     initNewDocument();
 }
@@ -1553,13 +1972,18 @@ async function loadDocuments() {
         const totalPages = Math.ceil((result.total || 0) / DOC_PAGE_SIZE) || 1;
         renderDocumentsTable(allDocuments);
         renderDocPagination(docPage, totalPages);
-    } catch { showToast('Erreur chargement documents', 'error'); }
+    } catch {
+        showToast('Erreur chargement documents', 'error');
+    }
 }
 
 function renderDocPagination(current, total) {
     const container = document.getElementById('docPagination');
     if (!container) return;
-    if (total <= 1) { container.innerHTML = ''; return; }
+    if (total <= 1) {
+        container.innerHTML = '';
+        return;
+    }
     let html = '<div class="pagination" style="display:flex;justify-content:center;gap:6px;padding:16px 0">';
     html += `<button class="btn btn-sm ${current <= 1 ? 'disabled' : ''}" onclick="${current > 1 ? `goDocPage(${current - 1})` : ''}" ${current <= 1 ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:14px;height:14px"></i></button>`;
     for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
@@ -1578,12 +2002,23 @@ function goDocPage(page) {
 
 function sortDocs(field) {
     if (docSortBy === field) docSortDir = docSortDir === 'asc' ? 'desc' : 'asc';
-    else { docSortBy = field; docSortDir = 'asc'; }
+    else {
+        docSortBy = field;
+        docSortDir = 'asc';
+    }
     allDocuments.sort((a, b) => {
-        let va = a[field] || '', vb = b[field] || '';
-        if (field === 'date' || field === 'createdAt') { va = new Date(va); vb = new Date(vb); }
-        else if (field === 'totalTTC' || field === 'totalHT') { va = parseFloat(va) || 0; vb = parseFloat(vb) || 0; }
-        else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+        let va = a[field] || '',
+            vb = b[field] || '';
+        if (field === 'date' || field === 'createdAt') {
+            va = new Date(va);
+            vb = new Date(vb);
+        } else if (field === 'totalTTC' || field === 'totalHT') {
+            va = parseFloat(va) || 0;
+            vb = parseFloat(vb) || 0;
+        } else {
+            va = String(va).toLowerCase();
+            vb = String(vb).toLowerCase();
+        }
         if (va < vb) return docSortDir === 'asc' ? -1 : 1;
         if (va > vb) return docSortDir === 'asc' ? 1 : -1;
         return 0;
@@ -1594,9 +2029,16 @@ function sortDocs(field) {
 function renderDocumentsTable(docs) {
     window._filteredDocs = docs;
     const container = document.getElementById('allDocsTable');
-    if (!docs.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="file-text" class="lucide-sm"></i></div><h3>Aucun document</h3><p>Créez votre premier document pour commencer</p></div>`; if (window.lucide) lucide.createIcons(); updateBatchButtons(); return; }
-    container.innerHTML = `<table><thead><tr><th style="width:36px"><input type="checkbox" id="selectAllDocs" onchange="toggleSelectAllDocs(this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></th><th>Type</th><th onclick="sortDocs('number')" style="cursor:pointer">N° ${docSortBy==='number'?(docSortDir==='asc'?' ▲':' ▼'):''}</th><th onclick="sortDocs('clientName')" style="cursor:pointer">Client ${docSortBy==='clientName'?(docSortDir==='asc'?' ▲':' ▼'):''}</th><th onclick="sortDocs('date')" style="cursor:pointer">Date ${docSortBy==='date'?(docSortDir==='asc'?' ▲':' ▼'):''}</th><th onclick="sortDocs('totalTTC')" style="cursor:pointer">Total TTC ${docSortBy==='totalTTC'?(docSortDir==='asc'?' ▲':' ▼'):''}</th><th>Statut</th><th>Pipeline</th><th>Actions</th></tr></thead><tbody>
-        ${docs.map(doc => `<tr>
+    if (!docs.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="file-text" class="lucide-sm"></i></div><h3>Aucun document</h3><p>Créez votre premier document pour commencer</p></div>`;
+        if (window.lucide) lucide.createIcons();
+        updateBatchButtons();
+        return;
+    }
+    container.innerHTML = `<table><thead><tr><th style="width:36px"><input type="checkbox" id="selectAllDocs" onchange="toggleSelectAllDocs(this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></th><th>Type</th><th onclick="sortDocs('number')" style="cursor:pointer">N° ${docSortBy === 'number' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th onclick="sortDocs('clientName')" style="cursor:pointer">Client ${docSortBy === 'clientName' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th onclick="sortDocs('date')" style="cursor:pointer">Date ${docSortBy === 'date' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th onclick="sortDocs('totalTTC')" style="cursor:pointer">Total TTC ${docSortBy === 'totalTTC' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th>Statut</th><th>Pipeline</th><th>Actions</th></tr></thead><tbody>
+        ${docs
+            .map(
+                doc => `<tr>
             <td><input type="checkbox" class="doc-select" value="${doc.id}" onchange="updateBatchButtons()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
             <td style="font-family:monospace;font-size:0.82rem">${doc.number}</td>
@@ -1619,7 +2061,9 @@ function renderDocumentsTable(docs) {
                 ${doc.type === 'facture' ? `<button class="btn-icon" onclick="convertToAvoir('${doc.id}')" title="Convertir en Avoir" style="color:#f59e0b"><i data-lucide="undo-2" class="lucide-sm"></i></button>` : ''}
                 ${doc.type === 'ba' ? `<button class="btn-icon" onclick="convertBAToExpense('${doc.id}')" title="Convertir en dépense" style="color:#8b5cf6"><i data-lucide="shopping-cart" class="lucide-sm"></i></button>` : ''}
                 <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
-            </td></tr>`).join('')}
+            </td></tr>`
+            )
+            .join('')}
     </tbody></table>`;
     if (window.lucide) lucide.createIcons();
     updateBatchButtons();
@@ -1628,19 +2072,21 @@ function renderDocumentsTable(docs) {
 function renderPipelineBadge(doc) {
     if (doc.reference_doc) {
         const ref = allDocuments.find(d => d.id === doc.reference_doc);
-        if (ref) return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#e0e7ff;color:#4338ca;white-space:nowrap"><i data-lucide="link" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Issu de ${ref.number}</span>`;
+        if (ref)
+            return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#e0e7ff;color:#4338ca;white-space:nowrap"><i data-lucide="link" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Issu de ${ref.number}</span>`;
         return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#f3f4f6;color:#6b7280;white-space:nowrap">Réf. liée</span>`;
     }
     if (doc.type === 'devis') {
         const converted = allDocuments.find(d => d.reference_doc === doc.id);
-        if (converted) return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#d1fae5;color:#065f46;white-space:nowrap"><i data-lucide="check" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Converti → ${converted.number}</span>`;
+        if (converted)
+            return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#d1fae5;color:#065f46;white-space:nowrap"><i data-lucide="check" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Converti → ${converted.number}</span>`;
         return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#fef3c7;color:#92400e;white-space:nowrap"><i data-lucide="clock" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> En attente</span>`;
     }
     return '<span style="color:var(--text-muted);font-size:0.75rem">—</span>';
 }
 
 function toggleSelectAllDocs(checked) {
-    document.querySelectorAll('.doc-select').forEach(cb => cb.checked = checked);
+    document.querySelectorAll('.doc-select').forEach(cb => (cb.checked = checked));
     updateBatchButtons();
 }
 function updateBatchButtons() {
@@ -1655,13 +2101,19 @@ function getSelectedDocIds() {
 async function batchDeleteSelected() {
     const ids = getSelectedDocIds();
     if (!ids.length) return;
-    showConfirm('<i data-lucide="trash-2" class="lucide-sm"></i> Supprimer', `Supprimer ${ids.length} document(s) définitivement ?`, async () => {
-        for (const id of ids) {
-            try { await window.electronAPI.deleteDocument(id); } catch {}
+    showConfirm(
+        '<i data-lucide="trash-2" class="lucide-sm"></i> Supprimer',
+        `Supprimer ${ids.length} document(s) définitivement ?`,
+        async () => {
+            for (const id of ids) {
+                try {
+                    await window.electronAPI.deleteDocument(id);
+                } catch {}
+            }
+            showToast(`${ids.length} document(s) supprimés`, 'success');
+            await loadDocuments();
         }
-        showToast(`${ids.length} document(s) supprimés`, 'success');
-        await loadDocuments();
-    });
+    );
 }
 async function batchMarkPaid() {
     const ids = getSelectedDocIds();
@@ -1670,7 +2122,13 @@ async function batchMarkPaid() {
         try {
             const doc = allDocuments.find(d => d.id === id);
             if (doc && doc.type === 'facture') {
-                await window.electronAPI.saveDocument({ ...doc, id, paymentStatus: 'paid', paidDate: new Date().toISOString().split('T')[0], paidAmount: doc.totalTTC });
+                await window.electronAPI.saveDocument({
+                    ...doc,
+                    id,
+                    paymentStatus: 'paid',
+                    paidDate: new Date().toISOString().split('T')[0],
+                    paidAmount: doc.totalTTC
+                });
             }
         } catch {}
     }
@@ -1681,7 +2139,9 @@ async function batchExportPDF() {
     const ids = getSelectedDocIds();
     if (!ids.length) return;
     for (const id of ids) {
-        try { await downloadDocPDF(id); } catch {}
+        try {
+            await downloadDocPDF(id);
+        } catch {}
     }
 }
 
@@ -1699,9 +2159,12 @@ function updateSelectedCount() {
 async function emailSingleDoc(docId) {
     const doc = allDocuments.find(d => d.id === docId);
     if (!doc) return;
-    if (!doc.clientEmail) { showToast('Ce document n\'a pas d\'email client', 'warning'); return; }
+    if (!doc.clientEmail) {
+        showToast("Ce document n'a pas d'email client", 'warning');
+        return;
+    }
     // Select it and open batch email modal
-    document.querySelectorAll('.doc-select').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.doc-select').forEach(cb => (cb.checked = false));
     const cb = document.querySelector(`.doc-select[value="${docId}"]`);
     if (cb) cb.checked = true;
     updateSelectedCount();
@@ -1715,7 +2178,8 @@ async function emailSelectedDocs() {
     if (!docs.length) return;
     document.getElementById('batchEmailCount').textContent = docs.length;
     // Load saved templates with variable substitution
-    let defaultSubject = '', defaultBody = '';
+    let defaultSubject = '',
+        defaultBody = '';
     try {
         const settings = currentUser ? await window.electronAPI.getSettings(currentUser.id) : null;
         if (settings) {
@@ -1742,7 +2206,8 @@ async function sendBatchEmails() {
     const docs = allDocuments.filter(d => ids.includes(String(d.id)));
     if (!docs.length) return;
     // Get raw template text (before variable substitution for first doc)
-    let rawSubject = '', rawBody = '';
+    let rawSubject = '',
+        rawBody = '';
     try {
         const settings = currentUser ? await window.electronAPI.getSettings(currentUser.id) : null;
         if (settings) {
@@ -1758,7 +2223,8 @@ async function sendBatchEmails() {
     document.getElementById('batchEmailProgress').style.display = 'block';
     if (window.lucide) lucide.createIcons();
 
-    let sent = 0, failed = 0;
+    let sent = 0,
+        failed = 0;
     for (let i = 0; i < docs.length; i++) {
         const doc = docs[i];
         try {
@@ -1772,7 +2238,7 @@ async function sendBatchEmails() {
                     type: doc.type,
                     theme: currentDocumentTheme,
                     decimalPlaces: currentDecimalPlaces,
-                    roundingMethod: currentRoundingMethod,
+                    roundingMethod: currentRoundingMethod
                 });
                 if (pdfResult.success && pdfResult.path) {
                     const emailResult = await window.electronAPI.sendEmail({
@@ -1790,7 +2256,9 @@ async function sendBatchEmails() {
             } else {
                 failed++;
             }
-        } catch { failed++; }
+        } catch {
+            failed++;
+        }
         const pct = Math.round(((i + 1) / docs.length) * 100);
         document.getElementById('batchEmailProgressBar').style.width = pct + '%';
         document.getElementById('batchEmailStatus').textContent = `${i + 1}/${docs.length} — ${sent} envoyé(s), ${failed} échec(s)`;
@@ -1798,12 +2266,15 @@ async function sendBatchEmails() {
 
     document.getElementById('sendBatchBtn').innerHTML = '<i data-lucide="check"></i> Terminé';
     showToast(`${sent} document(s) envoyé(s)${failed ? ', ' + failed + ' échec(s)' : ''}`, failed ? 'warning' : 'success');
-    setTimeout(() => { closeModal('batchEmailModal'); updateSelectedCount(); }, 2000);
+    setTimeout(() => {
+        closeModal('batchEmailModal');
+        updateSelectedCount();
+    }, 2000);
 }
 
 // Hook into existing batch selection to enable/disable email button
 const origUpdateBatch = updateBatchButtons;
-updateBatchButtons = function() {
+updateBatchButtons = function () {
     origUpdateBatch();
     updateSelectedCount();
 };
@@ -1815,7 +2286,9 @@ function loadEmailTemplates() {
     try {
         const saved = localStorage.getItem('tuni_email_templates');
         _emailTemplates = saved ? JSON.parse(saved) : [];
-    } catch { _emailTemplates = []; }
+    } catch {
+        _emailTemplates = [];
+    }
 }
 
 function saveEmailTemplates() {
@@ -1829,14 +2302,18 @@ function openEmailTemplateManager() {
     if (!_emailTemplates.length) {
         container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light)">Aucun modèle d\'email</div>';
     } else {
-        container.innerHTML = _emailTemplates.map((t, i) => `
+        container.innerHTML = _emailTemplates
+            .map(
+                (t, i) => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6">
                 <div><strong>${escapeHtml(t.name)}</strong><div style="font-size:0.8rem;color:#6b7280">${escapeHtml(t.subject)}</div></div>
                 <div style="display:flex;gap:6px">
                     <button class="btn-icon" onclick="applyEmailTemplate(${i})" title="Appliquer"><i data-lucide="upload" style="width:14px;height:14px"></i></button>
                     <button class="btn-icon btn-delete" onclick="deleteEmailTemplate(${i})" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
                 </div>
-            </div>`).join('');
+            </div>`
+            )
+            .join('');
     }
     document.getElementById('emailTemplateModal').classList.add('active');
     if (window.lucide) lucide.createIcons();
@@ -1844,7 +2321,10 @@ function openEmailTemplateManager() {
 
 function saveCurrentAsEmailTemplate() {
     const name = document.getElementById('newTemplateName').value.trim();
-    if (!name) { showToast('Nom requis', 'warning'); return; }
+    if (!name) {
+        showToast('Nom requis', 'warning');
+        return;
+    }
     loadEmailTemplates();
     _emailTemplates.push({
         name,
@@ -1876,11 +2356,11 @@ function deleteEmailTemplate(idx) {
 
 // ==================== BA → EXPENSE CONVERSION ====================
 async function convertBAToExpense(docId) {
-    const doc = allDocuments.find(d => d.id === docId) || await window.electronAPI.getDocument(docId);
+    const doc = allDocuments.find(d => d.id === docId) || (await window.electronAPI.getDocument(docId));
     if (!doc) return;
     try {
         const items = JSON.parse(doc.items_json || '[]');
-        const totalHT = items.reduce((s, i) => s + (parseFloat(i.unitPrice) * parseFloat(i.quantity || 1)), 0);
+        const totalHT = items.reduce((s, i) => s + parseFloat(i.unitPrice) * parseFloat(i.quantity || 1), 0);
         const totalTVA = (doc.totalTTC || 0) - totalHT;
         const tvaRate = totalHT > 0 ? Math.round((totalTVA / totalHT) * 100) : 19;
         await window.electronAPI.saveExpense({
@@ -1896,7 +2376,9 @@ async function convertBAToExpense(docId) {
             docType: 'facture'
         });
         showToast('Dépense créée depuis le BA', 'success');
-    } catch (e) { showToast('Erreur conversion: ' + e.message, 'error'); }
+    } catch (e) {
+        showToast('Erreur conversion: ' + e.message, 'error');
+    }
 }
 
 function filterDocuments() {
@@ -1930,7 +2412,10 @@ async function viewDocument(docId) {
     }
     const editBtn = document.getElementById('previewEditBtn');
     if (editBtn) {
-        editBtn.onclick = () => { closePreview(); editExistingDoc(docId); };
+        editBtn.onclick = () => {
+            closePreview();
+            editExistingDoc(docId);
+        };
     }
     renderPipelineTimeline(doc);
     renderRelanceHistory(doc);
@@ -1945,12 +2430,16 @@ async function renderRelanceHistory(doc) {
         const relances = await window.electronAPI.getRelancesByInvoice(doc.id);
         if (!relances || !relances.length) return;
         container.style.display = 'block';
-        const html = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:0.8rem">' +
-            relances.map(r => {
-                const icon = r.method === 'email' ? 'mail' : 'file-text';
-                const label = r.method === 'email' ? 'Email' : 'PDF';
-                return `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;background:#fef3c7;color:#92400e"><i data-lucide="${icon}" style="width:10px;height:10px"></i> Relance N°${r.attempt} (${label}) ${r.sentAt ? new Date(r.sentAt).toLocaleDateString('fr-FR') : ''}</span>`;
-            }).join('') + '</div>';
+        const html =
+            '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:0.8rem">' +
+            relances
+                .map(r => {
+                    const icon = r.method === 'email' ? 'mail' : 'file-text';
+                    const label = r.method === 'email' ? 'Email' : 'PDF';
+                    return `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;background:#fef3c7;color:#92400e"><i data-lucide="${icon}" style="width:10px;height:10px"></i> Relance N°${r.attempt} (${label}) ${r.sentAt ? new Date(r.sentAt).toLocaleDateString('fr-FR') : ''}</span>`;
+                })
+                .join('') +
+            '</div>';
         nodes.insertAdjacentHTML('beforeend', html);
         if (window.lucide) lucide.createIcons();
     } catch {}
@@ -1967,8 +2456,10 @@ function renderPipelineTimeline(doc) {
     while (current && current.reference_doc && !visited.has(current.id)) {
         visited.add(current.id);
         const parent = allDocuments.find(d => d.id === current.reference_doc);
-        if (parent) { chain.unshift(parent); current = parent; }
-        else break;
+        if (parent) {
+            chain.unshift(parent);
+            current = parent;
+        } else break;
     }
     chain.push(doc);
     // Walk forwards to find descendants
@@ -1978,20 +2469,37 @@ function renderPipelineTimeline(doc) {
         if (visited2.has(searchId)) break;
         visited2.add(searchId);
         const child = allDocuments.find(d => d.reference_doc === searchId);
-        if (child && !visited2.has(child.id)) { chain.push(child); searchId = child.id; }
-        else break;
+        if (child && !visited2.has(child.id)) {
+            chain.push(child);
+            searchId = child.id;
+        } else break;
     }
-    if (chain.length <= 1) { container.style.display = 'none'; return; }
+    if (chain.length <= 1) {
+        container.style.display = 'none';
+        return;
+    }
     container.style.display = 'block';
-    nodes.innerHTML = chain.map((d, i) => {
-        const isCurrent = d.id === doc.id;
-        const arrow = i < chain.length - 1 ? `<span style="color:var(--text-muted);font-size:1rem;margin:0 2px">→</span>` : '';
-        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:${isCurrent?'var(--primary)':'var(--gray-100)'};color:${isCurrent?'white':'var(--text)'};font-weight:${isCurrent?'600':'400'};font-size:0.8rem;white-space:nowrap"><i data-lucide="${getDocTypeIcon(d.type)}" style="width:12px;height:12px"></i> ${d.number}</span>${arrow}`;
-    }).join('');
+    nodes.innerHTML = chain
+        .map((d, i) => {
+            const isCurrent = d.id === doc.id;
+            const arrow = i < chain.length - 1 ? `<span style="color:var(--text-muted);font-size:1rem;margin:0 2px">→</span>` : '';
+            return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:${isCurrent ? 'var(--primary)' : 'var(--gray-100)'};color:${isCurrent ? 'white' : 'var(--text)'};font-weight:${isCurrent ? '600' : '400'};font-size:0.8rem;white-space:nowrap"><i data-lucide="${getDocTypeIcon(d.type)}" style="width:12px;height:12px"></i> ${d.number}</span>${arrow}`;
+        })
+        .join('');
     if (window.lucide) lucide.createIcons();
 }
 function getDocTypeIcon(type) {
-    const map = { facture: 'file-text', devis: 'clipboard-list', bon: 'shopping-cart', bl: 'truck', ba: 'inbox', bs: 'upload', be: 'package', avoir: 'undo-2', ticket: 'receipt' };
+    const map = {
+        facture: 'file-text',
+        devis: 'clipboard-list',
+        bon: 'shopping-cart',
+        bl: 'truck',
+        ba: 'inbox',
+        bs: 'upload',
+        be: 'package',
+        avoir: 'undo-2',
+        ticket: 'receipt'
+    };
     return map[type] || 'file';
 }
 
@@ -2024,9 +2532,16 @@ async function editExistingDoc(docId) {
         try {
             const docData = collectDocumentData();
             const result = await window.electronAPI.updateDocument({ docId, updates: docData });
-            if (result.success) { showToast('Document mis à jour', 'success'); resetDocumentForm(); navigateTo('documents'); }
-        } catch { showToast('Erreur lors de la mise à jour', 'error'); }
-        finally { hideLoading(); }
+            if (result.success) {
+                showToast('Document mis à jour', 'success');
+                resetDocumentForm();
+                navigateTo('documents');
+            }
+        } catch {
+            showToast('Erreur lors de la mise à jour', 'error');
+        } finally {
+            hideLoading();
+        }
     };
     navigateTo('new-document');
     initNaturalDateInputs();
@@ -2038,11 +2553,35 @@ async function editExistingDoc(docId) {
 
 function populateFormWithDoc(doc) {
     currentDocType = doc.type;
-    document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === doc.type);
+    document.querySelectorAll('input[name="docType"]').forEach(r => (r.checked = r.value === doc.type));
     updateDocType();
-    const internalNotesEl = document.getElementById('docInternalNotes'); if (internalNotesEl) internalNotesEl.value = doc.internalNotes || '';
-    const fields = { docCompanyName: doc.companyName, docCompanyMF: doc.companyMF, docCompanyAddress: doc.companyAddress, docCompanyPhone: doc.companyPhone, docCompanyEmail: doc.companyEmail, docCompanyRC: doc.companyRC, docCompanyBank: doc.companyBank, docCompanyRIB: doc.companyRIB, docClientName: doc.clientName, docClientMF: doc.clientMF, docClientAddress: doc.clientAddress, docClientPhone: doc.clientPhone, docClientEmail: doc.clientEmail, docNumber: doc.number, docDate: doc.date, docDueDate: doc.dueDate, docCurrency: doc.currency || 'TND', docPayment: doc.paymentMode || 'Virement bancaire', docNotes: doc.notes };
-    Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
+    const internalNotesEl = document.getElementById('docInternalNotes');
+    if (internalNotesEl) internalNotesEl.value = doc.internalNotes || '';
+    const fields = {
+        docCompanyName: doc.companyName,
+        docCompanyMF: doc.companyMF,
+        docCompanyAddress: doc.companyAddress,
+        docCompanyPhone: doc.companyPhone,
+        docCompanyEmail: doc.companyEmail,
+        docCompanyRC: doc.companyRC,
+        docCompanyBank: doc.companyBank,
+        docCompanyRIB: doc.companyRIB,
+        docClientName: doc.clientName,
+        docClientMF: doc.clientMF,
+        docClientAddress: doc.clientAddress,
+        docClientPhone: doc.clientPhone,
+        docClientEmail: doc.clientEmail,
+        docNumber: doc.number,
+        docDate: doc.date,
+        docDueDate: doc.dueDate,
+        docCurrency: doc.currency || 'TND',
+        docPayment: doc.paymentMode || 'Virement bancaire',
+        docNotes: doc.notes
+    };
+    Object.entries(fields).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+    });
     document.getElementById('applyTimbre').checked = doc.applyTimbre || false;
     const recCb = document.getElementById('docRecurring');
     if (recCb) {
@@ -2054,7 +2593,8 @@ function populateFormWithDoc(doc) {
     logoImage = doc.logoImage || logoImage || null;
     stampImage = doc.stampImage || stampImage || null;
     signatureImage = doc.signatureImage || signatureImage || null;
-    document.getElementById('itemsBody').innerHTML = ''; itemCount = 0;
+    document.getElementById('itemsBody').innerHTML = '';
+    itemCount = 0;
     (doc.items || []).forEach(item => addItem(item));
     loadCustomFields(doc.customFields);
     calculateTotals();
@@ -2063,40 +2603,89 @@ function populateFormWithDoc(doc) {
 async function convertToInvoice(docId) {
     const doc = allDocuments.find(d => d.id === docId);
     if (!doc) return;
-    showConfirm('🔄 Convertir en Facture', `Convertir le devis ${doc.number} en facture ?`, async () => {
-        showLoading('Conversion...');
-        try {
-            const result = await window.electronAPI.convertDocument({ sourceId: docId, targetType: 'facture', userId: currentUser.id, year: new Date().getFullYear() });
-            if (result.success) { showToast('Devis converti en facture', 'success'); await loadDocuments(); navigateTo('documents'); }
-        } catch { showToast('Erreur de conversion', 'error'); }
-        finally { hideLoading(); }
-    }, 'Convertir', 'btn-primary');
+    showConfirm(
+        '🔄 Convertir en Facture',
+        `Convertir le devis ${doc.number} en facture ?`,
+        async () => {
+            showLoading('Conversion...');
+            try {
+                const result = await window.electronAPI.convertDocument({
+                    sourceId: docId,
+                    targetType: 'facture',
+                    userId: currentUser.id,
+                    year: new Date().getFullYear()
+                });
+                if (result.success) {
+                    showToast('Devis converti en facture', 'success');
+                    await loadDocuments();
+                    navigateTo('documents');
+                }
+            } catch {
+                showToast('Erreur de conversion', 'error');
+            } finally {
+                hideLoading();
+            }
+        },
+        'Convertir',
+        'btn-primary'
+    );
 }
 
 async function convertToAvoir(docId) {
     const doc = allDocuments.find(d => d.id === docId);
     if (!doc) return;
-    showConfirm('Avoir', `Créer un avoir pour ${doc.number} ?`, async () => {
-        showLoading('Création de l\'avoir...');
-        try {
-            const result = await window.electronAPI.convertDocument({ sourceId: docId, targetType: 'avoir', userId: currentUser.id, year: new Date().getFullYear() });
-            if (result.success) { showToast('Avoir créé depuis ' + doc.number, 'success'); await loadDocuments(); navigateTo('documents'); }
-        } catch { showToast('Erreur de création', 'error'); }
-        finally { hideLoading(); }
-    }, 'Créer l\'avoir', 'btn-primary');
+    showConfirm(
+        'Avoir',
+        `Créer un avoir pour ${doc.number} ?`,
+        async () => {
+            showLoading("Création de l'avoir...");
+            try {
+                const result = await window.electronAPI.convertDocument({
+                    sourceId: docId,
+                    targetType: 'avoir',
+                    userId: currentUser.id,
+                    year: new Date().getFullYear()
+                });
+                if (result.success) {
+                    showToast('Avoir créé depuis ' + doc.number, 'success');
+                    await loadDocuments();
+                    navigateTo('documents');
+                }
+            } catch {
+                showToast('Erreur de création', 'error');
+            } finally {
+                hideLoading();
+            }
+        },
+        "Créer l'avoir",
+        'btn-primary'
+    );
 }
 
 async function duplicateDocument(docId) {
     const doc = allDocuments.find(d => d.id === docId);
     if (!doc) return;
-    showConfirm('Dupliquer', `Créer une copie de ${doc.number} ?`, async () => {
-        showLoading('Duplication...');
-        try {
-            const result = await window.electronAPI.duplicateDocument({ docId, userId: currentUser.id });
-            if (result.success) { showToast('Document dupliqué', 'success'); await loadDocuments(); navigateTo('documents'); }
-        } catch { showToast('Erreur de duplication', 'error'); }
-        finally { hideLoading(); }
-    }, 'Dupliquer', 'btn-primary');
+    showConfirm(
+        'Dupliquer',
+        `Créer une copie de ${doc.number} ?`,
+        async () => {
+            showLoading('Duplication...');
+            try {
+                const result = await window.electronAPI.duplicateDocument({ docId, userId: currentUser.id });
+                if (result.success) {
+                    showToast('Document dupliqué', 'success');
+                    await loadDocuments();
+                    navigateTo('documents');
+                }
+            } catch {
+                showToast('Erreur de duplication', 'error');
+            } finally {
+                hideLoading();
+            }
+        },
+        'Dupliquer',
+        'btn-primary'
+    );
 }
 
 async function confirmDeleteDoc(docId) {
@@ -2105,23 +2694,39 @@ async function confirmDeleteDoc(docId) {
         showLoading('Suppression...');
         try {
             const result = await window.electronAPI.deleteDocument(docId);
-            if (result.success) { showToast('Document supprimé', 'info'); await loadDocuments(); await loadDashboard(); }
-        } catch { showToast('Erreur lors de la suppression', 'error'); }
-        finally { hideLoading(); }
+            if (result.success) {
+                showToast('Document supprimé', 'info');
+                await loadDocuments();
+                await loadDashboard();
+            }
+        } catch {
+            showToast('Erreur lors de la suppression', 'error');
+        } finally {
+            hideLoading();
+        }
     });
 }
 
 async function exportAllToExcel() {
-    try { const result = await window.electronAPI.exportExcelDocuments({ documents: allDocuments }); if (result.success) showToast(`Excel exporté: ${result.path}`, 'success'); }
-    catch { showToast('Erreur export Excel', 'error'); }
+    try {
+        const result = await window.electronAPI.exportExcelDocuments({ documents: allDocuments });
+        if (result.success) showToast(`Excel exporté: ${result.path}`, 'success');
+    } catch {
+        showToast('Erreur export Excel', 'error');
+    }
 }
 
 async function exportDocumentsXLSX() {
     const headers = ['N°', 'Type', 'Client', 'Date', 'Total HT', 'TVA', 'Total TTC', 'Statut'];
     const data = allDocuments.map(d => ({
-        'N°': d.number, 'Type': d.type, 'Client': d.clientName, 'Date': d.date,
-        'Total HT': d.totalHT || 0, 'TVA': (d.totalTTC || 0) - (d.totalHT || 0),
-        'Total TTC': d.totalTTC || 0, 'Statut': d.paymentStatus || 'unpaid'
+        'N°': d.number,
+        Type: d.type,
+        Client: d.clientName,
+        Date: d.date,
+        'Total HT': d.totalHT || 0,
+        TVA: (d.totalTTC || 0) - (d.totalHT || 0),
+        'Total TTC': d.totalTTC || 0,
+        Statut: d.paymentStatus || 'unpaid'
     }));
     const result = await window.electronAPI.exportXLSX({ data, headers, filename: 'documents.xlsx' });
     if (result?.success) showToast('Excel exporté', 'success');
@@ -2129,15 +2734,15 @@ async function exportDocumentsXLSX() {
 
 async function sendWhatsApp(docId) {
     try {
-        const doc = allDocuments.find(d => d.id === docId) || await window.electronAPI.getDocument(docId);
+        const doc = allDocuments.find(d => d.id === docId) || (await window.electronAPI.getDocument(docId));
         if (!doc) return;
 
-        const phone = doc.clientPhone || "";
+        const phone = doc.clientPhone || '';
         const cleanPhone = phone.replace(/[^0-9]/g, '');
 
         // Prefix with +216 if it's 8 digits (Tunisian format)
         let finalPhone = cleanPhone;
-        if (cleanPhone.length === 8) finalPhone = "216" + cleanPhone;
+        if (cleanPhone.length === 8) finalPhone = '216' + cleanPhone;
 
         const typeLabel = getDocTypeLabel(doc.type);
         const message = `Bonjour,\n\nVoici votre ${typeLabel} N° ${doc.number} d'un montant de ${formatAmount(doc.totalTTC)} ${doc.currency}.\n\nCordialement,\n${doc.companyName}`;
@@ -2156,7 +2761,9 @@ async function loadClients() {
         allClients = await window.electronAPI.getClients(currentUser.id);
         renderClientsTable(allClients);
         updateClientStats(allClients);
-    } catch { showToast('Erreur chargement clients', 'error'); }
+    } catch {
+        showToast('Erreur chargement clients', 'error');
+    }
 }
 
 function updateClientStats(clients) {
@@ -2170,9 +2777,14 @@ function updateClientStats(clients) {
 
 function renderClientsTable(clients = allClients) {
     const container = document.getElementById('clientsTable');
-    if (!clients.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Aucun client</h3><p>Ajoutez votre premier client</p></div>`; return; }
+    if (!clients.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Aucun client</h3><p>Ajoutez votre premier client</p></div>`;
+        return;
+    }
     container.innerHTML = `<table><thead><tr><th style="width:32px">...</th><th>Nom</th><th>MF</th><th>Téléphone</th><th>Email</th><th style="text-align:right">Actions</th></tr></thead><tbody>
-        ${clients.map(c => `<tr>
+        ${clients
+            .map(
+                c => `<tr>
             <td><input type="checkbox" class="client-checkbox" data-client-id="${c.id}" onchange="updateSelectedClients()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td style="font-weight:600">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.mf) || '—'}</td>
@@ -2182,7 +2794,9 @@ function renderClientsTable(clients = allClients) {
                 <button class="btn-icon btn-view"   onclick="viewClientPreview('${c.id}')"   title="Aperçu">👁️</button>
                 <button class="btn-icon btn-edit"   onclick="openClientModal('${c.id}')"     title="Modifier">✏️</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteClient('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
-            </td></tr>`).join('')}
+            </td></tr>`
+            )
+            .join('')}
     </tbody></table>`;
 }
 
@@ -2208,17 +2822,18 @@ function viewClientPreview(clientId) {
 
 function filterClients() {
     const q = (document.getElementById('searchClients')?.value || '').toLowerCase();
-    const filtered = allClients.filter(c =>
-        (c.name || '').toLowerCase().includes(q) ||
-        (c.mf || '').toLowerCase().includes(q) ||
-        (c.email || '').toLowerCase().includes(q) ||
-        (c.phone || '').toLowerCase().includes(q)
+    const filtered = allClients.filter(
+        c =>
+            (c.name || '').toLowerCase().includes(q) ||
+            (c.mf || '').toLowerCase().includes(q) ||
+            (c.email || '').toLowerCase().includes(q) ||
+            (c.phone || '').toLowerCase().includes(q)
     );
     renderClientsTable(filtered);
 }
 
 function toggleSelectAllClients(el) {
-    document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = el.checked);
+    document.querySelectorAll('.client-checkbox').forEach(cb => (cb.checked = el.checked));
     updateSelectedClients();
 }
 function updateSelectedClients() {
@@ -2231,27 +2846,44 @@ function updateSelectedClients() {
 async function deleteSelectedClients() {
     const ids = [...document.querySelectorAll('.client-checkbox:checked')].map(cb => cb.dataset.clientId);
     if (!ids.length) return;
-    showConfirm('Supprimer', `Supprimer ${ids.length} client(s) ? Les documents et paiements associés seront également supprimés.`, async () => {
-        let done = 0;
-        for (const id of ids) {
-            try { await window.electronAPI.deleteClient(id); done++; } catch {}
+    showConfirm(
+        'Supprimer',
+        `Supprimer ${ids.length} client(s) ? Les documents et paiements associés seront également supprimés.`,
+        async () => {
+            let done = 0;
+            for (const id of ids) {
+                try {
+                    await window.electronAPI.deleteClient(id);
+                    done++;
+                } catch {}
+            }
+            await loadClients();
+            showToast(`${done} client(s) supprimé(s)`, 'success');
         }
-        await loadClients();
-        showToast(`${done} client(s) supprimé(s)`, 'success');
-    });
+    );
 }
 
 function confirmDeleteClient(clientId) {
     const client = allClients.find(c => c.id === clientId);
     showConfirm('Supprimer', `Supprimer "${client?.name}" ?`, async () => {
-        try { await window.electronAPI.deleteClient(clientId); showToast('Client supprimé', 'info'); await loadClients(); await loadClientsDropdown(); }
-        catch { showToast('Erreur suppression', 'error'); }
+        try {
+            await window.electronAPI.deleteClient(clientId);
+            showToast('Client supprimé', 'info');
+            await loadClients();
+            await loadClientsDropdown();
+        } catch {
+            showToast('Erreur suppression', 'error');
+        }
     });
 }
 
 async function exportClientsToExcel() {
-    try { const result = await window.electronAPI.exportExcelClients({ clients: allClients }); if (result.success) showToast(`Excel exporté: ${result.path}`, 'success'); }
-    catch { showToast('Erreur export Excel', 'error'); }
+    try {
+        const result = await window.electronAPI.exportExcelClients({ clients: allClients });
+        if (result.success) showToast(`Excel exporté: ${result.path}`, 'success');
+    } catch {
+        showToast('Erreur export Excel', 'error');
+    }
 }
 
 // ==================== CLIENT IMPORT ====================
@@ -2274,56 +2906,98 @@ async function previewClientImport(input) {
     try {
         const result = await window.electronAPI.importXLSX({ filePath: file.path });
         hideLoading();
-        if (!result.success || !result.data?.length) { showToast('Fichier vide ou invalide', 'error'); return; }
+        if (!result.success || !result.data?.length) {
+            showToast('Fichier vide ou invalide', 'error');
+            return;
+        }
         _clientImportData = result.data;
         // Preview
         const headers = Object.keys(result.data[0]);
-        let html = '<table class="data-table"><thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
+        let html =
+            '<table class="data-table"><thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
         result.data.slice(0, 5).forEach(row => {
-            html += '<tr>' + headers.map(h => `<td>${escapeHtml(String(row[h]||''))}</td>`).join('') + '</tr>';
+            html += '<tr>' + headers.map(h => `<td>${escapeHtml(String(row[h] || ''))}</td>`).join('') + '</tr>';
         });
-        if (result.data.length > 5) html += `<tr><td colspan="${headers.length}" style="text-align:center;color:#9ca3af;font-style:italic">...et ${result.data.length - 5} ligne(s)</td></tr>`;
+        if (result.data.length > 5)
+            html += `<tr><td colspan="${headers.length}" style="text-align:center;color:#9ca3af;font-style:italic">...et ${result.data.length - 5} ligne(s)</td></tr>`;
         html += '</tbody></table>';
         document.getElementById('clientImportPreview').innerHTML = html;
         // Mapping
         const mappingArea = document.getElementById('clientImportMapping');
         mappingArea.style.display = 'block';
-        ['mapName','mapMF','mapAddress','mapPhone','mapEmail'].forEach(id => {
+        ['mapName', 'mapMF', 'mapAddress', 'mapPhone', 'mapEmail'].forEach(id => {
             const sel = document.getElementById(id);
-            sel.innerHTML = '<option value="">— Ignorer —</option>' + headers.map(h => `<option value="${h}" ${/nom|name/i.test(h) && id==='mapName' ? 'selected' : /mf|matricule|patente/i.test(h) && id==='mapMF' ? 'selected' : /adresse|address|addr/i.test(h) && id==='mapAddress' ? 'selected' : /t[eé]l|phone|mobile/i.test(h) && id==='mapPhone' ? 'selected' : /email|e-mail|mail/i.test(h) && id==='mapEmail' ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('');
+            sel.innerHTML =
+                '<option value="">— Ignorer —</option>' +
+                headers
+                    .map(
+                        h =>
+                            `<option value="${h}" ${/nom|name/i.test(h) && id === 'mapName' ? 'selected' : /mf|matricule|patente/i.test(h) && id === 'mapMF' ? 'selected' : /adresse|address|addr/i.test(h) && id === 'mapAddress' ? 'selected' : /t[eé]l|phone|mobile/i.test(h) && id === 'mapPhone' ? 'selected' : /email|e-mail|mail/i.test(h) && id === 'mapEmail' ? 'selected' : ''}>${escapeHtml(h)}</option>`
+                    )
+                    .join('');
         });
         document.getElementById('confirmClientImportBtn').disabled = false;
-        document.getElementById('clientImportResult').innerHTML = `<span style="color:var(--success)">✓ ${result.data.length} ligne(s) détectée(s)</span>`;
-    } catch (e) { hideLoading(); showToast('Erreur: ' + e.message, 'error'); }
+        document.getElementById('clientImportResult').innerHTML =
+            `<span style="color:var(--success)">✓ ${result.data.length} ligne(s) détectée(s)</span>`;
+    } catch (e) {
+        hideLoading();
+        showToast('Erreur: ' + e.message, 'error');
+    }
 }
 
 async function confirmClientImport() {
     if (!_clientImportData.length) return;
-    const getName = (row) => row[document.getElementById('mapName').value] || '';
-    const getMF = (row) => row[document.getElementById('mapMF').value] || '';
-    const getAddr = (row) => row[document.getElementById('mapAddress').value] || '';
-    const getPhone = (row) => row[document.getElementById('mapPhone').value] || '';
-    const getEmail = (row) => row[document.getElementById('mapEmail').value] || '';
+    const getName = row => row[document.getElementById('mapName').value] || '';
+    const getMF = row => row[document.getElementById('mapMF').value] || '';
+    const getAddr = row => row[document.getElementById('mapAddress').value] || '';
+    const getPhone = row => row[document.getElementById('mapPhone').value] || '';
+    const getEmail = row => row[document.getElementById('mapEmail').value] || '';
     const btn = document.getElementById('confirmClientImportBtn');
-    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Importation...'; if (window.lucide) lucide.createIcons();
-    let success = 0, errors = 0;
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Importation...';
+    if (window.lucide) lucide.createIcons();
+    let success = 0,
+        errors = 0;
     for (const row of _clientImportData) {
         const name = getName(row);
-        if (!name) { errors++; continue; }
+        if (!name) {
+            errors++;
+            continue;
+        }
         try {
-            await window.electronAPI.saveClient({ userId: currentUser.id, name, mf: getMF(row), address: getAddr(row), phone: getPhone(row), email: getEmail(row) });
+            await window.electronAPI.saveClient({
+                userId: currentUser.id,
+                name,
+                mf: getMF(row),
+                address: getAddr(row),
+                phone: getPhone(row),
+                email: getEmail(row)
+            });
             success++;
-        } catch { errors++; }
+        } catch {
+            errors++;
+        }
     }
-    document.getElementById('clientImportResult').innerHTML = `<div style="padding:12px;border-radius:8px;font-weight:600;text-align:center;background:${errors?'#fef2f2':'#f0fdf4'};color:${errors?'#b91c1c':'#166534'}">${success} importé(s)${errors?`, ${errors} erreur(s)`:''}</div>`;
+    document.getElementById('clientImportResult').innerHTML =
+        `<div style="padding:12px;border-radius:8px;font-weight:600;text-align:center;background:${errors ? '#fef2f2' : '#f0fdf4'};color:${errors ? '#b91c1c' : '#166534'}">${success} importé(s)${errors ? `, ${errors} erreur(s)` : ''}</div>`;
     btn.innerHTML = '<i data-lucide="check"></i> Terminé';
     await loadClients();
     setTimeout(() => closeModal('clientImportModal'), 2000);
 }
 
 async function exportClientsXLSX() {
-    const data = allClients.map(c => ({ 'Nom': c.name, 'MF': c.mf || '', 'Adresse': c.address || '', 'Téléphone': c.phone || '', 'Email': c.email || '' }));
-    const result = await window.electronAPI.exportXLSX({ data, headers: ['Nom','MF','Adresse','Téléphone','Email'], filename: 'clients.xlsx' });
+    const data = allClients.map(c => ({
+        Nom: c.name,
+        MF: c.mf || '',
+        Adresse: c.address || '',
+        Téléphone: c.phone || '',
+        Email: c.email || ''
+    }));
+    const result = await window.electronAPI.exportXLSX({
+        data,
+        headers: ['Nom', 'MF', 'Adresse', 'Téléphone', 'Email'],
+        filename: 'clients.xlsx'
+    });
     if (result?.success) showToast('Excel exporté', 'success');
 }
 
@@ -2332,23 +3006,51 @@ let currentCompanySettings = null;
 
 async function loadCompanyPage() {
     try {
-        const c = await window.electronAPI.getCompany(currentUser.id) || {};
-        const fields = { companyName: c.name || currentUser.company || '', companyMF: c.mf || currentUser.mf || '', companyAddress: c.address || '', companyPhone: c.phone || '', companyEmail: c.email || '', companyRC: c.rc || '', companyWebsite: c.website || '', companyBank: c.bank || '', companyRIB: c.rib || '' };
-        Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val; });
+        const c = (await window.electronAPI.getCompany(currentUser.id)) || {};
+        const fields = {
+            companyName: c.name || currentUser.company || '',
+            companyMF: c.mf || currentUser.mf || '',
+            companyAddress: c.address || '',
+            companyPhone: c.phone || '',
+            companyEmail: c.email || '',
+            companyRC: c.rc || '',
+            companyWebsite: c.website || '',
+            companyBank: c.bank || '',
+            companyRIB: c.rib || ''
+        };
+        Object.entries(fields).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        });
         document.getElementById('companyProfileName').textContent = c.name || currentUser.company || 'Votre Entreprise';
-        document.getElementById('companyProfileMF').textContent = (c.mf || currentUser.mf) ? `Matricule Fiscal: ${c.mf || currentUser.mf}` : 'Matricule Fiscal: —';
+        document.getElementById('companyProfileMF').textContent =
+            c.mf || currentUser.mf ? `Matricule Fiscal: ${c.mf || currentUser.mf}` : 'Matricule Fiscal: —';
 
         // Display Toggles
-        const setToggle = (id, val) => { const el = document.getElementById(id); if (el) el.checked = (val !== 0); };
+        const setToggle = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = val !== 0;
+        };
         setToggle('compShowLogo', c.show_logo);
         setToggle('compShowStamp', c.show_stamp);
         setToggle('compShowSignature', c.show_signature);
         setToggle('compShowQR', c.show_qr);
         setToggle('compShowAccent', c.show_accent);
         const loadImg = (data, prevId, phId, boxId) => {
-            const pv = document.getElementById(prevId), ph = document.getElementById(phId), bx = document.getElementById(boxId);
-            if (data && pv) { pv.src = data; pv.classList.remove('hidden'); if (ph) ph.classList.add('hidden'); if (bx) bx.classList.add('has-image'); }
-            else if (pv) { pv.src = ''; pv.classList.add('hidden'); if (ph) ph.classList.remove('hidden'); if (bx) bx.classList.remove('has-image'); }
+            const pv = document.getElementById(prevId),
+                ph = document.getElementById(phId),
+                bx = document.getElementById(boxId);
+            if (data && pv) {
+                pv.src = data;
+                pv.classList.remove('hidden');
+                if (ph) ph.classList.add('hidden');
+                if (bx) bx.classList.add('has-image');
+            } else if (pv) {
+                pv.src = '';
+                pv.classList.add('hidden');
+                if (ph) ph.classList.remove('hidden');
+                if (bx) bx.classList.remove('has-image');
+            }
         };
         loadImg(c.logo_image, 'companyLogoPreview', 'companyLogoPlaceholder', 'companyLogoBox');
         loadImg(c.stamp_image, 'companyStampPreview', 'companyStampPlaceholder', 'companyStampBox');
@@ -2357,21 +3059,41 @@ async function loadCompanyPage() {
         if (c.stamp_image) stampImage = c.stamp_image;
         if (c.signature_image) signatureImage = c.signature_image;
         currentCompanySettings = c;
-    } catch (e) { console.error('Error loading company:', e); }
+    } catch (e) {
+        console.error('Error loading company:', e);
+    }
 }
 
 async function saveCompanySettings() {
     const get = id => document.getElementById(id).value.trim();
-    const isChecked = id => document.getElementById(id).checked ? 1 : 0;
+    const isChecked = id => (document.getElementById(id).checked ? 1 : 0);
     const settings = {
-        userId: currentUser.id, name: get('companyName'), mf: get('companyMF'), address: get('companyAddress'),
-        phone: get('companyPhone'), email: get('companyEmail'), rc: get('companyRC'), website: get('companyWebsite'),
-        bank: get('companyBank'), rib: get('companyRIB'), logoImage, stampImage, signatureImage,
-        show_logo: isChecked('compShowLogo'), show_stamp: isChecked('compShowStamp'),
-        show_signature: isChecked('compShowSignature'), show_qr: isChecked('compShowQR'), show_accent: isChecked('compShowAccent')
+        userId: currentUser.id,
+        name: get('companyName'),
+        mf: get('companyMF'),
+        address: get('companyAddress'),
+        phone: get('companyPhone'),
+        email: get('companyEmail'),
+        rc: get('companyRC'),
+        website: get('companyWebsite'),
+        bank: get('companyBank'),
+        rib: get('companyRIB'),
+        logoImage,
+        stampImage,
+        signatureImage,
+        show_logo: isChecked('compShowLogo'),
+        show_stamp: isChecked('compShowStamp'),
+        show_signature: isChecked('compShowSignature'),
+        show_qr: isChecked('compShowQR'),
+        show_accent: isChecked('compShowAccent')
     };
-    try { await window.electronAPI.saveCompany(settings); showToast('Informations entreprise enregistrées', 'success'); await loadCompanyPage(); }
-    catch { showToast("Erreur d'enregistrement", 'error'); }
+    try {
+        await window.electronAPI.saveCompany(settings);
+        showToast('Informations entreprise enregistrées', 'success');
+        await loadCompanyPage();
+    } catch {
+        showToast("Erreur d'enregistrement", 'error');
+    }
 }
 
 // ==================== BACKUP ====================
@@ -2383,7 +3105,7 @@ async function loadSettings() {
         document.getElementById('backupTime').value = settings.time || '02:00';
         document.getElementById('backupKeep').value = settings.keepCount || 10;
         await loadBackupList();
-    } catch { }
+    } catch {}
     if (typeof loadPdfOutputFolder === 'function') loadPdfOutputFolder();
     const autoBackup = localStorage.getItem('tuni_autobackup') === 'true';
     const cb = document.getElementById('autoBackupOnSave');
@@ -2398,16 +3120,23 @@ async function loadBackupList() {
     try {
         const backups = await window.electronAPI.getBackupList();
         const container = document.getElementById('backupList');
-        if (!backups?.length) { container.innerHTML = '<p style="color:#6b7280;font-size:0.9rem">Aucune sauvegarde disponible</p>'; return; }
-        container.innerHTML = backups.map(b => `
+        if (!backups?.length) {
+            container.innerHTML = '<p style="color:#6b7280;font-size:0.9rem">Aucune sauvegarde disponible</p>';
+            return;
+        }
+        container.innerHTML = backups
+            .map(
+                b => `
             <div class="backup-item">
                 <div class="backup-item-info">
                     <div class="backup-date">${new Date(b.created).toLocaleString('fr-FR')}</div>
                     <div class="backup-size">${(b.size / 1024 / 1024).toFixed(3)} MB</div>
                 </div>
                 <button class="btn btn-small btn-secondary" onclick="restoreBackup('${b.path}')">Restaurer</button>
-            </div>`).join('');
-    } catch { }
+            </div>`
+            )
+            .join('');
+    } catch {}
 }
 
 function switchSettingsTab(sectionId, btn) {
@@ -2429,33 +3158,64 @@ function restoreSettingsTab() {
 }
 
 async function saveBackupSettings() {
-    const settings = { enabled: document.getElementById('backupEnabled').checked, frequency: document.getElementById('backupFrequency').value, time: document.getElementById('backupTime').value, keepCount: parseInt(document.getElementById('backupKeep').value) || 10 };
-    try { await window.electronAPI.saveBackupSettings(settings); showToast('Paramètres de sauvegarde enregistrés', 'success'); }
-    catch { showToast("Erreur d'enregistrement", 'error'); }
+    const settings = {
+        enabled: document.getElementById('backupEnabled').checked,
+        frequency: document.getElementById('backupFrequency').value,
+        time: document.getElementById('backupTime').value,
+        keepCount: parseInt(document.getElementById('backupKeep').value) || 10
+    };
+    try {
+        await window.electronAPI.saveBackupSettings(settings);
+        showToast('Paramètres de sauvegarde enregistrés', 'success');
+    } catch {
+        showToast("Erreur d'enregistrement", 'error');
+    }
 }
 
 async function createManualBackup() {
     showLoading('Création de la sauvegarde...');
-    try { const result = await window.electronAPI.createManualBackup(); if (result.success) { showToast('Sauvegarde créée', 'success'); await loadBackupList(); } }
-    catch { showToast('Erreur de sauvegarde', 'error'); }
-    finally { hideLoading(); }
+    try {
+        const result = await window.electronAPI.createManualBackup();
+        if (result.success) {
+            showToast('Sauvegarde créée', 'success');
+            await loadBackupList();
+        }
+    } catch {
+        showToast('Erreur de sauvegarde', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 async function restoreBackup(backupPath) {
-    showConfirm('📤 Restaurer', 'Cela remplacera toutes les données actuelles. Continuer ?', async () => {
-        showLoading('Restauration...');
-        try { const result = await window.electronAPI.restoreBackup(backupPath); if (result.success) { showToast('Restauration terminée. Redémarrage...', 'success'); setTimeout(() => location.reload(), 2000); } }
-        catch { showToast('Erreur de restauration', 'error'); }
-        finally { hideLoading(); }
-    }, 'Restaurer', 'btn-warning');
+    showConfirm(
+        '📤 Restaurer',
+        'Cela remplacera toutes les données actuelles. Continuer ?',
+        async () => {
+            showLoading('Restauration...');
+            try {
+                const result = await window.electronAPI.restoreBackup(backupPath);
+                if (result.success) {
+                    showToast('Restauration terminée. Redémarrage...', 'success');
+                    setTimeout(() => location.reload(), 2000);
+                }
+            } catch {
+                showToast('Erreur de restauration', 'error');
+            } finally {
+                hideLoading();
+            }
+        },
+        'Restaurer',
+        'btn-warning'
+    );
 }
 
 // ==================== SMTP / EMAIL TEMPLATES ====================
 const SMTP_PROVIDERS = {
-    gmail:     { host: 'smtp.gmail.com',       port: 587, secure: false },
-    outlook:   { host: 'smtp-mail.outlook.com', port: 587, secure: false },
-    yahoo:     { host: 'smtp.mail.yahoo.com',   port: 465, secure: true  },
-    laposte:   { host: 'smtp.tunet.tn',         port: 587, secure: false },
+    gmail: { host: 'smtp.gmail.com', port: 587, secure: false },
+    outlook: { host: 'smtp-mail.outlook.com', port: 587, secure: false },
+    yahoo: { host: 'smtp.mail.yahoo.com', port: 465, secure: true },
+    laposte: { host: 'smtp.tunet.tn', port: 587, secure: false }
 };
 function applySmtpProvider() {
     const sel = document.getElementById('smtpProvider');
@@ -2470,19 +3230,24 @@ async function loadSmtpConfig() {
     try {
         const settings = await window.electronAPI.getSettings(currentUser.id);
         if (settings) {
-            const h = document.getElementById('smtpHost'); if (h && settings.smtp_host) h.value = settings.smtp_host;
-            const p = document.getElementById('smtpPort'); if (p && settings.smtp_port) p.value = settings.smtp_port;
-            const u = document.getElementById('smtpUser'); if (u && settings.smtp_user) u.value = settings.smtp_user;
-            const pw = document.getElementById('smtpPass'); if (pw && settings.smtp_pass) pw.value = settings.smtp_pass;
-            const s = document.getElementById('smtpSecure'); if (s) s.checked = settings.smtp_secure === 1;
+            const h = document.getElementById('smtpHost');
+            if (h && settings.smtp_host) h.value = settings.smtp_host;
+            const p = document.getElementById('smtpPort');
+            if (p && settings.smtp_port) p.value = settings.smtp_port;
+            const u = document.getElementById('smtpUser');
+            if (u && settings.smtp_user) u.value = settings.smtp_user;
+            const pw = document.getElementById('smtpPass');
+            if (pw && settings.smtp_pass) pw.value = settings.smtp_pass;
+            const s = document.getElementById('smtpSecure');
+            if (s) s.checked = settings.smtp_secure === 1;
             const subj = document.getElementById('emailDefaultSubject');
             if (subj && settings.email_default_subject) subj.value = settings.email_default_subject;
             const body = document.getElementById('emailDefaultBody');
             if (body && settings.email_default_body) body.value = settings.email_default_body;
             const sel = document.getElementById('smtpProvider');
             if (sel && settings.smtp_host) {
-                const match = Object.entries(SMTP_PROVIDERS).find(([,v]) =>
-                    v.host === settings.smtp_host && v.port === settings.smtp_port
+                const match = Object.entries(SMTP_PROVIDERS).find(
+                    ([, v]) => v.host === settings.smtp_host && v.port === settings.smtp_port
                 );
                 if (match) sel.value = match[0];
             }
@@ -2499,15 +3264,20 @@ async function saveSmtpConfig() {
         smtp_secure: document.getElementById('smtpSecure').checked ? 1 : 0
     };
     if (!settings.smtp_host || !settings.smtp_user || !settings.smtp_pass) {
-        showToast('Veuillez remplir tous les champs obligatoires', 'warning'); return;
+        showToast('Veuillez remplir tous les champs obligatoires', 'warning');
+        return;
     }
     showLoading('Enregistrement...');
     try {
         const result = await window.electronAPI.updateSettings({ userId: currentUser.id, settings });
-        if (result.success) { showToast('Configuration SMTP enregistrée', 'success'); }
-        else showToast('Erreur: ' + result.error, 'error');
-    } catch { showToast('Erreur de communication', 'error'); }
-    finally { hideLoading(); }
+        if (result.success) {
+            showToast('Configuration SMTP enregistrée', 'success');
+        } else showToast('Erreur: ' + result.error, 'error');
+    } catch {
+        showToast('Erreur de communication', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 async function testSmtpConfig() {
     const host = document.getElementById('smtpHost').value.trim();
@@ -2515,20 +3285,35 @@ async function testSmtpConfig() {
     const user = document.getElementById('smtpUser').value.trim();
     const pass = document.getElementById('smtpPass').value;
     const secure = document.getElementById('smtpSecure').checked;
-    if (!host || !user || !pass) { showToast('Remplissez d\'abord les champs SMTP', 'warning'); return; }
+    if (!host || !user || !pass) {
+        showToast("Remplissez d'abord les champs SMTP", 'warning');
+        return;
+    }
     showLoading('Test de connexion...');
     try {
         const result = await window.electronAPI.testSmtpConnection({ host, port, user, pass, secure });
         if (result.success) showToast('Connexion SMTP réussie ✓', 'success');
         else showToast('Échec: ' + (result.error || 'Connexion refusée'), 'error');
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 function getDefaultEmailSubject(doc) {
     return 'Votre document ' + (doc?.number || '');
 }
 function getDefaultEmailBody(doc, currency) {
-    return 'Bonjour,\n\nVeuillez trouver ci-joint le document ' + (doc?.number || '') + ' d\'un montant de ' + (doc?.totalTTC || '0') + ' ' + (currency || 'TND') + '.\n\nCordialement,\n' + (doc?.companyName || '');
+    return (
+        'Bonjour,\n\nVeuillez trouver ci-joint le document ' +
+        (doc?.number || '') +
+        " d'un montant de " +
+        (doc?.totalTTC || '0') +
+        ' ' +
+        (currency || 'TND') +
+        '.\n\nCordialement,\n' +
+        (doc?.companyName || '')
+    );
 }
 function applyEmailTemplateVars(text, doc, currency) {
     if (!text) return text;
@@ -2549,9 +3334,11 @@ async function saveEmailTemplates() {
     };
     try {
         const result = await window.electronAPI.updateSettings({ userId: currentUser.id, settings });
-        if (result.success) showToast('Modèles d\'email enregistrés', 'success');
+        if (result.success) showToast("Modèles d'email enregistrés", 'success');
         else showToast('Erreur: ' + result.error, 'error');
-    } catch { showToast('Erreur de communication', 'error'); }
+    } catch {
+        showToast('Erreur de communication', 'error');
+    }
 }
 
 // ==================== EXCHANGE RATES ====================
@@ -2564,8 +3351,12 @@ async function loadExchangeRates() {
             const display = document.getElementById('rate' + cur + 'Display');
             if (!el || !display) return;
             const saved = rates.find(r => r.currency === cur);
-            if (saved) { el.value = saved.rate; display.textContent = saved.rate; }
-            else { display.textContent = el.value; }
+            if (saved) {
+                el.value = saved.rate;
+                display.textContent = saved.rate;
+            } else {
+                display.textContent = el.value;
+            }
         });
     } catch {}
 }
@@ -2583,13 +3374,19 @@ async function saveExchangeRates() {
             }
         }
         showToast('Taux de change enregistrés', 'success');
-    } catch { showToast('Erreur', 'error'); }
-    finally { hideLoading(); }
+    } catch {
+        showToast('Erreur', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 async function addExchangeRate() {
     const cur = document.getElementById('newRateCurrency').value.trim().toUpperCase();
     const rate = parseFloat(document.getElementById('newRateValue').value);
-    if (!cur || !rate || rate <= 0) { showToast('Entrez un code devise et un taux valide', 'warning'); return; }
+    if (!cur || !rate || rate <= 0) {
+        showToast('Entrez un code devise et un taux valide', 'warning');
+        return;
+    }
     if (!currentUser) return;
     try {
         await window.electronAPI.saveExchangeRate({ userId: currentUser.id, currency: cur, rate });
@@ -2597,7 +3394,9 @@ async function addExchangeRate() {
         document.getElementById('newRateCurrency').value = '';
         document.getElementById('newRateValue').value = '';
         await loadExchangeRates();
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 async function deleteExchangeRate(currency) {
     if (!currentUser) return;
@@ -2606,13 +3405,15 @@ async function deleteExchangeRate(currency) {
             await window.electronAPI.deleteExchangeRate({ userId: currentUser.id, currency });
             showToast('Taux supprimé', 'success');
             await loadExchangeRates();
-        } catch { showToast('Erreur', 'error'); }
+        } catch {
+            showToast('Erreur', 'error');
+        }
     });
 }
 
 // Hook: load settings when settings page is opened
 const _origLoadSettings = loadSettings;
-loadSettings = async function() {
+loadSettings = async function () {
     if (_origLoadSettings) await _origLoadSettings.apply(this, arguments);
     await loadSmtpConfig();
     await loadExchangeRates();
@@ -2625,16 +3426,25 @@ loadSettings = async function() {
 
 // ==================== THEME SETTINGS (legacy per-type colours) ====================
 let currentTheme = {
-    fontFamily: "'Segoe UI', sans-serif", fontSize: "14px",
-    titles: { facture: { text: "FACTURE", color: "#1e3a8a" }, devis: { text: "DEVIS", color: "#92400e" }, bon: { text: "BON DE COMMANDE", color: "#065f46" } }
+    fontFamily: "'Segoe UI', sans-serif",
+    fontSize: '14px',
+    titles: {
+        facture: { text: 'FACTURE', color: '#1e3a8a' },
+        devis: { text: 'DEVIS', color: '#92400e' },
+        bon: { text: 'BON DE COMMANDE', color: '#065f46' }
+    }
 };
 
 async function loadThemeSettings() {
     if (!currentUser) return;
     try {
         const settings = await window.electronAPI.getThemeSettings(currentUser.id);
-        if (settings) { currentTheme = { ...currentTheme, ...settings }; applyThemeToUI(); updateThemePreview(); }
-    } catch { }
+        if (settings) {
+            currentTheme = { ...currentTheme, ...settings };
+            applyThemeToUI();
+            updateThemePreview();
+        }
+    } catch {}
 }
 
 function applyThemeToUI() {
@@ -2656,7 +3466,8 @@ function updateThemePreview() {
         const id = n === 'Bon' ? 'colorBon' : `color${n}`;
         document.getElementById(id + 'Hex').textContent = document.getElementById(id).value;
     });
-    const font = document.getElementById('docFontFamily').value, size = document.getElementById('docFontSize').value;
+    const font = document.getElementById('docFontFamily').value,
+        size = document.getElementById('docFontSize').value;
     document.getElementById('themePreview').innerHTML = `
         <div style="font-family:${font};font-size:${size}">
             <div style="background:${document.getElementById('colorFacture').value};color:white;padding:10px 20px;border-radius:8px;display:inline-block;margin:5px;font-weight:bold">${document.getElementById('titleFacture').value}</div>
@@ -2676,15 +3487,24 @@ async function saveThemeSettings() {
             bon: { text: document.getElementById('titleBon').value, color: document.getElementById('colorBon').value }
         }
     };
-    try { await window.electronAPI.saveThemeSettings({ userId: currentUser.id, theme: themeData }); currentTheme = themeData; showToast('Thème enregistré', 'success'); }
-    catch { showToast('Erreur', 'error'); }
+    try {
+        await window.electronAPI.saveThemeSettings({ userId: currentUser.id, theme: themeData });
+        currentTheme = themeData;
+        showToast('Thème enregistré', 'success');
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 
 function resetThemeDefaults() {
-    document.getElementById('docFontFamily').value = '\'Segoe UI\', sans-serif'; document.getElementById('docFontSize').value = '14px';
-    document.getElementById('titleFacture').value = 'FACTURE'; document.getElementById('colorFacture').value = '#1e3a8a';
-    document.getElementById('titleDevis').value = 'DEVIS'; document.getElementById('colorDevis').value = '#92400e';
-    document.getElementById('titleBon').value = 'BON DE COMMANDE'; document.getElementById('colorBon').value = '#065f46';
+    document.getElementById('docFontFamily').value = "'Segoe UI', sans-serif";
+    document.getElementById('docFontSize').value = '14px';
+    document.getElementById('titleFacture').value = 'FACTURE';
+    document.getElementById('colorFacture').value = '#1e3a8a';
+    document.getElementById('titleDevis').value = 'DEVIS';
+    document.getElementById('colorDevis').value = '#92400e';
+    document.getElementById('titleBon').value = 'BON DE COMMANDE';
+    document.getElementById('colorBon').value = '#065f46';
     updateThemePreview();
 }
 
@@ -2696,7 +3516,10 @@ function loadDocumentThemeSettings() {
         btn.classList.toggle('active', btn.dataset.theme === t.id);
     });
     // Fill customizer fields
-    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+    };
     setVal('themeColorPrimary', t.colors.primary);
     setVal('themeColorSecondary', t.colors.secondary);
     setVal('themeColorBg', t.colors.bg);
@@ -2708,7 +3531,10 @@ function loadDocumentThemeSettings() {
     setVal('themeHeaderStyle', t.headerStyle);
     setVal('themeTableStyle', t.tableStyle);
     setVal('themeFooterLayout', t.footerLayout);
-    const setChk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+    const setChk = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = val;
+    };
     setChk('themeShowLogo', t.showLogo);
     setChk('themeShowStamp', t.showStamp);
     setChk('themeShowSignature', t.showSignature);
@@ -2777,10 +3603,18 @@ function getDocTypeLabel(type) {
 }
 
 async function saveDocumentTheme() {
-    const getVal = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-    const getChk = id => { const el = document.getElementById(id); return el ? el.checked : false; };
+    const getVal = id => {
+        const el = document.getElementById(id);
+        return el ? el.value : '';
+    };
+    const getChk = id => {
+        const el = document.getElementById(id);
+        return el ? el.checked : false;
+    };
     const theme = {
-        id: 'custom', label: 'Personnalisé', icon: '🎨',
+        id: 'custom',
+        label: 'Personnalisé',
+        icon: '🎨',
         colors: {
             primary: getVal('themeColorPrimary'),
             secondary: getVal('themeColorSecondary'),
@@ -2788,7 +3622,8 @@ async function saveDocumentTheme() {
             bg: getVal('themeColorBg'),
             surface: getVal('themeColorSurface'),
             border: getVal('themeColorBorder'),
-            text: '#1e293b', textLight: '#64748b'
+            text: '#1e293b',
+            textLight: '#64748b'
         },
         fonts: { header: getVal('themeHeaderFont'), body: getVal('themeBodyFont'), size: getVal('themeFontSize') },
         headerStyle: getVal('themeHeaderStyle'),
@@ -2805,7 +3640,9 @@ async function saveDocumentTheme() {
         await window.electronAPI.saveDocumentTheme({ userId: currentUser.id, theme });
         currentDocumentTheme = theme;
         showToast('Thème de document enregistré', 'success');
-    } catch { showToast('Erreur sauvegarde thème', 'error'); }
+    } catch {
+        showToast('Erreur sauvegarde thème', 'error');
+    }
 }
 
 // ==================== CONTRACTS ====================
@@ -2824,15 +3661,24 @@ const CONTRACT_TYPES = {
 
 async function loadContracts() {
     if (!currentUser) return;
-    try { allContracts = await window.electronAPI.getContracts(currentUser.id); renderContractsTable(allContracts); }
-    catch { showToast('Erreur chargement contrats', 'error'); }
+    try {
+        allContracts = await window.electronAPI.getContracts(currentUser.id);
+        renderContractsTable(allContracts);
+    } catch {
+        showToast('Erreur chargement contrats', 'error');
+    }
 }
 
 function renderContractsTable(contracts) {
     const container = document.getElementById('contractsTable');
-    if (!contracts?.length) { container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📃</div><h3>Aucun contrat</h3><p>Créez votre premier contrat en choisissant un type ci-dessus</p></div>`; return; }
+    if (!contracts?.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📃</div><h3>Aucun contrat</h3><p>Créez votre premier contrat en choisissant un type ci-dessus</p></div>`;
+        return;
+    }
     container.innerHTML = `<table><thead><tr><th>Type</th><th>Numéro</th><th>Salarié / Prestataire</th><th>Employeur</th><th>Date début</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
-        ${contracts.map(c => `<tr>
+        ${contracts
+            .map(
+                c => `<tr>
             <td><span class="badge badge-contract">${CONTRACT_TYPES[c.type]?.label || c.type}</span></td>
             <td style="font-family:monospace;font-size:0.82rem">${c.number}</td>
             <td style="font-weight:600">${escapeHtml(c.employeeName) || '—'}</td>
@@ -2844,51 +3690,107 @@ function renderContractsTable(contracts) {
                 <button class="btn-icon btn-edit"   onclick="editContract('${c.id}')"         title="Modifier">✏️</button>
                 <button class="btn-icon btn-pdf"    onclick="downloadContractPDF('${c.id}')"  title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteContract('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
-            </td></tr>`).join('')}
+            </td></tr>`
+            )
+            .join('')}
     </tbody></table>`;
 }
 
 function openNewContractModal(type) {
     editingContractId = null;
     document.getElementById('contractType').value = type;
-    document.getElementById('contractModalTitle').innerHTML = `<i data-lucide="${CONTRACT_TYPES[type]?.icon || 'file-text'}" class="lucide-sm"></i> ${CONTRACT_TYPES[type]?.label || type}`;
-    window.electronAPI.getCompany(currentUser.id).then(c => {
-        if (c) { document.getElementById('cEmployerName').value = c.name || ''; document.getElementById('cEmployerMF').value = c.mf || ''; document.getElementById('cEmployerAddress').value = c.address || ''; }
-    }).catch(() => { });
+    document.getElementById('contractModalTitle').innerHTML =
+        `<i data-lucide="${CONTRACT_TYPES[type]?.icon || 'file-text'}" class="lucide-sm"></i> ${CONTRACT_TYPES[type]?.label || type}`;
+    window.electronAPI
+        .getCompany(currentUser.id)
+        .then(c => {
+            if (c) {
+                document.getElementById('cEmployerName').value = c.name || '';
+                document.getElementById('cEmployerMF').value = c.mf || '';
+                document.getElementById('cEmployerAddress').value = c.address || '';
+            }
+        })
+        .catch(() => {});
     const showEnd = ['cdd', 'essai', 'prestation', 'freelance', 'stage', 'consulting', 'alternance', 'interim'].includes(type);
     document.getElementById('cEndDateGroup').style.display = showEnd ? 'block' : 'none';
     document.getElementById('cTrialGroup').style.display = ['cdi', 'parttime'].includes(type) ? 'block' : 'none';
-    ['cEmployeeeName', 'cEmployeeCIN', 'cEmployeeAddress', 'cEmployeeRole', 'cEmployeeDept', 'cEmployerRep', 'cEmployerRepRole', 'cStartDate', 'cEndDate', 'cSalary', 'cWorkLocation', 'cNoticePeriod', 'cTrialDuration', 'cExtraClauses', 'cNotes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    document.getElementById('cSalaryType').value = 'mensuel'; document.getElementById('cWorkHours').value = '40'; document.getElementById('cTrialPeriod').checked = false;
+    [
+        'cEmployeeeName',
+        'cEmployeeCIN',
+        'cEmployeeAddress',
+        'cEmployeeRole',
+        'cEmployeeDept',
+        'cEmployerRep',
+        'cEmployerRepRole',
+        'cStartDate',
+        'cEndDate',
+        'cSalary',
+        'cWorkLocation',
+        'cNoticePeriod',
+        'cTrialDuration',
+        'cExtraClauses',
+        'cNotes'
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('cSalaryType').value = 'mensuel';
+    document.getElementById('cWorkHours').value = '40';
+    document.getElementById('cTrialPeriod').checked = false;
     document.getElementById('contractModal').classList.add('active');
     if (window.lucide) lucide.createIcons();
 }
 
-function closeContractModal() { document.getElementById('contractModal').classList.remove('active'); editingContractId = null; }
+function closeContractModal() {
+    document.getElementById('contractModal').classList.remove('active');
+    editingContractId = null;
+}
 
 async function saveContract() {
     const employeeName = document.getElementById('cEmployeeeName').value.trim();
     const employerName = document.getElementById('cEmployerName').value.trim();
-    if (!employeeName || !employerName) { showToast('Employeur et Salarié sont requis', 'warning'); return; }
+    if (!employeeName || !employerName) {
+        showToast('Employeur et Salarié sont requis', 'warning');
+        return;
+    }
     const data = {
-        id: editingContractId || undefined, userId: currentUser.id,
+        id: editingContractId || undefined,
+        userId: currentUser.id,
         type: document.getElementById('contractType').value,
-        employerName, employerMF: document.getElementById('cEmployerMF').value.trim(), employerAddress: document.getElementById('cEmployerAddress').value.trim(),
-        employerRep: document.getElementById('cEmployerRep').value.trim(), employerRepRole: document.getElementById('cEmployerRepRole').value.trim(),
-        employeeName, employeeCIN: document.getElementById('cEmployeeCIN').value.trim(), employeeAddress: document.getElementById('cEmployeeAddress').value.trim(),
-        employeeRole: document.getElementById('cEmployeeRole').value.trim(), employeeDepartment: document.getElementById('cEmployeeDept').value.trim(),
-        startDate: document.getElementById('cStartDate').value, endDate: document.getElementById('cEndDate').value || null,
-        salary: parseFloat(document.getElementById('cSalary').value) || null, salaryType: document.getElementById('cSalaryType').value,
-        workHours: parseFloat(document.getElementById('cWorkHours').value) || 40, workLocation: document.getElementById('cWorkLocation').value.trim(),
-        trialPeriod: document.getElementById('cTrialPeriod').checked, trialDuration: document.getElementById('cTrialDuration').value.trim(),
-        noticePeriod: document.getElementById('cNoticePeriod').value.trim(), extraClauses: document.getElementById('cExtraClauses').value.trim(),
-        notes: document.getElementById('cNotes').value.trim(), status: 'brouillon', employerLogo: logoImage || null
+        employerName,
+        employerMF: document.getElementById('cEmployerMF').value.trim(),
+        employerAddress: document.getElementById('cEmployerAddress').value.trim(),
+        employerRep: document.getElementById('cEmployerRep').value.trim(),
+        employerRepRole: document.getElementById('cEmployerRepRole').value.trim(),
+        employeeName,
+        employeeCIN: document.getElementById('cEmployeeCIN').value.trim(),
+        employeeAddress: document.getElementById('cEmployeeAddress').value.trim(),
+        employeeRole: document.getElementById('cEmployeeRole').value.trim(),
+        employeeDepartment: document.getElementById('cEmployeeDept').value.trim(),
+        startDate: document.getElementById('cStartDate').value,
+        endDate: document.getElementById('cEndDate').value || null,
+        salary: parseFloat(document.getElementById('cSalary').value) || null,
+        salaryType: document.getElementById('cSalaryType').value,
+        workHours: parseFloat(document.getElementById('cWorkHours').value) || 40,
+        workLocation: document.getElementById('cWorkLocation').value.trim(),
+        trialPeriod: document.getElementById('cTrialPeriod').checked,
+        trialDuration: document.getElementById('cTrialDuration').value.trim(),
+        noticePeriod: document.getElementById('cNoticePeriod').value.trim(),
+        extraClauses: document.getElementById('cExtraClauses').value.trim(),
+        notes: document.getElementById('cNotes').value.trim(),
+        status: 'brouillon',
+        employerLogo: logoImage || null
     };
     try {
         const result = await window.electronAPI.saveContract(data);
-        if (result.success) { showToast(editingContractId ? 'Contrat mis à jour' : 'Contrat créé', 'success'); closeContractModal(); await loadContracts(); }
-        else showToast(result.error || 'Erreur', 'error');
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+        if (result.success) {
+            showToast(editingContractId ? 'Contrat mis à jour' : 'Contrat créé', 'success');
+            closeContractModal();
+            await loadContracts();
+        } else showToast(result.error || 'Erreur', 'error');
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    }
 }
 
 async function editContract(id) {
@@ -2897,10 +3799,44 @@ async function editContract(id) {
     editingContractId = id;
     document.getElementById('contractType').value = c.type;
     document.getElementById('contractModalTitle').textContent = `✏️ Modifier — ${CONTRACT_TYPES[c.type]?.label || c.type}`;
-    document.getElementById('cEndDateGroup').style.display = ['cdd', 'essai', 'prestation', 'freelance', 'stage', 'consulting', 'alternance', 'interim'].includes(c.type) ? 'block' : 'none';
+    document.getElementById('cEndDateGroup').style.display = [
+        'cdd',
+        'essai',
+        'prestation',
+        'freelance',
+        'stage',
+        'consulting',
+        'alternance',
+        'interim'
+    ].includes(c.type)
+        ? 'block'
+        : 'none';
     document.getElementById('cTrialGroup').style.display = ['cdi', 'parttime'].includes(c.type) ? 'block' : 'none';
-    const fields = { cEmployerName: c.employerName, cEmployerMF: c.employerMF, cEmployerAddress: c.employerAddress, cEmployerRep: c.employerRep, cEmployerRepRole: c.employerRepRole, cEmployeeeName: c.employeeName, cEmployeeCIN: c.employeeCIN, cEmployeeAddress: c.employeeAddress, cEmployeeRole: c.employeeRole, cEmployeeDept: c.employeeDepartment, cStartDate: c.startDate, cEndDate: c.endDate, cSalary: c.salary, cWorkHours: c.workHours, cWorkLocation: c.workLocation, cNoticePeriod: c.noticePeriod, cTrialDuration: c.trialDuration, cExtraClauses: c.extraClauses, cNotes: c.notes };
-    Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
+    const fields = {
+        cEmployerName: c.employerName,
+        cEmployerMF: c.employerMF,
+        cEmployerAddress: c.employerAddress,
+        cEmployerRep: c.employerRep,
+        cEmployerRepRole: c.employerRepRole,
+        cEmployeeeName: c.employeeName,
+        cEmployeeCIN: c.employeeCIN,
+        cEmployeeAddress: c.employeeAddress,
+        cEmployeeRole: c.employeeRole,
+        cEmployeeDept: c.employeeDepartment,
+        cStartDate: c.startDate,
+        cEndDate: c.endDate,
+        cSalary: c.salary,
+        cWorkHours: c.workHours,
+        cWorkLocation: c.workLocation,
+        cNoticePeriod: c.noticePeriod,
+        cTrialDuration: c.trialDuration,
+        cExtraClauses: c.extraClauses,
+        cNotes: c.notes
+    };
+    Object.entries(fields).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+    });
     document.getElementById('cSalaryType').value = c.salaryType || 'mensuel';
     document.getElementById('cTrialPeriod').checked = c.trialPeriod || false;
     document.getElementById('contractModal').classList.add('active');
@@ -2915,7 +3851,8 @@ async function previewContract(id) {
     const c = allContracts.find(x => x.id === id);
     if (!c) return;
     const html = buildContractHTMLFromData(c);
-    document.getElementById('previewContent').innerHTML = `<div style="padding:40px;font-family:serif">${html.replace(/<html[^>]*>[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*?<\/html>/i, '')}</div>`;
+    document.getElementById('previewContent').innerHTML =
+        `<div style="padding:40px;font-family:serif">${html.replace(/<html[^>]*>[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*?<\/html>/i, '')}</div>`;
     document.getElementById('previewModal').classList.add('active');
 }
 
@@ -2929,38 +3866,44 @@ async function downloadContractPDF(id) {
         const result = await window.electronAPI.savePDF({ html, filename });
         if (result.success) showToast('Contrat PDF enregistré', 'success');
         else if (!result.canceled) showToast('Erreur PDF', 'error');
-    } catch (e) { showToast('Erreur PDF: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur PDF: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 function confirmDeleteContract(id) {
     const c = allContracts.find(x => x.id === id);
     showConfirm('Supprimer', `Supprimer le contrat ${c?.number} ?`, async () => {
-        try { await window.electronAPI.deleteContract(id); showToast('Contrat supprimé', 'info'); await loadContracts(); }
-        catch { showToast('Erreur suppression', 'error'); }
+        try {
+            await window.electronAPI.deleteContract(id);
+            showToast('Contrat supprimé', 'info');
+            await loadContracts();
+        } catch {
+            showToast('Erreur suppression', 'error');
+        }
     });
 }
 
 function filterContracts() {
     const q = document.getElementById('searchContracts').value.toLowerCase();
     const type = document.getElementById('filterContractType').value;
-    renderContractsTable(allContracts.filter(c => {
-        const mQ = !q || (c.employeeName || '').toLowerCase().includes(q) || (c.number || '').toLowerCase().includes(q);
-        const mT = !type || c.type === type;
-        return mQ && mT;
-    }));
+    renderContractsTable(
+        allContracts.filter(c => {
+            const mQ = !q || (c.employeeName || '').toLowerCase().includes(q) || (c.number || '').toLowerCase().includes(q);
+            const mT = !type || c.type === type;
+            return mQ && mT;
+        })
+    );
 }
-
-
-
-
 
 // ==================== AUTO-UPDATER UI ====================
 let updateBannerShown = false;
 
 function initUpdaterListener() {
     if (!window.electronAPI?.onUpdaterEvent) return;
-    window.electronAPI.onUpdaterEvent((payload) => {
+    window.electronAPI.onUpdaterEvent(payload => {
         const { event, version, percent, message } = payload;
         if (event === 'available' && !updateBannerShown) {
             updateBannerShown = true;
@@ -2987,7 +3930,8 @@ function showUpdateBanner(version, state) {
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'updateBanner';
-        banner.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:#1e293b;color:#f1f5f9;border-radius:12px;padding:14px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.35);min-width:280px;max-width:340px;font-size:0.875rem;transition:all 0.3s';
+        banner.style.cssText =
+            'position:fixed;bottom:16px;right:16px;z-index:9999;background:#1e293b;color:#f1f5f9;border-radius:12px;padding:14px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.35);min-width:280px;max-width:340px;font-size:0.875rem;transition:all 0.3s';
         document.body.appendChild(banner);
     }
     if (state === 'downloading') {
@@ -3026,7 +3970,7 @@ async function loadAppVersion() {
         const v = await window.electronAPI.getAppVersion();
         const el = document.getElementById('appVersionLabel');
         if (el) el.textContent = `TuniInvoice Pro v${v}`;
-    } catch { }
+    } catch {}
 }
 
 async function manualCheckUpdate() {
@@ -3034,9 +3978,11 @@ async function manualCheckUpdate() {
     try {
         const r = await window.electronAPI.checkForUpdates();
         if (r.hasUpdate) showToast(`Mise à jour ${r.version} disponible, téléchargement…`, 'success');
-        else if (r.success) showToast("Vous avez déjà la dernière version.", 'info');
+        else if (r.success) showToast('Vous avez déjà la dernière version.', 'info');
         else showToast(r.error || 'Échec de la vérification', 'warning');
-    } catch { showToast('Impossible de vérifier les mises à jour.', 'warning'); }
+    } catch {
+        showToast('Impossible de vérifier les mises à jour.', 'warning');
+    }
 }
 
 // ==================== GLOBAL SEARCH ====================
@@ -3044,7 +3990,10 @@ let searchDebounce = null;
 function globalSearchHandler() {
     clearTimeout(searchDebounce);
     const q = document.getElementById('globalSearch')?.value?.trim();
-    if (!q || q.length < 2) { closeGlobalSearchResults(); return; }
+    if (!q || q.length < 2) {
+        closeGlobalSearchResults();
+        return;
+    }
     searchDebounce = setTimeout(() => runGlobalSearch(q), 280);
 }
 
@@ -3052,7 +4001,7 @@ async function runGlobalSearch(query) {
     try {
         const results = await window.electronAPI.searchDocuments({ userId: currentUser.id, query });
         renderGlobalSearchResults(results, query);
-    } catch { }
+    } catch {}
 }
 
 function renderGlobalSearchResults(results, query) {
@@ -3060,7 +4009,8 @@ function renderGlobalSearchResults(results, query) {
     if (!box) {
         box = document.createElement('div');
         box.id = 'globalSearchResults';
-        box.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.12);z-index:1000;max-height:320px;overflow-y:auto;margin-top:4px';
+        box.style.cssText =
+            'position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.12);z-index:1000;max-height:320px;overflow-y:auto;margin-top:4px';
         document.querySelector('.topbar-search').style.position = 'relative';
         document.querySelector('.topbar-search').appendChild(box);
     }
@@ -3068,7 +4018,9 @@ function renderGlobalSearchResults(results, query) {
         box.innerHTML = `<div style="padding:16px;color:var(--text-muted);text-align:center;font-size:0.875rem">Aucun résultat pour "<strong>${escapeHtml(query)}</strong>"</div>`;
         return;
     }
-    box.innerHTML = results.map(doc => `
+    box.innerHTML = results
+        .map(
+            doc => `
         <div onclick="openDocFromSearch('${doc.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
             <span class="badge badge-${doc.type}" style="min-width:56px;text-align:center">${doc.type.toUpperCase()}</span>
             <div style="flex:1">
@@ -3076,7 +4028,9 @@ function renderGlobalSearchResults(results, query) {
                 <div style="font-size:0.8rem;color:var(--text-muted)">${escapeHtml(doc.clientName)} · ${formatDate(doc.date)}</div>
             </div>
             <div style="font-size:0.875rem;font-weight:600;color:var(--primary)">${formatAmount(doc.totalTTC)} ${doc.currency}</div>
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
 }
 
 function closeGlobalSearchResults() {
@@ -3090,10 +4044,14 @@ async function openDocFromSearch(docId) {
     const result = await window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: 999999 });
     allDocuments = result.rows || [];
     const doc = allDocuments.find(d => d.id === docId);
-    if (doc) { populateFormWithDoc(doc); generatePreviewHTML(); document.getElementById('previewModal').classList.add('active'); }
+    if (doc) {
+        populateFormWithDoc(doc);
+        generatePreviewHTML();
+        document.getElementById('previewModal').classList.add('active');
+    }
 }
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', e => {
     if (!e.target.closest('.topbar-search')) closeGlobalSearchResults();
 });
 
@@ -3105,7 +4063,7 @@ async function loadNotes() {
     try {
         allNotes = await window.electronAPI.getNotes(currentUser.id);
         renderNotes();
-    } catch { }
+    } catch {}
 }
 
 function renderNotes() {
@@ -3116,10 +4074,13 @@ function renderNotes() {
             <div style="font-size:2.5rem;margin-bottom:8px"><i data-lucide="edit-3" style="width:40px;height:40px;color:var(--text-light)"></i></div>
             <div style="font-weight:600">Aucune note</div>
             <div style="font-size:0.875rem">Cliquez sur "Nouvelle note" pour commencer</div>
-        </div>`; if (window.lucide) lucide.createIcons();
+        </div>`;
+        if (window.lucide) lucide.createIcons();
         return;
     }
-    container.innerHTML = allNotes.map(note => `
+    container.innerHTML = allNotes
+        .map(
+            note => `
         <div class="note-card" style="background:${note.color || '#fef9c3'};border-radius:12px;padding:16px;position:relative;min-height:120px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
             ${note.pinned ? `<div style="position:absolute;top:10px;right:36px;font-size:0.9rem"><i data-lucide="pin" style="width:14px;height:14px"></i></div>` : ''}
             <button onclick="deleteNote('${note.id}')" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:#6b7280;font-size:1rem;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
@@ -3128,7 +4089,9 @@ function renderNotes() {
                 <div style="font-size:0.875rem;color:#374151;white-space:pre-wrap;line-height:1.5">${escapeHtml(note.content || '').substring(0, 200)}${(note.content || '').length > 200 ? '…' : ''}</div>
                 <div style="margin-top:8px;font-size:0.75rem;color:#9ca3af">${formatDate(note.updated_at?.split('T')[0] || note.updated_at)}</div>
             </div>
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
     if (window.lucide) lucide.createIcons();
 }
 
@@ -3141,8 +4104,9 @@ function openNoteModal(noteId) {
     document.getElementById('notePinned').checked = note?.pinned || false;
     const colorPicker = document.getElementById('noteColorPicker');
     if (colorPicker) {
-        colorPicker.innerHTML = NOTE_COLORS.map(c =>
-            `<div onclick="selectNoteColor('${c}')" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:${(note?.color || '#fef9c3') === c ? '3px solid #1e293b' : '2px solid transparent'}" data-color="${c}"></div>`
+        colorPicker.innerHTML = NOTE_COLORS.map(
+            c =>
+                `<div onclick="selectNoteColor('${c}')" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:${(note?.color || '#fef9c3') === c ? '3px solid #1e293b' : '2px solid transparent'}" data-color="${c}"></div>`
         ).join('');
     }
     document.getElementById('selectedNoteColor').value = note?.color || '#fef9c3';
@@ -3156,29 +4120,43 @@ function selectNoteColor(color) {
     });
 }
 
-function closeNoteModal() { document.getElementById('noteModal').classList.remove('active'); editingNoteId = null; }
+function closeNoteModal() {
+    document.getElementById('noteModal').classList.remove('active');
+    editingNoteId = null;
+}
 
 async function saveNote() {
     const title = document.getElementById('noteTitle').value.trim();
     const content = document.getElementById('noteContent').value.trim();
-    if (!title && !content) { showToast('Contenu de la note requis', 'warning'); return; }
+    if (!title && !content) {
+        showToast('Contenu de la note requis', 'warning');
+        return;
+    }
     try {
         await window.electronAPI.saveNote({
             id: editingNoteId || undefined,
             userId: currentUser.id,
-            title, content,
+            title,
+            content,
             color: document.getElementById('selectedNoteColor').value || '#fef9c3',
             pinned: document.getElementById('notePinned').checked
         });
         showToast(editingNoteId ? 'Note mise à jour' : 'Note créée', 'success');
         closeNoteModal();
         await loadNotes();
-    } catch { showToast('Erreur sauvegarde note', 'error'); }
+    } catch {
+        showToast('Erreur sauvegarde note', 'error');
+    }
 }
 
 async function deleteNote(id) {
-    try { await window.electronAPI.deleteNote(id); showToast('Note supprimée', 'info'); await loadNotes(); }
-    catch { showToast('Erreur suppression', 'error'); }
+    try {
+        await window.electronAPI.deleteNote(id);
+        showToast('Note supprimée', 'info');
+        await loadNotes();
+    } catch {
+        showToast('Erreur suppression', 'error');
+    }
 }
 
 // ==================== REMINDERS ====================
@@ -3189,7 +4167,7 @@ async function loadReminders() {
         allReminders = await window.electronAPI.getReminders(currentUser.id);
         renderReminders();
         updateReminderBadge();
-    } catch { }
+    } catch {}
 }
 
 function renderReminders() {
@@ -3204,11 +4182,14 @@ function renderReminders() {
         </div>`;
         return;
     }
-    const renderGroup = (items, label) => items.length ? `
+    const renderGroup = (items, label) =>
+        items.length
+            ? `
         <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px">${label} (${items.length})</div>
-        ${items.map(r => {
-        const overdue = !r.done && new Date(`${r.dueDate}T${r.dueTime || '09:00'}`) < new Date();
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:6px;background:${r.done ? '#f8fafc' : overdue ? '#fff1f2' : 'white'};border:1px solid ${r.done ? '#e5e7eb' : overdue ? '#fecaca' : '#e5e7eb'}">
+        ${items
+            .map(r => {
+                const overdue = !r.done && new Date(`${r.dueDate}T${r.dueTime || '09:00'}`) < new Date();
+                return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:6px;background:${r.done ? '#f8fafc' : overdue ? '#fff1f2' : 'white'};border:1px solid ${r.done ? '#e5e7eb' : overdue ? '#fecaca' : '#e5e7eb'}">
                 <input type="checkbox" ${r.done ? 'checked' : ''} onchange="toggleReminder('${r.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer">
                 <div style="flex:1">
                     <div style="font-weight:600;font-size:0.875rem;color:${r.done ? '#9ca3af' : '#1e293b'};text-decoration:${r.done ? 'line-through' : 'none'}">${escapeHtml(r.title)}</div>
@@ -3217,7 +4198,9 @@ function renderReminders() {
                 </div>
                 <button onclick="deleteReminder('${r.id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
             </div>`;
-    }).join('')}` : '';
+            })
+            .join('')}`
+            : '';
 
     container.innerHTML = renderGroup(pending, 'À faire') + renderGroup(done, 'Terminés');
     if (window.lucide) lucide.createIcons();
@@ -3235,12 +4218,19 @@ async function toggleReminder(id, checked) {
     try {
         if (checked) await window.electronAPI.markReminderDone(id);
         await loadReminders();
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 
 async function deleteReminder(id) {
-    try { await window.electronAPI.deleteReminder(id); await loadReminders(); showToast('Rappel supprimé', 'info'); }
-    catch { showToast('Erreur suppression', 'error'); }
+    try {
+        await window.electronAPI.deleteReminder(id);
+        await loadReminders();
+        showToast('Rappel supprimé', 'info');
+    } catch {
+        showToast('Erreur suppression', 'error');
+    }
 }
 
 function openReminderModal(prefill) {
@@ -3253,16 +4243,26 @@ function openReminderModal(prefill) {
     document.getElementById('reminderEntityId').value = f.entityId || '';
     document.getElementById('reminderModal').classList.add('active');
 }
-function closeReminderModal() { document.getElementById('reminderModal').classList.remove('active'); }
+function closeReminderModal() {
+    document.getElementById('reminderModal').classList.remove('active');
+}
 
 async function saveReminder() {
     const title = document.getElementById('reminderTitle').value.trim();
     const date = document.getElementById('reminderDate').value;
-    if (!title) { showToast('Titre du rappel requis', 'warning'); return; }
-    if (!date) { showToast('Date requise', 'warning'); return; }
+    if (!title) {
+        showToast('Titre du rappel requis', 'warning');
+        return;
+    }
+    if (!date) {
+        showToast('Date requise', 'warning');
+        return;
+    }
     try {
         await window.electronAPI.saveReminder({
-            userId: currentUser.id, title, date,
+            userId: currentUser.id,
+            title,
+            date,
             description: document.getElementById('reminderDesc').value.trim(),
             dueDate: date,
             dueTime: document.getElementById('reminderTime').value || '09:00',
@@ -3272,12 +4272,14 @@ async function saveReminder() {
         showToast('Rappel créé', 'success');
         closeReminderModal();
         await loadReminders();
-    } catch { showToast('Erreur création rappel', 'error'); }
+    } catch {
+        showToast('Erreur création rappel', 'error');
+    }
 }
 
 // Listen for reminder:due events pushed by main process
 if (window.electronAPI?.onReminderDue) {
-    window.electronAPI.onReminderDue((r) => {
+    window.electronAPI.onReminderDue(r => {
         showToast(`Rappel : ${r.title}`, 'warning', 8000);
         loadReminders();
     });
@@ -3291,9 +4293,10 @@ async function duplicateDocument(docId) {
             showToast(`Document dupliqué : ${result.document.number}`, 'success');
             await loadDocuments();
         }
-    } catch (e) { showToast('Erreur duplication', 'error'); }
+    } catch (e) {
+        showToast('Erreur duplication', 'error');
+    }
 }
-
 
 // ==================== ANNUAL REPORT ====================
 let annualReportYear = new Date().getFullYear();
@@ -3305,13 +4308,15 @@ async function loadAnnualReport() {
         document.getElementById('annualReportYear').textContent = annualReportYear;
         const data = await window.electronAPI.getAnnualStats({ userId: currentUser.id, year: annualReportYear });
         renderAnnualReport(data);
-    } catch { }
+    } catch {}
 }
 
 function renderAnnualReport(data) {
     const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
     const monthMap = {};
-    (data.monthly || []).forEach(m => { monthMap[m.month] = m; });
+    (data.monthly || []).forEach(m => {
+        monthMap[m.month] = m;
+    });
 
     // Revenue by month table
     const table = document.getElementById('annualMonthlyTable');
@@ -3319,15 +4324,17 @@ function renderAnnualReport(data) {
         table.innerHTML = `<table style="width:100%"><thead><tr>
             <th>Mois</th><th style="text-align:right">Documents</th><th style="text-align:right">Revenus TTC</th>
         </tr></thead><tbody>
-        ${monthNames.map((name, i) => {
-            const key = String(i + 1).padStart(2, '0');
-            const row = monthMap[key] || { count: 0, revenue: 0 };
-            return `<tr style="border-bottom:1px solid var(--border)">
+        ${monthNames
+            .map((name, i) => {
+                const key = String(i + 1).padStart(2, '0');
+                const row = monthMap[key] || { count: 0, revenue: 0 };
+                return `<tr style="border-bottom:1px solid var(--border)">
                 <td style="padding:8px 0">${name}</td>
                 <td style="text-align:right;color:var(--text-muted)">${row.count || 0}</td>
                 <td style="text-align:right;font-weight:600;color:var(--primary)">${formatAmount(row.revenue || 0)} TND</td>
             </tr>`;
-        }).join('')}
+            })
+            .join('')}
         <tr style="background:var(--bg-secondary);font-weight:700">
             <td style="padding:10px 0">TOTAL ${annualReportYear}</td>
             <td style="text-align:right">${data.monthly.reduce((s, m) => s + (m.count || 0), 0)}</td>
@@ -3341,12 +4348,17 @@ function renderAnnualReport(data) {
     // Top clients
     const topEl = document.getElementById('annualTopClients');
     if (topEl) {
-        topEl.innerHTML = (data.topClients || []).map((c, i) => `
+        topEl.innerHTML =
+            (data.topClients || [])
+                .map(
+                    (c, i) => `
             <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
                 <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:white;font-size:0.75rem;font-weight:700;display:flex;align-items:center;justify-content:center">${i + 1}</div>
                 <div style="flex:1;font-size:0.875rem;font-weight:600">${escapeHtml(c.client_name)}</div>
                 <div style="font-size:0.875rem;color:var(--primary);font-weight:700">${formatAmount(c.revenue)} TND</div>
-            </div>`).join('') || '<p style="color:var(--text-muted);font-size:0.875rem">Aucune donnée</p>';
+            </div>`
+                )
+                .join('') || '<p style="color:var(--text-muted);font-size:0.875rem">Aucune donnée</p>';
     }
 }
 
@@ -3355,33 +4367,49 @@ function renderAnnualBarChart(monthly, monthNames) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const monthMap = {};
-    monthly.forEach(m => { monthMap[m.month] = parseFloat(m.revenue); });
+    monthly.forEach(m => {
+        monthMap[m.month] = parseFloat(m.revenue);
+    });
     const values = Array.from({ length: 12 }, (_, i) => monthMap[String(i + 1).padStart(2, '0')] || 0);
     const max = Math.max(...values, 1);
-    const W = canvas.width, H = canvas.height;
+    const W = canvas.width,
+        H = canvas.height;
     const pad = { top: 20, right: 10, bottom: 44, left: 60 };
-    const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+    const cW = W - pad.left - pad.right,
+        cH = H - pad.top - pad.bottom;
     ctx.clearRect(0, 0, W, H);
     // Grid
     for (let i = 0; i <= 4; i++) {
         const y = pad.top + (cH / 4) * i;
-        ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + cW, y);
+        ctx.stroke();
         const val = max - (max / 4) * i;
-        ctx.fillStyle = '#9ca3af'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'right';
         ctx.fillText(val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val.toFixed(0), pad.left - 4, y + 4);
     }
-    const barW = cW / 12 * 0.6, gap = cW / 12;
+    const barW = (cW / 12) * 0.6,
+        gap = cW / 12;
     const primary = currentDocumentTheme?.colors?.primary || '#3b82f6';
     values.forEach((v, i) => {
         const x = pad.left + gap * i + (gap - barW) / 2;
-        const bH = (v / max) * cH, y = pad.top + cH - bH;
+        const bH = (v / max) * cH,
+            y = pad.top + cH - bH;
         const grad = ctx.createLinearGradient(0, y, 0, y + bH);
-        grad.addColorStop(0, primary); grad.addColorStop(1, primary + '66');
+        grad.addColorStop(0, primary);
+        grad.addColorStop(1, primary + '66');
         ctx.fillStyle = v > 0 ? grad : '#f1f5f9';
-        if (ctx.roundRect) ctx.roundRect(x, y, barW, Math.max(bH, 2), 3); else ctx.rect(x, y, barW, Math.max(bH, 2));
+        if (ctx.roundRect) ctx.roundRect(x, y, barW, Math.max(bH, 2), 3);
+        else ctx.rect(x, y, barW, Math.max(bH, 2));
         ctx.fill();
-        ctx.fillStyle = '#6b7280'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
         ctx.fillText(monthNames[i].slice(0, 3), x + barW / 2, pad.top + cH + 14);
     });
 }
@@ -3399,7 +4427,9 @@ async function loadAuditLog() {
     try {
         _allAuditLogEntries = await window.electronAPI.getActivityLog(currentUser.id);
         renderAuditLogTable(_allAuditLogEntries);
-    } catch { showToast('Erreur chargement journal', 'error'); }
+    } catch {
+        showToast('Erreur chargement journal', 'error');
+    }
 }
 
 function renderAuditLogTable(entries) {
@@ -3423,22 +4453,26 @@ function renderAuditLogTable(entries) {
 
 function filterAuditLog() {
     const q = (document.getElementById('searchAuditLog')?.value || '').toLowerCase();
-    if (!q) { renderAuditLogTable(_allAuditLogEntries); return; }
-    const filtered = _allAuditLogEntries.filter(e =>
-        (e.action || '').toLowerCase().includes(q) ||
-        (e.details || '').toLowerCase().includes(q)
+    if (!q) {
+        renderAuditLogTable(_allAuditLogEntries);
+        return;
+    }
+    const filtered = _allAuditLogEntries.filter(
+        e => (e.action || '').toLowerCase().includes(q) || (e.details || '').toLowerCase().includes(q)
     );
     renderAuditLogTable(filtered);
 }
 
 async function clearActivityLog() {
-    if (!await confirmModal('Vider le journal d\'activité ?', 'Cette action est irréversible.')) return;
+    if (!(await confirmModal("Vider le journal d'activité ?", 'Cette action est irréversible.'))) return;
     try {
         await window.electronAPI.clearActivityLog();
         _allAuditLogEntries = [];
         renderAuditLogTable([]);
         showToast('Journal vidé', 'success');
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 // ==================== RECURRING INVOICES ====================
 let _editingRecurringId = null;
@@ -3446,17 +4480,28 @@ let _editingRecurringId = null;
 function loadRecurringInvoices() {
     const container = document.getElementById('recurringInvoicesList');
     if (!container) return;
-    window.electronAPI.getRecurringInvoices(currentUser.id).then(list => {
-        if (!list || !list.length) {
-            container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light)">Aucune facture récurrente configurée</div>';
-            return;
-        }
-        let html = '<table class="data-table"><thead><tr><th>Client</th><th>Type</th><th>Fréquence</th><th>Jour</th><th>Prochaine</th><th>Actions</th></tr></thead><tbody>';
-        list.forEach(r => {
-            const clientName = (allClients.find(c => c.id === r.client_id) || {}).name || r.client_id;
-            const items = (r.items_template ? (typeof r.items_template === 'string' ? JSON.parse(r.items_template) : r.items_template) : []);
-            const total = items.reduce((s, line) => { const p = line.split('|').map(x => x.trim()); return s + (parseFloat(p[2]) || 0) * (parseFloat(p[1]) || 1); }, 0);
-            html += `<tr>
+    window.electronAPI
+        .getRecurringInvoices(currentUser.id)
+        .then(list => {
+            if (!list || !list.length) {
+                container.innerHTML =
+                    '<div style="padding:16px;text-align:center;color:var(--text-light)">Aucune facture récurrente configurée</div>';
+                return;
+            }
+            let html =
+                '<table class="data-table"><thead><tr><th>Client</th><th>Type</th><th>Fréquence</th><th>Jour</th><th>Prochaine</th><th>Actions</th></tr></thead><tbody>';
+            list.forEach(r => {
+                const clientName = (allClients.find(c => c.id === r.client_id) || {}).name || r.client_id;
+                const items = r.items_template
+                    ? typeof r.items_template === 'string'
+                        ? JSON.parse(r.items_template)
+                        : r.items_template
+                    : [];
+                const total = items.reduce((s, line) => {
+                    const p = line.split('|').map(x => x.trim());
+                    return s + (parseFloat(p[2]) || 0) * (parseFloat(p[1]) || 1);
+                }, 0);
+                html += `<tr>
                 <td>${escapeHtml(clientName)}</td>
                 <td>${escapeHtml(r.doc_type)}</td>
                 <td>${r.frequency}</td>
@@ -3467,11 +4512,12 @@ function loadRecurringInvoices() {
                     <button class="btn-icon btn-delete" onclick="deleteRecurringInvoice('${r.id}')"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
                 </td>
             </tr>`;
-        });
-        html += '</tbody></table>';
-        container.innerHTML = html;
-        if (window.lucide) lucide.createIcons();
-    }).catch(() => {});
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            if (window.lucide) lucide.createIcons();
+        })
+        .catch(() => {});
 }
 
 async function openRecurringModal() {
@@ -3511,7 +4557,9 @@ async function editRecurringInvoice(id) {
         document.getElementById('recCurrency').value = r.currency || 'TND';
         document.getElementById('recPaymentMode').value = r.payment_mode || 'Virement bancaire';
         document.getElementById('recurringModal').classList.add('active');
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 
 async function saveRecurringInvoice() {
@@ -3523,25 +4571,32 @@ async function saveRecurringInvoice() {
         dayOfMonth: parseInt(document.getElementById('recDayOfMonth').value),
         itemsTemplate: document.getElementById('recItemsTemplate').value.split('\n').filter(Boolean),
         currency: document.getElementById('recCurrency').value,
-        paymentMode: document.getElementById('recPaymentMode').value,
+        paymentMode: document.getElementById('recPaymentMode').value
     };
-    if (!data.clientId) { showToast('Veuillez sélectionner un client', 'error'); return; }
+    if (!data.clientId) {
+        showToast('Veuillez sélectionner un client', 'error');
+        return;
+    }
     try {
         if (_editingRecurringId) data.id = _editingRecurringId;
         await window.electronAPI.saveRecurringInvoice(data);
         closeModal('recurringModal');
         loadRecurringInvoices();
         showToast('Récurrence enregistrée', 'success');
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 
 async function deleteRecurringInvoice(id) {
-    if (!await confirmModal('Supprimer cette récurrence ?', 'Les factures déjà générées ne seront pas affectées.')) return;
+    if (!(await confirmModal('Supprimer cette récurrence ?', 'Les factures déjà générées ne seront pas affectées.'))) return;
     try {
         await window.electronAPI.deleteRecurringInvoice(id);
         loadRecurringInvoices();
         showToast('Récurrence supprimée', 'success');
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 // ==================== RETENUE À LA SOURCE ====================
 let allRetenues = [];
@@ -3552,7 +4607,9 @@ async function loadRetenues() {
     try {
         allRetenues = await window.electronAPI.getRetenues(currentUser.id);
         renderRetenuesTable(allRetenues);
-    } catch (e) { showToast('Erreur chargement retenues', 'error'); }
+    } catch (e) {
+        showToast('Erreur chargement retenues', 'error');
+    }
 }
 
 function renderRetenuesTable(retenues) {
@@ -3566,7 +4623,9 @@ function renderRetenuesTable(retenues) {
         <th>N°</th><th>Date</th><th>Période</th><th>Bénéficiaire</th>
         <th>Montant Brut</th><th>Taux</th><th>Montant Retenu</th><th>Statut</th><th>Actions</th>
     </tr></thead><tbody>
-        ${retenues.map(r => `<tr>
+        ${retenues
+            .map(
+                r => `<tr>
             <td style="font-family:monospace;font-size:0.82rem">${escapeHtml(r.number)}</td>
             <td>${formatDate(r.date)}</td>
             <td>${['', 'Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sep.', 'Oct.', 'Nov.', 'Déc.'][r.month] || r.month} ${r.year}</td>
@@ -3581,7 +4640,9 @@ function renderRetenuesTable(retenues) {
                 <button class="btn-icon btn-pdf"    onclick="downloadRetenuePDF('${r.id}')"    title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteRetenue('${r.id}')"  title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
-        </tr>`).join('')}
+        </tr>`
+            )
+            .join('')}
     </tbody></table>`;
     if (window.lucide) lucide.createIcons();
 }
@@ -3589,11 +4650,17 @@ function renderRetenuesTable(retenues) {
 function filterRetenues() {
     const q = document.getElementById('searchRetenues').value.toLowerCase();
     const year = document.getElementById('filterRetenueYear').value;
-    renderRetenuesTable(allRetenues.filter(r => {
-        const mQ = !q || (r.number || '').toLowerCase().includes(q) || (r.beneficiaireName || '').toLowerCase().includes(q) || (r.retenuerName || '').toLowerCase().includes(q);
-        const mY = !year || String(r.year) === year;
-        return mQ && mY;
-    }));
+    renderRetenuesTable(
+        allRetenues.filter(r => {
+            const mQ =
+                !q ||
+                (r.number || '').toLowerCase().includes(q) ||
+                (r.beneficiaireName || '').toLowerCase().includes(q) ||
+                (r.retenuerName || '').toLowerCase().includes(q);
+            const mY = !year || String(r.year) === year;
+            return mQ && mY;
+        })
+    );
 }
 
 async function openRetenueModal(prefill) {
@@ -3618,17 +4685,20 @@ async function openRetenueModal(prefill) {
     document.getElementById('rNotes').value = '';
     // Pre-fill company info
     try {
-        const c = await window.electronAPI.getCompany(currentUser.id) || {};
+        const c = (await window.electronAPI.getCompany(currentUser.id)) || {};
         document.getElementById('rRetenuerName').value = c.name || currentUser.company || '';
         document.getElementById('rRetenuerMF').value = c.mf || currentUser.mf || '';
         document.getElementById('rRetenuerAddress').value = c.address || '';
-    } catch { }
+    } catch {}
     if (prefill) {
         if (prefill.beneficiaireName) document.getElementById('rBeneficiaireName').value = prefill.beneficiaireName;
         if (prefill.beneficiaireMF) document.getElementById('rBeneficiaireMF').value = prefill.beneficiaireMF;
         if (prefill.factureNumber) document.getElementById('rFactureNumber').value = prefill.factureNumber;
         if (prefill.factureDate) document.getElementById('rFactureDate').value = prefill.factureDate;
-        if (prefill.montantBrut) { document.getElementById('rMontantBrut').value = prefill.montantBrut; calculateRetenueAmount(); }
+        if (prefill.montantBrut) {
+            document.getElementById('rMontantBrut').value = prefill.montantBrut;
+            calculateRetenueAmount();
+        }
     }
     document.getElementById('retenueModalTitle').textContent = '➕ Nouveau Certificat de Retenue';
     document.getElementById('retenueModal').classList.add('active');
@@ -3657,7 +4727,7 @@ function collectRetenueData() {
         userId: currentUser.id,
         date: get('rDate') || today.toISOString().split('T')[0],
         year: today.getFullYear(),
-        month: parseInt(get('rMonth')) || (today.getMonth() + 1),
+        month: parseInt(get('rMonth')) || today.getMonth() + 1,
         retenuerName: get('rRetenuerName'),
         retenuerMF: get('rRetenuerMF'),
         retenuerAddress: get('rRetenuerAddress'),
@@ -3682,32 +4752,58 @@ function collectRetenueData() {
 
 async function saveRetenue() {
     const data = collectRetenueData();
-    if (!data.retenuerName) { showToast('La raison sociale de l\'entreprise est requise', 'warning'); return; }
-    if (!data.beneficiaireName) { showToast('Le nom du bénéficiaire est requis', 'warning'); return; }
-    if (!data.montantBrut) { showToast('Le montant brut est requis', 'warning'); return; }
+    if (!data.retenuerName) {
+        showToast("La raison sociale de l'entreprise est requise", 'warning');
+        return;
+    }
+    if (!data.beneficiaireName) {
+        showToast('Le nom du bénéficiaire est requis', 'warning');
+        return;
+    }
+    if (!data.montantBrut) {
+        showToast('Le montant brut est requis', 'warning');
+        return;
+    }
     try {
         const result = await window.electronAPI.saveRetenue(data);
         if (result.success) {
             showToast(editingRetenueId ? 'Certificat mis à jour' : 'Certificat créé', 'success');
             closeRetenueModal();
             await loadRetenues();
-        } else { showToast(result.error || 'Erreur lors de l\'enregistrement', 'error'); }
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+        } else {
+            showToast(result.error || "Erreur lors de l'enregistrement", 'error');
+        }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    }
 }
 
 async function saveAndPrintRetenue() {
     const data = collectRetenueData();
-    if (!data.retenuerName) { showToast('La raison sociale de l\'entreprise est requise', 'warning'); return; }
-    if (!data.beneficiaireName) { showToast('Le nom du bénéficiaire est requis', 'warning'); return; }
-    if (!data.montantBrut) { showToast('Le montant brut est requis', 'warning'); return; }
+    if (!data.retenuerName) {
+        showToast("La raison sociale de l'entreprise est requise", 'warning');
+        return;
+    }
+    if (!data.beneficiaireName) {
+        showToast('Le nom du bénéficiaire est requis', 'warning');
+        return;
+    }
+    if (!data.montantBrut) {
+        showToast('Le montant brut est requis', 'warning');
+        return;
+    }
     try {
         const result = await window.electronAPI.saveRetenue(data);
         if (result.success) {
             closeRetenueModal();
             await loadRetenues();
             await downloadRetenuePDF(result.retenue.id);
-        } else { showToast(result.error || 'Erreur', 'error'); }
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+        } else {
+            showToast(result.error || 'Erreur', 'error');
+        }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    }
 }
 
 async function editRetenue(id) {
@@ -3739,7 +4835,9 @@ async function previewRetenue(id) {
     const r = allRetenues.find(x => x.id === id);
     if (!r) return;
     const html = buildRetenueHTMLFromData(r);
-    document.getElementById('previewContent').innerHTML = html.replace(/<html[^>]*>[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*?<\/html>/i, '');
+    document.getElementById('previewContent').innerHTML = html
+        .replace(/<html[^>]*>[\s\S]*?<body[^>]*>/i, '')
+        .replace(/<\/body>[\s\S]*?<\/html>/i, '');
     document.getElementById('previewModal').classList.add('active');
 }
 
@@ -3753,8 +4851,11 @@ async function downloadRetenuePDF(id) {
         const result = await window.electronAPI.savePDF({ html, filename });
         if (result.success) showToast('PDF Retenue enregistré', 'success');
         else if (!result.canceled) showToast('Erreur PDF', 'error');
-    } catch (e) { showToast('Erreur PDF: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur PDF: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 function buildRetenueHTMLFromData(r) {
@@ -3786,7 +4887,9 @@ function confirmDeleteRetenue(id) {
             await window.electronAPI.deleteRetenue(id);
             showToast('Certificat supprimé', 'info');
             await loadRetenues();
-        } catch { showToast('Erreur suppression', 'error'); }
+        } catch {
+            showToast('Erreur suppression', 'error');
+        }
     });
 }
 
@@ -3794,7 +4897,9 @@ async function exportRetenuesToExcel() {
     try {
         const result = await window.electronAPI.exportExcelRetenues({ retenues: allRetenues });
         if (result.success) showToast(`Excel exporté: ${result.path}`, 'success');
-    } catch { showToast('Erreur export Excel', 'error'); }
+    } catch {
+        showToast('Erreur export Excel', 'error');
+    }
 }
 
 // ==================== RETENUE: OFFICIAL FIELDS ====================
@@ -3817,7 +4922,7 @@ function collectRetenueData() {
         userId: currentUser.id,
         date: get('rDate') || today.toISOString().split('T')[0],
         year: today.getFullYear(),
-        month: parseInt(get('rMonth')) || (today.getMonth() + 1),
+        month: parseInt(get('rMonth')) || today.getMonth() + 1,
         retenuerName: get('rRetenuerName'),
         retenuerMF: get('rRetenuerMF'),
         retenuerAddress: get('rRetenuerAddress'),
@@ -3854,13 +4959,34 @@ window.openRetenueModal = async function (prefill) {
     const today = new Date();
     document.getElementById('rDate').value = today.toISOString().split('T')[0];
     document.getElementById('rMonth').value = String(today.getMonth() + 1);
-    const fields = ['rRetenuerName', 'rRetenuerMF', 'rRetenuerAddress', 'rRetenuerRep',
-        'rRetenuerCodeTva', 'rRetenuerCodeCat', 'rRetenuerNEtab',
-        'rBeneficiaireName', 'rBeneficiaireMF', 'rBeneficiaireAddress', 'rBeneficiaireRib',
-        'rBeneficiaireCIN', 'rBeneficiaireCodeTva', 'rBeneficiaireCodeCat', 'rBeneficiaireNEtab',
-        'rFactureNumber', 'rFactureDate', 'rMontantBrut', 'rTaux', 'rNatureRevenu', 'rNotes'];
-    fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    const c = await window.electronAPI.getCompany(currentUser.id) || {};
+    const fields = [
+        'rRetenuerName',
+        'rRetenuerMF',
+        'rRetenuerAddress',
+        'rRetenuerRep',
+        'rRetenuerCodeTva',
+        'rRetenuerCodeCat',
+        'rRetenuerNEtab',
+        'rBeneficiaireName',
+        'rBeneficiaireMF',
+        'rBeneficiaireAddress',
+        'rBeneficiaireRib',
+        'rBeneficiaireCIN',
+        'rBeneficiaireCodeTva',
+        'rBeneficiaireCodeCat',
+        'rBeneficiaireNEtab',
+        'rFactureNumber',
+        'rFactureDate',
+        'rMontantBrut',
+        'rTaux',
+        'rNatureRevenu',
+        'rNotes'
+    ];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const c = (await window.electronAPI.getCompany(currentUser.id)) || {};
     document.getElementById('rRetenuerName').value = c.name || currentUser.company || '';
     document.getElementById('rRetenuerMF').value = c.mf || currentUser.mf || '';
     document.getElementById('rRetenuerAddress').value = c.address || '';
@@ -3869,7 +4995,10 @@ window.openRetenueModal = async function (prefill) {
         if (prefill.beneficiaireMF) document.getElementById('rBeneficiaireMF').value = prefill.beneficiaireMF;
         if (prefill.factureNumber) document.getElementById('rFactureNumber').value = prefill.factureNumber;
         if (prefill.factureDate) document.getElementById('rFactureDate').value = prefill.factureDate;
-        if (prefill.montantBrut) { document.getElementById('rMontantBrut').value = prefill.montantBrut; calculateRetenueAmount(); }
+        if (prefill.montantBrut) {
+            document.getElementById('rMontantBrut').value = prefill.montantBrut;
+            calculateRetenueAmount();
+        }
     }
     document.getElementById('retenueModalTitle').textContent = '➕ Nouveau Certificat de Retenue';
     document.getElementById('retenueModal').classList.add('active');
@@ -3913,17 +5042,30 @@ window.editRetenue = async function (id) {
 const originalSaveRetenue = window.saveRetenue;
 window.saveRetenue = async function () {
     const data = collectRetenueData();
-    if (!data.retenuerName) { showToast('Raison sociale du payeur requise', 'warning'); return; }
-    if (!data.beneficiaireName) { showToast('Nom du bénéficiaire requis', 'warning'); return; }
-    if (!data.montantBrut) { showToast('Montant brut requis', 'warning'); return; }
+    if (!data.retenuerName) {
+        showToast('Raison sociale du payeur requise', 'warning');
+        return;
+    }
+    if (!data.beneficiaireName) {
+        showToast('Nom du bénéficiaire requis', 'warning');
+        return;
+    }
+    if (!data.montantBrut) {
+        showToast('Montant brut requis', 'warning');
+        return;
+    }
     try {
         const result = await window.electronAPI.saveRetenue(data);
         if (result.success) {
             showToast(editingRetenueId ? 'Certificat mis à jour' : 'Certificat créé', 'success');
             closeRetenueModal();
             await loadRetenues();
-        } else { showToast(result.error || 'Erreur', 'error'); }
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+        } else {
+            showToast(result.error || 'Erreur', 'error');
+        }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    }
 };
 
 // ==================== TOOLS ====================
@@ -3931,13 +5073,18 @@ async function openFiscalCalculator() {
     try {
         const result = await window.electronAPI.openCalculator();
         if (!result.success) showToast('Erreur ouverture calculatrice', 'error');
-    } catch (e) { showToast(e.message, 'error'); }
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
 }
 
 async function openRelanceGenerator() {
     const overdue = await window.electronAPI.getOverdueDocuments(currentUser.id);
     const select = document.getElementById('relanceDocSelect');
-    if (!select) { showToast('Section relance non trouvée', 'error'); return; }
+    if (!select) {
+        showToast('Section relance non trouvée', 'error');
+        return;
+    }
     select.innerHTML = '<option value="">-- Choisir une facture impayée --</option>';
     overdue.forEach(doc => {
         select.innerHTML += `<option value="${doc.id}">${doc.number} - ${doc.clientName} - ${formatAmount(doc.totalTTC - (doc.paidAmount || 0))} TND</option>`;
@@ -3947,12 +5094,19 @@ async function openRelanceGenerator() {
 }
 
 async function getRelanceAttempt(docId) {
-    try { return await window.electronAPI.getRelanceAttemptCount(docId); } catch { return 0; }
+    try {
+        return await window.electronAPI.getRelanceAttemptCount(docId);
+    } catch {
+        return 0;
+    }
 }
 async function updateRelanceAttemptInfo() {
     const docId = document.getElementById('relanceDocSelect').value;
     const info = document.getElementById('relanceAttemptInfo');
-    if (!docId) { info.textContent = ''; return; }
+    if (!docId) {
+        info.textContent = '';
+        return;
+    }
     const count = await getRelanceAttempt(docId);
     info.textContent = count > 0 ? `Relancé ${count} fois` : 'Première relance';
 }
@@ -3965,9 +5119,20 @@ async function doRelance(docId, method) {
         const result = await window.electronAPI.generateRelanceLetter({ docId, userId: currentUser.id, attempt });
         if (result.success && result.html) {
             if (method === 'email') {
-                if (!doc.clientEmail) { showToast('Ce client n\'a pas d\'email', 'warning'); hideLoading(); return; }
-                const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename: `relance_${doc.number}_${Date.now()}.pdf` });
-                if (!pdfResult.success) { showToast('Erreur génération PDF', 'error'); hideLoading(); return; }
+                if (!doc.clientEmail) {
+                    showToast("Ce client n'a pas d'email", 'warning');
+                    hideLoading();
+                    return;
+                }
+                const pdfResult = await window.electronAPI.savePDF({
+                    html: result.html,
+                    filename: `relance_${doc.number}_${Date.now()}.pdf`
+                });
+                if (!pdfResult.success) {
+                    showToast('Erreur génération PDF', 'error');
+                    hideLoading();
+                    return;
+                }
                 const emailResult = await window.electronAPI.sendEmail({
                     userId: currentUser.id,
                     to: doc.clientEmail,
@@ -3975,31 +5140,58 @@ async function doRelance(docId, method) {
                     body: `Veuillez trouver ci-joint la lettre de relance concernant la facture ${doc.number}.`,
                     attachments: [{ path: pdfResult.path, filename: `relance_${doc.number}.pdf` }]
                 });
-                if (!emailResult.success) { showToast('Erreur envoi email: ' + (emailResult.error || ''), 'error'); hideLoading(); return; }
-                try { await window.electronAPI.saveRelance({ userId: currentUser.id, invoiceId: docId, attempt, method: 'email', recipientEmail: doc.clientEmail }); } catch {}
+                if (!emailResult.success) {
+                    showToast('Erreur envoi email: ' + (emailResult.error || ''), 'error');
+                    hideLoading();
+                    return;
+                }
+                try {
+                    await window.electronAPI.saveRelance({
+                        userId: currentUser.id,
+                        invoiceId: docId,
+                        attempt,
+                        method: 'email',
+                        recipientEmail: doc.clientEmail
+                    });
+                } catch {}
                 showToast(`Relance N°${attempt} envoyée à ${doc.clientEmail}`, 'success');
             } else {
                 const filename = `relance_${doc.number}_${Date.now()}.pdf`;
                 const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
                 if (pdfResult.success) {
-                    try { await window.electronAPI.saveRelance({ userId: currentUser.id, invoiceId: docId, attempt, method: 'pdf' }); } catch {}
+                    try {
+                        await window.electronAPI.saveRelance({ userId: currentUser.id, invoiceId: docId, attempt, method: 'pdf' });
+                    } catch {}
                     showToast(`Lettre de relance N°${attempt} enregistrée`, 'success');
                 } else showToast('Erreur génération PDF', 'error');
             }
         } else showToast('Erreur génération', 'error');
-    } catch (e) { showToast(e.message, 'error'); }
-    finally { hideLoading(); document.getElementById('relanceFactureSelect').style.display = 'none'; }
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        hideLoading();
+        document.getElementById('relanceFactureSelect').style.display = 'none';
+    }
 }
 async function generateRelancePDF() {
     const docId = document.getElementById('relanceDocSelect').value;
-    if (!docId) { showToast('Sélectionnez une facture', 'warning'); return; }
+    if (!docId) {
+        showToast('Sélectionnez une facture', 'warning');
+        return;
+    }
     await doRelance(docId, 'pdf');
 }
 async function sendRelanceEmail() {
     const docId = document.getElementById('relanceDocSelect').value;
-    if (!docId) { showToast('Sélectionnez une facture', 'warning'); return; }
+    if (!docId) {
+        showToast('Sélectionnez une facture', 'warning');
+        return;
+    }
     const doc = allDocuments.find(d => d.id === docId);
-    if (!doc || !doc.clientEmail) { showToast('Cette facture n\'a pas d\'email client', 'warning'); return; }
+    if (!doc || !doc.clientEmail) {
+        showToast("Cette facture n'a pas d'email client", 'warning');
+        return;
+    }
     await doRelance(docId, 'email');
 }
 
@@ -4026,8 +5218,12 @@ async function generateFiscalSummaryPDF() {
             const pdfResult = await window.electronAPI.savePDF({ html: result.html, filename });
             if (pdfResult.success) showToast('Bilan fiscal enregistré', 'success');
         } else showToast('Erreur génération', 'error');
-    } catch (e) { showToast(e.message, 'error'); }
-    finally { hideLoading(); document.getElementById('fiscalPeriodSelect').style.display = 'none'; }
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        hideLoading();
+        document.getElementById('fiscalPeriodSelect').style.display = 'none';
+    }
 }
 
 // ==================== ACHATS & DÉPENSES ====================
@@ -4037,7 +5233,9 @@ async function loadAchats() {
         allExpenses = await window.electronAPI.getExpenses(currentUser.id);
         renderExpensesTable(allExpenses);
         updateExpenseSummaryCards(allExpenses);
-    } catch (e) { showToast('Erreur chargement dépenses', 'error'); }
+    } catch (e) {
+        showToast('Erreur chargement dépenses', 'error');
+    }
 }
 
 function updateExpenseSummaryCards(expenses) {
@@ -4047,7 +5245,10 @@ function updateExpenseSummaryCards(expenses) {
     const month = expenses.filter(e => e.date && e.date.startsWith(thisMonth)).reduce((s, e) => s + (e.amountTTC || 0), 0);
     const tva = expenses.reduce((s, e) => s + ((e.amountTTC || 0) - (e.amountHT || 0)), 0);
     const ret = expenses.reduce((s, e) => s + (e.retenueSource || 0), 0);
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = formatAmount(v) + ' TND'; };
+    const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = formatAmount(v) + ' TND';
+    };
     set('expensesTotalDisplay', total);
     set('expensesMonthDisplay', month);
     set('expensesTvaDisplay', tva);
@@ -4058,7 +5259,11 @@ function filterExpenses() {
     const q = (document.getElementById('searchExpenses')?.value || '').toLowerCase();
     const cat = document.getElementById('filterExpenseCategory')?.value || '';
     const filtered = allExpenses.filter(e => {
-        const mQ = !q || (e.vendor || '').toLowerCase().includes(q) || (e.reference || '').toLowerCase().includes(q) || (e.description || '').toLowerCase().includes(q);
+        const mQ =
+            !q ||
+            (e.vendor || '').toLowerCase().includes(q) ||
+            (e.reference || '').toLowerCase().includes(q) ||
+            (e.description || '').toLowerCase().includes(q);
         const mC = !cat || e.category === cat;
         return mQ && mC;
     });
@@ -4075,7 +5280,9 @@ function renderExpensesTable(expenses) {
         <th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Type</th>
         <th>Montant TTC</th><th>Retenue</th><th>Réf.</th><th>Pièce jointe</th><th>Actions</th>
     </tr></thead><tbody>
-    ${expenses.map(e => `<tr>
+    ${expenses
+        .map(
+            e => `<tr>
         <td>${formatDate(e.date)}</td>
         <td style="font-weight:600">${escapeHtml(e.vendor || '—')}</td>
         <td><span class="badge" style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:6px;font-size:0.75rem">${escapeHtml(e.category || '—')}</span></td>
@@ -4088,7 +5295,9 @@ function renderExpensesTable(expenses) {
             <button class="btn-icon btn-edit" onclick="openExpenseModal('${e.id}')" title="Modifier">✏️</button>
             <button class="btn-icon btn-delete" onclick="confirmDeleteExpense('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
         </td>
-    </tr>`).join('')}
+    </tr>`
+        )
+        .join('')}
     </tbody></table>`;
     if (window.lucide) lucide.createIcons();
 }
@@ -4097,7 +5306,7 @@ async function viewAttachment(filePath) {
     const content = document.getElementById('attachmentPreviewContent');
     const modal = document.getElementById('attachmentPreviewModal');
     if (!content || !modal) return;
-    content.innerHTML = '<p>Chargement de l\'aperçu...</p>';
+    content.innerHTML = "<p>Chargement de l'aperçu...</p>";
     modal.classList.add('active');
     const ext = filePath.split('.').pop().toLowerCase();
     const isImage = ['png', 'jpg', 'jpeg', 'webp'].includes(ext);
@@ -4113,10 +5322,11 @@ async function viewAttachment(filePath) {
         content.innerHTML = `<div style="text-align:center"><div style="font-size:3rem">📁</div><p>Aperçu non disponible</p></div>`;
     }
 }
-function closeAttachmentPreviewModal() { document.getElementById('attachmentPreviewModal').classList.remove('active'); }
+function closeAttachmentPreviewModal() {
+    document.getElementById('attachmentPreviewModal').classList.remove('active');
+}
 window.viewAttachment = viewAttachment;
 window.closeAttachmentPreviewModal = closeAttachmentPreviewModal;
-
 
 // ==================== EXPENSE MODAL LOGIC ====================
 let currentExpenseId = null;
@@ -4170,13 +5380,28 @@ function initExpenseDropZone() {
     const dz = document.getElementById('expDropZone');
     if (!dz || dz.dataset.dropInit) return;
     dz.dataset.dropInit = '1';
-    ['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.style.borderColor = 'var(--primary)'; dz.style.background = 'var(--gray-50)'; }));
-    ['dragleave','drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.style.borderColor = '#cbd5e1'; dz.style.background = '#f8fafc'; }));
+    ['dragenter', 'dragover'].forEach(evt =>
+        dz.addEventListener(evt, e => {
+            e.preventDefault();
+            dz.style.borderColor = 'var(--primary)';
+            dz.style.background = 'var(--gray-50)';
+        })
+    );
+    ['dragleave', 'drop'].forEach(evt =>
+        dz.addEventListener(evt, e => {
+            e.preventDefault();
+            dz.style.borderColor = '#cbd5e1';
+            dz.style.background = '#f8fafc';
+        })
+    );
     dz.addEventListener('drop', e => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
         if (!file) return;
-        if (!file.type.match(/image\/(png|jpe?g|gif|webp)|application\/pdf/)) { showToast('Format non supporté', 'error'); return; }
+        if (!file.type.match(/image\/(png|jpe?g|gif|webp)|application\/pdf/)) {
+            showToast('Format non supporté', 'error');
+            return;
+        }
         const input = document.getElementById('expAttachment');
         const dt = new DataTransfer();
         dt.items.add(file);
@@ -4197,7 +5422,9 @@ async function handleExpenseAttachment(input) {
             currentExpenseAttachment = result.path;
             if (attName) attName.textContent = file.name;
         } else showToast('Erreur lors du stockage du fichier', 'error');
-    } catch (e) { showToast('Erreur pièce jointe', 'error'); }
+    } catch (e) {
+        showToast('Erreur pièce jointe', 'error');
+    }
 }
 
 function updateExpenseHT() {
@@ -4239,8 +5466,11 @@ async function saveExpense() {
             closeExpenseModal();
             loadAchats();
         } else showToast('Erreur: ' + result.error, 'error');
-    } catch (e) { showToast('Erreur lors de l\'enregistrement', 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast("Erreur lors de l'enregistrement", 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 function confirmDeleteExpense(id) {
@@ -4251,7 +5481,9 @@ function confirmDeleteExpense(id) {
                 showToast('Dépense supprimée', 'success');
                 loadAchats();
             } else showToast('Erreur suppression: ' + result.error, 'error');
-        } catch (e) { showToast('Erreur suppression', 'error'); }
+        } catch (e) {
+            showToast('Erreur suppression', 'error');
+        }
     });
 }
 
@@ -4284,7 +5516,10 @@ function parseOCRText(text) {
     if (low.includes('ednfo') || low.includes('e-info') || low.includes('esnfo')) {
         data.vendor = 'E-info';
     } else {
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+        const lines = text
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 2);
         for (let i = 0; i < Math.min(lines.length, 5); i++) {
             if (!/\d{2}[/-]\d{2}/.test(lines[i]) && !/facture|bon|devis/i.test(lines[i])) {
                 data.vendor = lines[i].substring(0, 50).replace(/[^a-zA-Z0-9\s\-\.]/g, '');
@@ -4300,7 +5535,8 @@ function parseOCRText(text) {
         let d = dateMatches[0].replace(/\//g, '-');
         if (/^\d{1,2}-\d{1,2}-\d{2,4}$/.test(d)) {
             const p = d.split('-');
-            if (p[0].length <= 2 && p[2].length >= 2) { // DD-MM-YYYY
+            if (p[0].length <= 2 && p[2].length >= 2) {
+                // DD-MM-YYYY
                 const year = p[2].length === 2 ? '20' + p[2] : p[2];
                 const day = p[0].padStart(2, '0');
                 const month = p[1].padStart(2, '0');
@@ -4313,13 +5549,20 @@ function parseOCRText(text) {
     // 3. Amount Extraction (Numbers + French Words)
     // Strategy A: French number detection (specific for Tunisian invoices)
     const frenchMap = {
-        'cent': 100, 'deux cent': 200, 'trois cent': 300, 'quatre cent': 400, 'cinq cent': 500,
-        'soixante dix-neuf': 79, 'quatre-vingt': 80, 'soixante': 60, 'cinquante': 50
+        cent: 100,
+        'deux cent': 200,
+        'trois cent': 300,
+        'quatre cent': 400,
+        'cinq cent': 500,
+        'soixante dix-neuf': 79,
+        'quatre-vingt': 80,
+        soixante: 60,
+        cinquante: 50
     };
 
     let textAmount = 0;
-    if (text.toLowerCase().includes('deux cent') && text.toLowerCase().includes('soixante dix-neuf')) textAmount = 279.000;
-    else if (text.toLowerCase().includes('deux cent') && text.toLowerCase().includes('quatre-vingt')) textAmount = 280.000;
+    if (text.toLowerCase().includes('deux cent') && text.toLowerCase().includes('soixante dix-neuf')) textAmount = 279.0;
+    else if (text.toLowerCase().includes('deux cent') && text.toLowerCase().includes('quatre-vingt')) textAmount = 280.0;
 
     // Strategy B: Clean numbers (avoiding bracketed item prices)
     const cleanText = text.replace(/\[.*?\]/g, ' '); // Remove item lines like [ ... | 21,000]
@@ -4349,7 +5592,8 @@ function parseOCRText(text) {
         // Fallback: Biggest number overall (excluding years and phone-like numbers)
         const allNums = text.match(/[\d\s,']+[.,]\d{3}/g);
         if (allNums) {
-            const nums = allNums.map(m => parseFloat(m.replace(/[\s,']/g, '').replace(',', '.')))
+            const nums = allNums
+                .map(m => parseFloat(m.replace(/[\s,']/g, '').replace(',', '.')))
                 .filter(n => n > 1 && n < 10000 && n !== 2024 && n !== 2025);
             if (nums.length > 0) data.amountTTC = Math.max(...nums);
         }
@@ -4381,7 +5625,7 @@ async function processScannedImage(input) {
             lastScannedData = { ...parsedData, attachmentPath: storeResult.path };
             displayScannerResult(parsedData);
         } else {
-            showToast('L\'analyse a échoué, remplissage manuel requis', 'warning');
+            showToast("L'analyse a échoué, remplissage manuel requis", 'warning');
             openExpenseModal();
             currentExpenseAttachment = storeResult.path;
             const attName = document.getElementById('expAttachmentName');
@@ -4441,8 +5685,8 @@ let editingPayslipId = null;
 async function loadHR() {
     if (!currentUser) return;
     try {
-        allEmployees = await window.electronAPI.getEmployees(currentUser.id) || [];
-        allPayslips = await window.electronAPI.getPayslips(currentUser.id) || [];
+        allEmployees = (await window.electronAPI.getEmployees(currentUser.id)) || [];
+        allPayslips = (await window.electronAPI.getPayslips(currentUser.id)) || [];
         renderEmployeesTable();
         renderPayslipsTable();
     } catch (e) {
@@ -4459,9 +5703,14 @@ function switchHRTab(tab, btn) {
 
 function renderEmployeesTable() {
     const container = document.getElementById('employeesTable');
-    if (!allEmployees.length) { container.innerHTML = '<div class="empty-state"><p>Aucun employé.</p></div>'; return; }
+    if (!allEmployees.length) {
+        container.innerHTML = '<div class="empty-state"><p>Aucun employé.</p></div>';
+        return;
+    }
     container.innerHTML = `<table><thead><tr><th>Nom Complet</th><th>Poste</th><th>CIN</th><th>CNSS</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
-        ${allEmployees.map(e => `<tr>
+        ${allEmployees
+            .map(
+                e => `<tr>
             <td style="font-weight:600">${escapeHtml(e.name)}</td>
             <td>${escapeHtml(e.role || '—')}</td>
             <td>${escapeHtml(e.cin || '—')}</td>
@@ -4471,17 +5720,37 @@ function renderEmployeesTable() {
                 <button class="btn-icon btn-edit" onclick="openEmployeeModal('${e.id}')" title="Modifier">✏️</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteEmployee('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
-        </tr>`).join('')}
+        </tr>`
+            )
+            .join('')}
     </tbody></table>`;
     if (window.lucide) lucide.createIcons();
 }
 
 function renderPayslipsTable() {
     const container = document.getElementById('payslipsTable');
-    if (!allPayslips.length) { container.innerHTML = '<div class="empty-state"><p>Aucune fiche de paie.</p></div>'; return; }
-    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    if (!allPayslips.length) {
+        container.innerHTML = '<div class="empty-state"><p>Aucune fiche de paie.</p></div>';
+        return;
+    }
+    const months = [
+        'Janvier',
+        'Février',
+        'Mars',
+        'Avril',
+        'Mai',
+        'Juin',
+        'Juillet',
+        'Août',
+        'Septembre',
+        'Octobre',
+        'Novembre',
+        'Décembre'
+    ];
     container.innerHTML = `<table><thead><tr><th>Employé</th><th>Période</th><th>Date</th><th>Brut</th><th>Net</th><th>Actions</th></tr></thead><tbody>
-        ${allPayslips.map(p => `<tr>
+        ${allPayslips
+            .map(
+                p => `<tr>
             <td style="font-weight:600">${escapeHtml(p.employee_name)}</td>
             <td>${months[p.period_month - 1]} ${p.period_year}</td>
             <td>${formatDate(p.date)}</td>
@@ -4493,7 +5762,9 @@ function renderPayslipsTable() {
                 <button class="btn-icon btn-edit" onclick="printPayslip('${p.id}')" title="Imprimer">🖨️</button>
                 <button class="btn-icon btn-delete" onclick="confirmDeletePayslip('${p.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
-        </tr>`).join('')}
+        </tr>`
+            )
+            .join('')}
     </tbody></table>`;
     if (window.lucide) lucide.createIcons();
 }
@@ -4531,7 +5802,9 @@ function openEmployeeModal(id = null) {
     document.getElementById('employeeModal').classList.add('active');
 }
 
-function closeEmployeeModal() { document.getElementById('employeeModal').classList.remove('active'); }
+function closeEmployeeModal() {
+    document.getElementById('employeeModal').classList.remove('active');
+}
 
 async function saveEmployee() {
     const name = document.getElementById('empName').value.trim();
@@ -4555,7 +5828,9 @@ async function saveEmployee() {
         showToast('Employé enregistré', 'success');
         closeEmployeeModal();
         loadHR();
-    } catch (e) { showToast('Erreur', 'error'); }
+    } catch (e) {
+        showToast('Erreur', 'error');
+    }
 }
 
 function confirmDeleteEmployee(id) {
@@ -4564,14 +5839,20 @@ function confirmDeleteEmployee(id) {
             await window.electronAPI.deleteEmployee(id);
             showToast('Employé supprimé', 'info');
             loadHR();
-        } catch { showToast('Erreur', 'error'); }
+        } catch {
+            showToast('Erreur', 'error');
+        }
     });
 }
 
 function openPayslipModal() {
     const sel = document.getElementById('psEmployee');
-    sel.innerHTML = '<option value="">— Sélectionner —</option>' +
-        allEmployees.filter(e => e.active).map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('');
+    sel.innerHTML =
+        '<option value="">— Sélectionner —</option>' +
+        allEmployees
+            .filter(e => e.active)
+            .map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`)
+            .join('');
     document.getElementById('psDate').valueAsDate = new Date();
     document.getElementById('psMonth').value = new Date().getMonth() + 1;
     document.getElementById('psYear').value = new Date().getFullYear();
@@ -4585,7 +5866,9 @@ function openPayslipModal() {
     document.getElementById('payslipModal').classList.add('active');
 }
 
-function closePayslipModal() { document.getElementById('payslipModal').classList.remove('active'); }
+function closePayslipModal() {
+    document.getElementById('payslipModal').classList.remove('active');
+}
 
 function loadEmployeeDefaultsForPayslip() {
     const id = document.getElementById('psEmployee').value;
@@ -4646,7 +5929,9 @@ async function savePayslip() {
         showToast('Fiche de paie générée', 'success');
         closePayslipModal();
         loadHR();
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 
 function confirmDeletePayslip(id) {
@@ -4655,7 +5940,9 @@ function confirmDeletePayslip(id) {
             await window.electronAPI.deletePayslip(id);
             showToast('Fiche supprimée', 'info');
             loadHR();
-        } catch { showToast('Erreur', 'error'); }
+        } catch {
+            showToast('Erreur', 'error');
+        }
     });
 }
 
@@ -4670,7 +5957,9 @@ async function printPayslip(id) {
         if (res.success) {
             window.electronAPI.printPDF({ html: res.html });
         }
-    } catch { showToast('Erreur impression', 'error'); }
+    } catch {
+        showToast('Erreur impression', 'error');
+    }
 }
 
 async function previewPayslip(id) {
@@ -4681,10 +5970,15 @@ async function previewPayslip(id) {
     try {
         const res = await window.electronAPI.buildPayslipHTML({ payslip, employee, company });
         if (res.success) {
-            document.getElementById('previewContent').innerHTML = res.html.replace(/<!DOCTYPE html>|<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>/gi, '');
+            document.getElementById('previewContent').innerHTML = res.html.replace(
+                /<!DOCTYPE html>|<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>/gi,
+                ''
+            );
             document.getElementById('previewModal').classList.add('active');
         }
-    } catch { showToast('Erreur aperçu', 'error'); }
+    } catch {
+        showToast('Erreur aperçu', 'error');
+    }
 }
 
 async function savePayslipPDF(id) {
@@ -4692,14 +5986,29 @@ async function savePayslipPDF(id) {
     if (!payslip) return;
     const employee = allEmployees.find(e => e.id === payslip.employee_id);
     const company = await window.electronAPI.getCompany(currentUser.id);
-    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const months = [
+        'Janvier',
+        'Février',
+        'Mars',
+        'Avril',
+        'Mai',
+        'Juin',
+        'Juillet',
+        'Août',
+        'Septembre',
+        'Octobre',
+        'Novembre',
+        'Décembre'
+    ];
     const filename = `Fiche_de_paie_${employee.name.replace(/\s+/g, '_')}_${months[payslip.period_month - 1]}_${payslip.period_year}.pdf`;
     try {
         const res = await window.electronAPI.buildPayslipHTML({ payslip, employee, company });
         if (res.success) {
             await window.electronAPI.savePDF({ html: res.html, filename });
         }
-    } catch { showToast('Erreur enregistrement PDF', 'error'); }
+    } catch {
+        showToast('Erreur enregistrement PDF', 'error');
+    }
 }
 
 window.switchHRTab = switchHRTab;
@@ -4724,8 +6033,6 @@ window.addEventListener('resize', () => {
         renderDashboardCharts(lastDashboardStats);
     }
 });
-
-
 
 // ==================== TEJ EXPORT ====================
 let tejAvailableDocs = [];
@@ -4762,7 +6069,9 @@ async function loadTEJDocuments() {
             return;
         }
 
-        container.innerHTML = tejAvailableDocs.map(doc => `
+        container.innerHTML = tejAvailableDocs
+            .map(
+                doc => `
             <label style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #eee; cursor:pointer; font-size:0.85rem">
                 <input type="checkbox" class="tej-doc-checkbox" value="${doc.id}" checked style="width:16px; height:16px">
                 <div style="flex:1">
@@ -4771,7 +6080,9 @@ async function loadTEJDocuments() {
                 </div>
                 <div style="font-weight:700">${formatAmount(doc.total_ttc || doc.montant_retenue || 0)}</div>
             </label>
-        `).join('');
+        `
+            )
+            .join('');
     } catch (e) {
         container.innerHTML = `<p style="text-align:center; color:var(--text-danger); padding:10px; font-size:0.8rem">Erreur: ${e.message}</p>`;
     }
@@ -4780,7 +6091,7 @@ async function loadTEJDocuments() {
 function toggleAllTEJSelection() {
     const checkboxes = document.querySelectorAll('.tej-doc-checkbox');
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-    checkboxes.forEach(cb => cb.checked = !allChecked);
+    checkboxes.forEach(cb => (cb.checked = !allChecked));
 }
 
 function closeTEJExportModal() {
@@ -4812,7 +6123,12 @@ async function processTEJExport() {
         }
 
         const result = await window.electronAPI.exportTEJ({
-            type, month, year, codeActe, company, data: selectedData
+            type,
+            month,
+            year,
+            codeActe,
+            company,
+            data: selectedData
         });
 
         hideLoading();
@@ -4873,7 +6189,10 @@ async function searchRNELive() {
                 activity = 'Consultation RNE requise pour détails';
             }
 
-            const address = [d.rueFr, d.codePostal, d.villeFr].filter(x => x).map(x => x.trim()).join(' ');
+            const address = [d.rueFr, d.codePostal, d.villeFr]
+                .filter(x => x)
+                .map(x => x.trim())
+                .join(' ');
 
             content.innerHTML = `
                 <div style="margin-bottom:12px">
@@ -4913,7 +6232,10 @@ async function searchRNELive() {
 
 function validateMFInput(val) {
     const resultEl = document.getElementById('mfVerifyResult');
-    if (!val) { resultEl.style.display = 'none'; return; }
+    if (!val) {
+        resultEl.style.display = 'none';
+        return;
+    }
 
     const cleanVal = val.toUpperCase().trim();
 
@@ -4932,12 +6254,14 @@ function validateMFInput(val) {
         resultEl.style.background = '#d1fae5';
         resultEl.style.border = '1px solid #10b981';
         resultEl.style.color = '#065f46';
-        resultEl.innerHTML = '<i data-lucide="check-circle" style="width:16px;height:16px;color:#065f46;vertical-align:middle"></i> <b>Format Valide</b><br>Ce matricule respecte la structure réglementaire complète.';
+        resultEl.innerHTML =
+            '<i data-lucide="check-circle" style="width:16px;height:16px;color:#065f46;vertical-align:middle"></i> <b>Format Valide</b><br>Ce matricule respecte la structure réglementaire complète.';
     } else {
         resultEl.style.background = '#fffbeb';
         resultEl.style.border = '1px solid #f59e0b';
         resultEl.style.color = '#92400e';
-        resultEl.innerHTML = '💡 <b>Recherche RNE</b><br>Utilisez la loupe <i data-lucide="search" style="width:12px;height:12px;vertical-align:middle"></i> pour interroger le registre public avec ce matricule.';
+        resultEl.innerHTML =
+            '💡 <b>Recherche RNE</b><br>Utilisez la loupe <i data-lucide="search" style="width:12px;height:12px;vertical-align:middle"></i> pour interroger le registre public avec ce matricule.';
     }
     if (window.lucide) lucide.createIcons();
 }
@@ -4964,11 +6288,11 @@ function calculateIRPPSimulation() {
     } else if (revenu <= 20000) {
         impôt = (revenu - 5000) * 0.26;
     } else if (revenu <= 30000) {
-        impôt = (15000 * 0.26) + (revenu - 20000) * 0.28;
+        impôt = 15000 * 0.26 + (revenu - 20000) * 0.28;
     } else if (revenu <= 50000) {
-        impôt = (15000 * 0.26) + (10000 * 0.28) + (revenu - 30000) * 0.32;
+        impôt = 15000 * 0.26 + 10000 * 0.28 + (revenu - 30000) * 0.32;
     } else {
-        impôt = (15000 * 0.26) + (10000 * 0.28) + (20000 * 0.32) + (revenu - 50000) * 0.35;
+        impôt = 15000 * 0.26 + 10000 * 0.28 + 20000 * 0.32 + (revenu - 50000) * 0.35;
     }
 
     document.getElementById('irppTaxAmount').textContent = formatAmount(impôt) + ' TND';
@@ -4999,7 +6323,7 @@ function calculatePenalties() {
     const rate = parseFloat(document.getElementById('penaltyType').value);
 
     const penalty = base * rate * months;
-    const minPenalty = (months > 0) ? 5 : 0; // Simplified min penalty rule
+    const minPenalty = months > 0 ? 5 : 0; // Simplified min penalty rule
     const finalPenalty = Math.max(penalty, minPenalty);
 
     document.getElementById('penaltyAmount').textContent = formatAmount(finalPenalty) + ' TND';
@@ -5021,7 +6345,7 @@ async function calculateTVASummary() {
         // Filter by period
         const periodExpenses = expenses.filter(e => {
             const d = new Date(e.date);
-            return d.getFullYear() === year && (d.getMonth() + 1) === month;
+            return d.getFullYear() === year && d.getMonth() + 1 === month;
         });
 
         const summary = {
@@ -5036,30 +6360,34 @@ async function calculateTVASummary() {
         periodExpenses.forEach(e => {
             const rate = parseInt(e.tva_rate) || 0;
             if (summary[rate]) {
-                summary[rate].ht += (e.amount_ht || 0);
-                summary[rate].tva += (e.amount_tva || 0);
+                summary[rate].ht += e.amount_ht || 0;
+                summary[rate].tva += e.amount_tva || 0;
             } else {
                 // Handle custom rates if any
-                summary[rate] = { ht: (e.amount_ht || 0), tva: (e.amount_tva || 0) };
+                summary[rate] = { ht: e.amount_ht || 0, tva: e.amount_tva || 0 };
             }
-            totalHT += (e.amount_ht || 0);
-            totalTVA += (e.amount_tva || 0);
+            totalHT += e.amount_ht || 0;
+            totalTVA += e.amount_tva || 0;
         });
 
         const tbody = document.getElementById('tvaSumTableBody');
         tbody.innerHTML = '';
-        Object.keys(summary).sort((a, b) => a - b).forEach(rate => {
-            if (summary[rate].ht > 0) {
-                tbody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(summary[rate].ht)}</td><td>${formatAmount(summary[rate].tva)}</td></tr>`;
-            }
-        });
+        Object.keys(summary)
+            .sort((a, b) => a - b)
+            .forEach(rate => {
+                if (summary[rate].ht > 0) {
+                    tbody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(summary[rate].ht)}</td><td>${formatAmount(summary[rate].tva)}</td></tr>`;
+                }
+            });
 
         document.getElementById('tvaSumTotalHT').textContent = formatAmount(totalHT);
         document.getElementById('tvaSumTotalTVA').textContent = formatAmount(totalTVA);
         document.getElementById('tvaSumResult').style.display = 'block';
-
-    } catch (e) { showToast('Erreur calcul TVA', 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur calcul TVA', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // ==================== TVA DÉCLARATION ASSISTANT ====================
@@ -5079,14 +6407,15 @@ async function calculateTVADeclaration() {
         const expenses = await window.electronAPI.getExpenses(currentUser.id);
         const periodDocs = docs.filter(d => {
             const dt = new Date(d.date);
-            return dt.getFullYear() === year && (dt.getMonth() + 1) === month && (d.type === 'facture' || d.type === 'avoir');
+            return dt.getFullYear() === year && dt.getMonth() + 1 === month && (d.type === 'facture' || d.type === 'avoir');
         });
         const periodExpenses = expenses.filter(e => {
             const dt = new Date(e.date);
-            return dt.getFullYear() === year && (dt.getMonth() + 1) === month;
+            return dt.getFullYear() === year && dt.getMonth() + 1 === month;
         });
         const collected = { 7: { ht: 0, tva: 0 }, 13: { ht: 0, tva: 0 }, 19: { ht: 0, tva: 0 } };
-        let colHT = 0, colTVA = 0;
+        let colHT = 0,
+            colTVA = 0;
         periodDocs.forEach(doc => {
             const items = JSON.parse(doc.items_json || '[]');
             items.forEach(item => {
@@ -5102,32 +6431,37 @@ async function calculateTVADeclaration() {
             });
         });
         const deductible = { 7: { ht: 0, tva: 0 }, 13: { ht: 0, tva: 0 }, 19: { ht: 0, tva: 0 } };
-        let dedHT = 0, dedTVA = 0;
+        let dedHT = 0,
+            dedTVA = 0;
         periodExpenses.forEach(e => {
             const rate = parseInt(e.tva_rate) || 0;
             if (deductible[rate]) {
-                deductible[rate].ht += (e.amount_ht || 0);
-                deductible[rate].tva += (e.amount_tva || 0);
+                deductible[rate].ht += e.amount_ht || 0;
+                deductible[rate].tva += e.amount_tva || 0;
             }
-            dedHT += (e.amount_ht || 0);
-            dedTVA += (e.amount_tva || 0);
+            dedHT += e.amount_ht || 0;
+            dedTVA += e.amount_tva || 0;
         });
         const collectedBody = document.getElementById('tvaDeclCollectedBody');
         collectedBody.innerHTML = '';
-        Object.keys(collected).sort((a, b) => a - b).forEach(rate => {
-            if (Math.abs(collected[rate].ht) > 0.001) {
-                collectedBody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(collected[rate].ht)}</td><td>${formatAmount(collected[rate].tva)}</td></tr>`;
-            }
-        });
+        Object.keys(collected)
+            .sort((a, b) => a - b)
+            .forEach(rate => {
+                if (Math.abs(collected[rate].ht) > 0.001) {
+                    collectedBody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(collected[rate].ht)}</td><td>${formatAmount(collected[rate].tva)}</td></tr>`;
+                }
+            });
         document.getElementById('tvaDeclCollectedHT').textContent = formatAmount(colHT);
         document.getElementById('tvaDeclCollectedTVA').textContent = formatAmount(colTVA);
         const deductibleBody = document.getElementById('tvaDeclDeductibleBody');
         deductibleBody.innerHTML = '';
-        Object.keys(deductible).sort((a, b) => a - b).forEach(rate => {
-            if (Math.abs(deductible[rate].ht) > 0.001) {
-                deductibleBody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(deductible[rate].ht)}</td><td>${formatAmount(deductible[rate].tva)}</td></tr>`;
-            }
-        });
+        Object.keys(deductible)
+            .sort((a, b) => a - b)
+            .forEach(rate => {
+                if (Math.abs(deductible[rate].ht) > 0.001) {
+                    deductibleBody.innerHTML += `<tr><td>${rate}%</td><td>${formatAmount(deductible[rate].ht)}</td><td>${formatAmount(deductible[rate].tva)}</td></tr>`;
+                }
+            });
         document.getElementById('tvaDeclDeductibleHT').textContent = formatAmount(dedHT);
         document.getElementById('tvaDeclDeductibleTVA').textContent = formatAmount(dedTVA);
         const netTVA = colTVA - dedTVA;
@@ -5143,8 +6477,11 @@ async function calculateTVADeclaration() {
         }
         if (window.lucide) lucide.createIcons();
         document.getElementById('tvaDeclResult').style.display = 'block';
-    } catch (e) { showToast('Erreur calcul déclaration TVA', 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur calcul déclaration TVA', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 function openPVGenerator() {
@@ -5158,7 +6495,10 @@ async function generatePVDocument() {
     const amount = document.getElementById('pvAmount').value;
     const decision = document.getElementById('pvDecision').value;
 
-    if (!date || !amount) { showToast('Remplissez les champs obligatoires', 'warning'); return; }
+    if (!date || !amount) {
+        showToast('Remplissez les champs obligatoires', 'warning');
+        return;
+    }
 
     showLoading('Génération du PV...');
     try {
@@ -5185,8 +6525,12 @@ async function generatePVDocument() {
 
         const result = await window.electronAPI.savePDF({ html, filename: `PV_Assemblee_${year}.pdf` });
         if (result.success) showToast('PV généré avec succès', 'success');
-    } catch (e) { showToast('Erreur génération PV', 'error'); }
-    finally { hideLoading(); closeModal('pvGeneratorModal'); }
+    } catch (e) {
+        showToast('Erreur génération PV', 'error');
+    } finally {
+        hideLoading();
+        closeModal('pvGeneratorModal');
+    }
 }
 
 function openFinanceDirectory() {
@@ -5281,7 +6625,10 @@ function renderTemplateList() {
 
 async function saveCurrentAsTemplate() {
     const name = document.getElementById('templateNameInput').value.trim();
-    if (!name) { showToast('Nom du modèle requis', 'warning'); return; }
+    if (!name) {
+        showToast('Nom du modèle requis', 'warning');
+        return;
+    }
     const templateData = collectDocumentData();
     try {
         await window.electronAPI.saveTemplate({ userId: currentUser.id, name, type: currentDocType, templateData });
@@ -5289,7 +6636,9 @@ async function saveCurrentAsTemplate() {
         _allTemplates = await window.electronAPI.getTemplates(currentUser.id);
         renderTemplateList();
         document.getElementById('templateNameInput').value = '';
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 
 async function loadTemplate(templateId) {
@@ -5297,8 +6646,24 @@ async function loadTemplate(templateId) {
     const t = templates.find(x => x.id === templateId);
     if (!t) return;
     const data = typeof t.data === 'string' ? JSON.parse(t.data) : t.data;
-    const fields = { docCompanyName: 'companyName', docCompanyMF: 'companyMF', docCompanyAddress: 'companyAddress', docCompanyPhone: 'companyPhone', docCompanyEmail: 'companyEmail', docCompanyRC: 'companyRC', docClientName: 'clientName', docClientMF: 'clientMF', docClientAddress: 'clientAddress', docClientPhone: 'clientPhone', docClientEmail: 'clientEmail', docNotes: 'notes' };
-    Object.entries(fields).forEach(([id, key]) => { const el = document.getElementById(id); if (el && data[key]) el.value = data[key]; });
+    const fields = {
+        docCompanyName: 'companyName',
+        docCompanyMF: 'companyMF',
+        docCompanyAddress: 'companyAddress',
+        docCompanyPhone: 'companyPhone',
+        docCompanyEmail: 'companyEmail',
+        docCompanyRC: 'companyRC',
+        docClientName: 'clientName',
+        docClientMF: 'clientMF',
+        docClientAddress: 'clientAddress',
+        docClientPhone: 'clientPhone',
+        docClientEmail: 'clientEmail',
+        docNotes: 'notes'
+    };
+    Object.entries(fields).forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el && data[key]) el.value = data[key];
+    });
     if (data.items) {
         document.getElementById('itemsBody').innerHTML = '';
         itemCount = 0;
@@ -5309,12 +6674,14 @@ async function loadTemplate(templateId) {
 }
 
 async function deleteTemplate(id) {
-    if (!await confirmModal('Supprimer ce modèle ?', '')) return;
+    if (!(await confirmModal('Supprimer ce modèle ?', ''))) return;
     try {
         await window.electronAPI.deleteTemplate(id);
         _allTemplates = await window.electronAPI.getTemplates(currentUser.id);
         renderTemplateList();
-    } catch { showToast('Erreur', 'error'); }
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 
 // ==================== SAVE & NEW ====================
@@ -5327,7 +6694,7 @@ async function saveAndNew() {
 // ==================== PDF OUTPUT FOLDER ====================
 async function loadPdfOutputFolder() {
     const saved = localStorage.getItem('tuni_pdf_folder') || '';
-    document.getElementById('pdfOutputFolder').value = saved || '(Dossier par défaut de l\'application)';
+    document.getElementById('pdfOutputFolder').value = saved || "(Dossier par défaut de l'application)";
 }
 async function selectPdfOutputFolder() {
     const folder = await window.electronAPI.selectFolder();
@@ -5335,7 +6702,7 @@ async function selectPdfOutputFolder() {
 }
 function savePdfOutputFolder() {
     const folder = document.getElementById('pdfOutputFolder').value;
-    if (folder && folder !== '(Dossier par défaut de l\'application)') localStorage.setItem('tuni_pdf_folder', folder);
+    if (folder && folder !== "(Dossier par défaut de l'application)") localStorage.setItem('tuni_pdf_folder', folder);
     else localStorage.removeItem('tuni_pdf_folder');
     showToast('Dossier PDF enregistré', 'success');
 }
@@ -5344,14 +6711,18 @@ function savePdfOutputFolder() {
 function openPLReport() {
     const year = new Date().getFullYear();
     showLoading('Génération du rapport...');
-    window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 }).then(allDocs => {
-        const docs = (allDocs || []).filter(d => d.date && d.date.startsWith(String(year)) && (d.type === 'facture' || d.type === 'avoir'));
-        const revenue = docs.reduce((s, d) => s + (d.type === 'avoir' ? -1 : 1) * (d.totalTTC || 0), 0);
-        const expenses = allExpenses ? allExpenses.reduce((s, e) => s + (e.amountTTC || 0), 0) : 0;
-        hideLoading();
-        const netResult = revenue - expenses;
-        const win = window.open('', '_blank');
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Compte de Résultat ${year}</title>
+    window.electronAPI
+        .getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 })
+        .then(allDocs => {
+            const docs = (allDocs || []).filter(
+                d => d.date && d.date.startsWith(String(year)) && (d.type === 'facture' || d.type === 'avoir')
+            );
+            const revenue = docs.reduce((s, d) => s + (d.type === 'avoir' ? -1 : 1) * (d.totalTTC || 0), 0);
+            const expenses = allExpenses ? allExpenses.reduce((s, e) => s + (e.amountTTC || 0), 0) : 0;
+            hideLoading();
+            const netResult = revenue - expenses;
+            const win = window.open('', '_blank');
+            win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Compte de Résultat ${year}</title>
         <style>body{font-family:'Inter',sans-serif;max-width:700px;margin:40px auto;padding:20px;color:#1e293b}
         h1{font-size:24px}table{width:100%;border-collapse:collapse;margin:20px 0}
         th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-size:14px}
@@ -5363,29 +6734,38 @@ function openPLReport() {
         <table><tr><th>Catégorie</th><th>Montant (TND)</th></tr>
         <tr><td>Revenus (Factures - Avoirs)</td><td class="pos">${revenue.toFixed(3)}</td></tr>
         <tr><td>Dépenses</td><td class="neg">-${expenses.toFixed(3)}</td></tr>
-        <tr class="total"><td>Résultat Net</td><td class="${netResult>=0?'pos':'neg'}">${netResult.toFixed(3)}</td></tr>
+        <tr class="total"><td>Résultat Net</td><td class="${netResult >= 0 ? 'pos' : 'neg'}">${netResult.toFixed(3)}</td></tr>
         </table>
-        <p style="font-size:0.85rem;color:#64748b">Basé sur ${docs.length} document(s) et ${allExpenses?.length||0} dépense(s)</p>
+        <p style="font-size:0.85rem;color:#64748b">Basé sur ${docs.length} document(s) et ${allExpenses?.length || 0} dépense(s)</p>
         <div class="footer">Factarlou — Généré le ${new Date().toLocaleDateString('fr-FR')}</div>
         <script>window.print();</script></body></html>`);
-        win.document.close();
-    }).catch(() => hideLoading());
+            win.document.close();
+        })
+        .catch(() => hideLoading());
 }
 
 // ==================== BALANCE REPORT ====================
 function openBalanceReport() {
     const year = new Date().getFullYear();
     showLoading('Génération du bilan...');
-    window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 }).then(allDocs => {
-        const allDocsArr = allDocs || [];
-        const totalRevenue = allDocsArr.filter(d => d.date && d.date.startsWith(String(year)) && d.type === 'facture').reduce((s, d) => s + (d.totalTTC || 0), 0);
-        const totalExpenses = allExpenses ? allExpenses.reduce((s, e) => s + (e.amountTTC || 0), 0) : 0;
-        const unpaid = allDocsArr.filter(d => d.type === 'facture' && d.paymentStatus !== 'paid').reduce((s, d) => s + ((d.totalTTC||0) - (d.paidAmount||0)), 0);
-        const totalPaid = allDocsArr.filter(d => d.type === 'facture' && d.paymentStatus === 'paid').reduce((s, d) => s + (d.totalTTC || 0), 0);
-        const netPosition = totalRevenue - totalExpenses;
-        hideLoading();
-        const win = window.open('', '_blank');
-        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bilan Annuel ${year}</title>
+    window.electronAPI
+        .getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 })
+        .then(allDocs => {
+            const allDocsArr = allDocs || [];
+            const totalRevenue = allDocsArr
+                .filter(d => d.date && d.date.startsWith(String(year)) && d.type === 'facture')
+                .reduce((s, d) => s + (d.totalTTC || 0), 0);
+            const totalExpenses = allExpenses ? allExpenses.reduce((s, e) => s + (e.amountTTC || 0), 0) : 0;
+            const unpaid = allDocsArr
+                .filter(d => d.type === 'facture' && d.paymentStatus !== 'paid')
+                .reduce((s, d) => s + ((d.totalTTC || 0) - (d.paidAmount || 0)), 0);
+            const totalPaid = allDocsArr
+                .filter(d => d.type === 'facture' && d.paymentStatus === 'paid')
+                .reduce((s, d) => s + (d.totalTTC || 0), 0);
+            const netPosition = totalRevenue - totalExpenses;
+            hideLoading();
+            const win = window.open('', '_blank');
+            win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bilan Annuel ${year}</title>
         <style>body{font-family:'Inter',sans-serif;max-width:700px;margin:40px auto;padding:20px;color:#1e293b}
         h1{font-size:24px}.section{margin-bottom:24px}.section h2{font-size:18px;border-bottom:2px solid #3b82f6;padding-bottom:8px}
         table{width:100%;border-collapse:collapse;margin:12px 0}
@@ -5399,48 +6779,60 @@ function openBalanceReport() {
         <table><tr><th>Poste</th><th class="num">Montant</th></tr>
         <tr><td>Créances clients (impayés)</td><td class="num">${unpaid.toFixed(3)} TND</td></tr>
         <tr><td>Total encaissé</td><td class="num">${totalPaid.toFixed(3)} TND</td></tr>
-        <tr class="total"><td>Total Actif</td><td class="num">${(unpaid+totalPaid).toFixed(3)} TND</td></tr></table></div>
+        <tr class="total"><td>Total Actif</td><td class="num">${(unpaid + totalPaid).toFixed(3)} TND</td></tr></table></div>
         <div class="section"><h2>Passif</h2>
         <table><tr><th>Poste</th><th class="num">Montant</th></tr>
         <tr><td>Capital propre (Résultat net)</td><td class="num">${netPosition.toFixed(3)} TND</td></tr>
         <tr><td>Dépenses totales</td><td class="num">${totalExpenses.toFixed(3)} TND</td></tr>
-        <tr class="total"><td>Total Passif</td><td class="num">${(netPosition+totalExpenses).toFixed(3)} TND</td></tr></table></div>
+        <tr class="total"><td>Total Passif</td><td class="num">${(netPosition + totalExpenses).toFixed(3)} TND</td></tr></table></div>
         <div class="footer">Factarlou — ${new Date().toLocaleDateString('fr-FR')}</div>
         <script>window.print();</script></body></html>`);
-        win.document.close();
-    }).catch(() => hideLoading());
+            win.document.close();
+        })
+        .catch(() => hideLoading());
 }
 
 // ==================== TVA ANNUAL REPORT ====================
 function openTVAAnnualReport() {
     const year = new Date().getFullYear();
     showLoading('Génération de la déclaration TVA...');
-    window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 }).then(allDocs => {
-        const allDocsArr = allDocs || [];
-        const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-        const byMonth = {};
-        months.forEach(m => { byMonth[m] = { collected: 0, deductible: 0 }; });
-        allDocsArr.filter(d => d.date && d.date.startsWith(String(year)) && (d.type === 'facture' || d.type === 'avoir')).forEach(d => {
-        const m = d.date.substring(5, 7);
-        if (!byMonth[m]) return;
-        const factor = d.type === 'avoir' ? -1 : 1;
-        byMonth[m].collected += factor * ((d.totalTTC||0) - (d.totalHT||0));
-    });
-    (allExpenses || []).filter(e => e.date && e.date.startsWith(String(year))).forEach(e => {
-        const m = e.date.substring(5, 7);
-        if (!byMonth[m]) return;
-        byMonth[m].deductible += (e.amountTTC||0) - (e.amountHT||e.amountTTC||0);
-    });
-    let rows = '';
-    let totalC = 0, totalD = 0;
-    months.forEach(m => {
-        const c = byMonth[m].collected, d = byMonth[m].deductible;
-        totalC += c; totalD += d;
-        const net = c - d;
-        rows += `<tr><td>${m}/${year}</td><td class="num">${c.toFixed(3)}</td><td class="num">${d.toFixed(3)}</td><td class="num ${net>=0?'pos':'neg'}">${net.toFixed(3)}</td></tr>`;
-    });
-    const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Déclaration TVA ${year}</title>
+    window.electronAPI
+        .getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 })
+        .then(allDocs => {
+            const allDocsArr = allDocs || [];
+            const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+            const byMonth = {};
+            months.forEach(m => {
+                byMonth[m] = { collected: 0, deductible: 0 };
+            });
+            allDocsArr
+                .filter(d => d.date && d.date.startsWith(String(year)) && (d.type === 'facture' || d.type === 'avoir'))
+                .forEach(d => {
+                    const m = d.date.substring(5, 7);
+                    if (!byMonth[m]) return;
+                    const factor = d.type === 'avoir' ? -1 : 1;
+                    byMonth[m].collected += factor * ((d.totalTTC || 0) - (d.totalHT || 0));
+                });
+            (allExpenses || [])
+                .filter(e => e.date && e.date.startsWith(String(year)))
+                .forEach(e => {
+                    const m = e.date.substring(5, 7);
+                    if (!byMonth[m]) return;
+                    byMonth[m].deductible += (e.amountTTC || 0) - (e.amountHT || e.amountTTC || 0);
+                });
+            let rows = '';
+            let totalC = 0,
+                totalD = 0;
+            months.forEach(m => {
+                const c = byMonth[m].collected,
+                    d = byMonth[m].deductible;
+                totalC += c;
+                totalD += d;
+                const net = c - d;
+                rows += `<tr><td>${m}/${year}</td><td class="num">${c.toFixed(3)}</td><td class="num">${d.toFixed(3)}</td><td class="num ${net >= 0 ? 'pos' : 'neg'}">${net.toFixed(3)}</td></tr>`;
+            });
+            const win = window.open('', '_blank');
+            win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Déclaration TVA ${year}</title>
     <style>body{font-family:'Inter',sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#1e293b}
     h1{font-size:24px}table{width:100%;border-collapse:collapse;margin:20px 0}
     th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-size:14px}
@@ -5451,13 +6843,14 @@ function openTVAAnnualReport() {
     <h1>Déclaration TVA Annuelle ${year}</h1>
     <table><thead><tr><th>Mois</th><th class="num">Collectée</th><th class="num">Déductible</th><th class="num">Net</th></tr></thead><tbody>
     ${rows}
-    <tr class="total"><td>TOTAL</td><td class="num">${totalC.toFixed(3)}</td><td class="num">${totalD.toFixed(3)}</td><td class="num ${(totalC-totalD)>=0?'pos':'neg'}">${(totalC-totalD).toFixed(3)}</td></tr>
+    <tr class="total"><td>TOTAL</td><td class="num">${totalC.toFixed(3)}</td><td class="num">${totalD.toFixed(3)}</td><td class="num ${totalC - totalD >= 0 ? 'pos' : 'neg'}">${(totalC - totalD).toFixed(3)}</td></tr>
     </tbody></table>
     <div class="footer">Factarlou — ${new Date().toLocaleDateString('fr-FR')}</div>
     <script>window.print();</script></body></html>`);
-        win.document.close();
-        hideLoading();
-    }).catch(() => hideLoading());
+            win.document.close();
+            hideLoading();
+        })
+        .catch(() => hideLoading());
 }
 
 // ═══════════════════════════════════════════
@@ -5479,48 +6872,62 @@ function runGrapheAnalysis() {
     const minSupport = parseFloat(document.getElementById('graphMinSupport').value);
     const minConfidence = parseFloat(document.getElementById('graphMinConfidence').value);
     showLoading('Analyse des relations...');
-    window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 }).then(allDocs => {
-        const docs = allDocs || [];
-        const relevantDocs = docs.filter(d => d.type === 'facture' || d.type === 'devis' || d.type === 'bon');
-        if (relevantDocs.length < 5) {
-            hideLoading();
-            document.getElementById('graphResults').innerHTML =
-                '<p style="color:var(--warning);text-align:center;padding:40px 0">⚠️ Pas assez de documents (minimum 5 factures/devis) pour dégager des patterns significatifs.</p>';
-            return;
-        }
-        setTimeout(() => {
-            try {
-                const transactions = relevantDocs.map(d => {
-                    try { return (d.items || []).map(i => (i.description || '').trim()).filter(Boolean); }
-                    catch { return []; }
-                }).filter(t => t.length > 0);
-                const rules = apriori(transactions, minSupport, minConfidence);
-                const paymentStats = analyzePaymentByItem(relevantDocs);
-                const clientPatterns = analyzeClientPatterns(relevantDocs);
-                lastGraphResults = { rules, paymentStats, clientPatterns, docCount: relevantDocs.length };
-                renderGraphTab(currentGraphTab);
-                hideLoading();
-            } catch (e) {
+    window.electronAPI
+        .getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 })
+        .then(allDocs => {
+            const docs = allDocs || [];
+            const relevantDocs = docs.filter(d => d.type === 'facture' || d.type === 'devis' || d.type === 'bon');
+            if (relevantDocs.length < 5) {
                 hideLoading();
                 document.getElementById('graphResults').innerHTML =
-                    `<p style="color:var(--danger);text-align:center;padding:40px 0">Erreur d'analyse: ${e.message}</p>`;
+                    '<p style="color:var(--warning);text-align:center;padding:40px 0">⚠️ Pas assez de documents (minimum 5 factures/devis) pour dégager des patterns significatifs.</p>';
+                return;
             }
-        }, 50);
-    }).catch(() => hideLoading());
+            setTimeout(() => {
+                try {
+                    const transactions = relevantDocs
+                        .map(d => {
+                            try {
+                                return (d.items || []).map(i => (i.description || '').trim()).filter(Boolean);
+                            } catch {
+                                return [];
+                            }
+                        })
+                        .filter(t => t.length > 0);
+                    const rules = apriori(transactions, minSupport, minConfidence);
+                    const paymentStats = analyzePaymentByItem(relevantDocs);
+                    const clientPatterns = analyzeClientPatterns(relevantDocs);
+                    lastGraphResults = { rules, paymentStats, clientPatterns, docCount: relevantDocs.length };
+                    renderGraphTab(currentGraphTab);
+                    hideLoading();
+                } catch (e) {
+                    hideLoading();
+                    document.getElementById('graphResults').innerHTML =
+                        `<p style="color:var(--danger);text-align:center;padding:40px 0">Erreur d'analyse: ${e.message}</p>`;
+                }
+            }, 50);
+        })
+        .catch(() => hideLoading());
 }
 
 function showGraphTab(tab) {
     currentGraphTab = tab;
     ['associations', 'payment', 'clients'].forEach(t => {
         const btn = document.getElementById('graphTab' + t.charAt(0).toUpperCase() + t.slice(1));
-        if (btn) { btn.style.background = t === tab ? 'var(--primary)' : ''; btn.style.color = t === tab ? 'white' : ''; }
+        if (btn) {
+            btn.style.background = t === tab ? 'var(--primary)' : '';
+            btn.style.color = t === tab ? 'white' : '';
+        }
     });
     if (lastGraphResults) renderGraphTab(tab);
 }
 
 function renderGraphTab(tab) {
     const container = document.getElementById('graphResults');
-    if (!lastGraphResults) { container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:40px 0">Lancez une analyse d\'abord</p>'; return; }
+    if (!lastGraphResults) {
+        container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:40px 0">Lancez une analyse d\'abord</p>';
+        return;
+    }
     const { rules, paymentStats, clientPatterns, docCount } = lastGraphResults;
 
     if (tab === 'associations') {
@@ -5544,11 +6951,13 @@ function renderGraphTab(tab) {
             </tr>`;
         });
         html += '</tbody></table>';
-        if (rules.length > 50) html += `<p style="font-size:0.85rem;color:var(--text-light);margin-top:8px">+ ${rules.length - 50} règles supplémentaires (affinez les seuils pour plus de pertinence)</p>`;
+        if (rules.length > 50)
+            html += `<p style="font-size:0.85rem;color:var(--text-light);margin-top:8px">+ ${rules.length - 50} règles supplémentaires (affinez les seuils pour plus de pertinence)</p>`;
         container.innerHTML = html;
     } else if (tab === 'payment') {
         if (paymentStats.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:40px 0">Pas assez de données de paiement (minimum 3 occurrences par article)</p>';
+            container.innerHTML =
+                '<p style="color:var(--text-light);text-align:center;padding:40px 0">Pas assez de données de paiement (minimum 3 occurrences par article)</p>';
             return;
         }
         let html = `<p style="font-size:0.85rem;color:var(--text-light);margin-bottom:12px">Taux de paiement à temps par article — du plus risqué au plus fiable</p>`;
@@ -5569,7 +6978,8 @@ function renderGraphTab(tab) {
         container.innerHTML = html;
     } else if (tab === 'clients') {
         if (clientPatterns.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:40px 0">Aucun pattern de récurrence client trouvé. Les clients doivent avoir au moins 2 commandes.</p>';
+            container.innerHTML =
+                '<p style="color:var(--text-light);text-align:center;padding:40px 0">Aucun pattern de récurrence client trouvé. Les clients doivent avoir au moins 2 commandes.</p>';
             return;
         }
         let html = `<p style="font-size:0.85rem;color:var(--text-light);margin-bottom:12px">Clients qui commandent le même article régulièrement — opportunités d'abonnement</p>`;
@@ -5584,7 +6994,8 @@ function renderGraphTab(tab) {
             </tr>`;
         });
         html += '</tbody></table>';
-        if (clientPatterns.length > 30) html += `<p style="font-size:0.85rem;color:var(--text-light);margin-top:8px">+ ${clientPatterns.length - 30} autres patterns</p>`;
+        if (clientPatterns.length > 30)
+            html += `<p style="font-size:0.85rem;color:var(--text-light);margin-top:8px">+ ${clientPatterns.length - 30} autres patterns</p>`;
         container.innerHTML = html;
     }
 }
@@ -5598,7 +7009,7 @@ let simCurrentDoc = null;
 // Pure calculation function for the simulator (no DOM dependency)
 function simCalculateTotals(items, options = {}) {
     const { applyTimbre = false, discountPercent = 0, decimalPlaces = 3, roundingMethod = 'half_up' } = options;
-    const round = (v) => {
+    const round = v => {
         const f = Math.pow(10, decimalPlaces);
         if (roundingMethod === 'ceil') return Math.ceil(v * f) / f;
         if (roundingMethod === 'floor') return Math.floor(v * f) / f;
@@ -5612,19 +7023,21 @@ function simCalculateTotals(items, options = {}) {
         const rate = parseInt(item.tva) || 0;
         const lineHT = qty * price;
         totalHT += lineHT;
-        if (rate > 0) tvaByRate[rate] = (tvaByRate[rate] || 0) + lineHT * rate / 100;
+        if (rate > 0) tvaByRate[rate] = (tvaByRate[rate] || 0) + (lineHT * rate) / 100;
     });
     const discountFactor = 1 - (parseFloat(discountPercent) || 0) / 100;
     totalHT = round(totalHT * discountFactor);
     let totalTVA = 0;
     const tvaLines = [];
-    Object.keys(tvaByRate).sort((a, b) => a - b).forEach(rate => {
-        const amt = round(tvaByRate[rate] * discountFactor);
-        totalTVA += amt;
-        tvaLines.push({ rate: parseInt(rate), amount: amt });
-    });
+    Object.keys(tvaByRate)
+        .sort((a, b) => a - b)
+        .forEach(rate => {
+            const amt = round(tvaByRate[rate] * discountFactor);
+            totalTVA += amt;
+            tvaLines.push({ rate: parseInt(rate), amount: amt });
+        });
     totalTVA = round(totalTVA);
-    const timbreAmount = (applyTimbre && totalHT > 1000) ? round(1.000) : 0;
+    const timbreAmount = applyTimbre && totalHT > 1000 ? round(1.0) : 0;
     const totalTTC = round(totalHT + totalTVA + timbreAmount);
     return { totalHT, totalTVA, totalTTC, timbreAmount, tvaLines, roundingAdjustment: 0 };
 }
@@ -5637,16 +7050,19 @@ function openScenarioSimulator() {
     simCurrentDoc = null;
     document.getElementById('simulatorModal').classList.add('active');
     if (window.lucide) lucide.createIcons();
-    window.electronAPI.getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 }).then(allDocs => {
-        const docs = allDocs || [];
-        sel.innerHTML = '<option value="">— Sélectionner un document —</option>';
-        docs.filter(d => d.type === 'facture' || d.type === 'devis' || d.type === 'bon').forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = `#${d.number} - ${d.clientName || ''} (${(d.totalTTC || 0).toFixed(3)} TND)`;
-            sel.appendChild(opt);
-        });
-    }).catch(() => {});
+    window.electronAPI
+        .getDocuments({ userId: currentUser.id, page: 1, pageSize: -1 })
+        .then(allDocs => {
+            const docs = allDocs || [];
+            sel.innerHTML = '<option value="">— Sélectionner un document —</option>';
+            docs.filter(d => d.type === 'facture' || d.type === 'devis' || d.type === 'bon').forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = `#${d.number} - ${d.clientName || ''} (${(d.totalTTC || 0).toFixed(3)} TND)`;
+                sel.appendChild(opt);
+            });
+        })
+        .catch(() => {});
 }
 
 function simulateCurrentDocument() {
@@ -5660,22 +7076,34 @@ function simulateCurrentDocument() {
         const tva = parseInt(document.getElementById('tva' + i)?.value) || 19;
         if (desc) items.push({ description: desc, quantity: qty, price, tva });
     });
-    if (items.length === 0) { showToast('Ajoutez au moins un article avant de simuler', 'warning'); return; }
+    if (items.length === 0) {
+        showToast('Ajoutez au moins un article avant de simuler', 'warning');
+        return;
+    }
     const discount = parseFloat(document.getElementById('discountPercent')?.value) || 0;
     const currency = document.getElementById('docCurrency')?.value || 'TND';
     const applyTimbre = document.getElementById('docApplyTimbre')?.checked;
 
     const simCalc = simCalculateTotals(items, {
-        applyTimbre, discountPercent: discount, decimalPlaces: currentDecimalPlaces,
+        applyTimbre,
+        discountPercent: discount,
+        decimalPlaces: currentDecimalPlaces,
         roundingMethod: currentRoundingMethod
     });
 
     simCurrentDoc = {
         id: 'sim_' + Date.now(),
         number: 'SIMULATION',
-        type, items, discount, currency, apply_timbre: applyTimbre ? 1 : 0,
-        total_ht: simCalc.totalHT, total_ttc: simCalc.totalTTC, total_tva: simCalc.totalTVA,
-        timbre_amount: simCalc.timbreAmount || 0, rounding_adjustment: simCalc.roundingAdjustment || 0,
+        type,
+        items,
+        discount,
+        currency,
+        apply_timbre: applyTimbre ? 1 : 0,
+        total_ht: simCalc.totalHT,
+        total_ttc: simCalc.totalTTC,
+        total_tva: simCalc.totalTVA,
+        timbre_amount: simCalc.timbreAmount || 0,
+        rounding_adjustment: simCalc.roundingAdjustment || 0,
         client_name: document.getElementById('docClientName')?.value || '',
         date: new Date().toISOString().split('T')[0],
         payment_status: 'unpaid'
@@ -5688,10 +7116,17 @@ function simulateCurrentDocument() {
 
 function loadSimDocument() {
     const id = document.getElementById('simDocSelect').value;
-    if (!id) { document.getElementById('simComparison').style.display = 'none'; simCurrentDoc = null; return; }
+    if (!id) {
+        document.getElementById('simComparison').style.display = 'none';
+        simCurrentDoc = null;
+        return;
+    }
     const doc = (window.allDocuments || []).find(d => d.id === id);
     if (doc) loadSimDocumentIntoSimulator(doc);
-    else window.electronAPI.getDocument(id).then(d => { if (d) loadSimDocumentIntoSimulator(d); });
+    else
+        window.electronAPI.getDocument(id).then(d => {
+            if (d) loadSimDocumentIntoSimulator(d);
+        });
 }
 
 function loadSimDocumentIntoSimulator(doc) {
@@ -5715,19 +7150,24 @@ function recalcSimulation() {
         const simCurrency = document.getElementById('simCurrency').value;
         const simTimbre = document.getElementById('simTimbre').checked;
         const tvaOverride = document.getElementById('simTvaOverride').value;
-        if (tvaOverride) items.forEach(item => { item.tva = parseInt(tvaOverride); });
+        if (tvaOverride)
+            items.forEach(item => {
+                item.tva = parseInt(tvaOverride);
+            });
         const dec = currentDecimalPlaces;
         const rounding = currentRoundingMethod;
 
         const origCalc = simCalculateTotals(simCurrentDoc.items || JSON.parse(simCurrentDoc.items_json || '[]'), {
             applyTimbre: simCurrentDoc.apply_timbre ? true : false,
             discountPercent: simCurrentDoc.discount_percent || 0,
-            decimalPlaces: dec, roundingMethod: rounding
+            decimalPlaces: dec,
+            roundingMethod: rounding
         });
         const simCalc = simCalculateTotals(items, {
             applyTimbre: simTimbre,
             discountPercent: simDiscount,
-            decimalPlaces: dec, roundingMethod: rounding
+            decimalPlaces: dec,
+            roundingMethod: rounding
         });
 
         const fmt = v => (v || 0).toFixed(dec);
@@ -5763,7 +7203,7 @@ function recalcSimulation() {
                 <div style="display:flex;justify-content:space-between;font-weight:600;font-size:1rem;margin-top:4px;padding-top:4px;border-top:1px solid var(--border);color:${diffColor}"><span>TTC</span><span>${signTTC}${fmt(Math.abs(diffTTC))}</span></div>
             </div>
             ${simType === 'avoir' ? '<div style="margin-top:8px;padding:6px;background:#fef3c7;border-radius:4px;font-size:0.8rem;color:#92400e">💡 Type Avoir : le montant sera déduit du chiffre d\'affaires</div>' : ''}
-            ${simDiscount > 0 ? `<div style="margin-top:8px;padding:6px;background:#f0f9ff;border-radius:4px;font-size:0.8rem;color:var(--primary)">💡 Remise ${simDiscount}% appliquée — économie fiscale de ${fmt(simCalc.totalTVA - (origCalc.totalTVA * (1 - simDiscount / 100)))} TND sur la TVA</div>` : ''}
+            ${simDiscount > 0 ? `<div style="margin-top:8px;padding:6px;background:#f0f9ff;border-radius:4px;font-size:0.8rem;color:var(--primary)">💡 Remise ${simDiscount}% appliquée — économie fiscale de ${fmt(simCalc.totalTVA - origCalc.totalTVA * (1 - simDiscount / 100))} TND sur la TVA</div>` : ''}
         `;
         if (window.lucide) lucide.createIcons();
     } catch (e) {
@@ -5780,7 +7220,10 @@ function applySimulation() {
     const tvaOverride = document.getElementById('simTvaOverride').value;
 
     let items = JSON.parse(JSON.stringify(simCurrentDoc.items || JSON.parse(simCurrentDoc.items_json || '[]')));
-    if (tvaOverride) items.forEach(item => { item.tva = parseInt(tvaOverride); });
+    if (tvaOverride)
+        items.forEach(item => {
+            item.tva = parseInt(tvaOverride);
+        });
 
     const simCalc = simCalculateTotals(items, {
         applyTimbre: simTimbre,
@@ -5814,17 +7257,23 @@ function applySimulation() {
     };
 
     showLoading('Création du document simulé...');
-    window.electronAPI.saveDocument(docData).then(result => {
-        hideLoading();
-        if (result.success) {
-            showToast('Document créé avec le scénario simulé', 'success');
-            closeModal('simulatorModal');
-            navigateTo('documents');
-            loadDocuments();
-        } else {
-            showToast('Erreur: ' + (result.error || 'Échec'), 'error');
-        }
-    }).catch(e => { hideLoading(); showToast('Erreur: ' + e.message, 'error'); });
+    window.electronAPI
+        .saveDocument(docData)
+        .then(result => {
+            hideLoading();
+            if (result.success) {
+                showToast('Document créé avec le scénario simulé', 'success');
+                closeModal('simulatorModal');
+                navigateTo('documents');
+                loadDocuments();
+            } else {
+                showToast('Erreur: ' + (result.error || 'Échec'), 'error');
+            }
+        })
+        .catch(e => {
+            hideLoading();
+            showToast('Erreur: ' + e.message, 'error');
+        });
 }
 
 // ═══════════════════════════════════════════
@@ -5967,9 +7416,7 @@ function posToggleFullscreen() {
     posFullscreenActive = !posFullscreenActive;
     document.body.classList.toggle('pos-mode', posFullscreenActive);
     const btn = document.querySelector('.pos-topbar-btn');
-    if (btn) btn.innerHTML = posFullscreenActive
-        ? '<i data-lucide="minimize-2"></i>'
-        : '<i data-lucide="maximize-2"></i>';
+    if (btn) btn.innerHTML = posFullscreenActive ? '<i data-lucide="minimize-2"></i>' : '<i data-lucide="maximize-2"></i>';
     if (window.lucide) lucide.createIcons();
 }
 
@@ -5977,7 +7424,9 @@ async function loadPOSSession() {
     try {
         posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id);
         updatePOSSessionUI();
-    } catch (e) { console.error('loadPOSSession:', e); }
+    } catch (e) {
+        console.error('loadPOSSession:', e);
+    }
 }
 
 function updatePOSSessionUI() {
@@ -6020,7 +7469,10 @@ async function loadTodayTotal() {
         const sales = await window.electronAPI.getTodayPOSSales(currentUser.id);
         const total = (sales || []).reduce((s, d) => s + (d.totalTTC || 0), 0);
         document.getElementById('posTodayTotal').innerHTML = total.toFixed(3) + ' TND <small>ventes</small>';
-    } catch (e) { console.error('loadTodayTotal:', e); document.getElementById('posTodayTotal').innerHTML = '0,000 TND <small>ventes</small>'; }
+    } catch (e) {
+        console.error('loadTodayTotal:', e);
+        document.getElementById('posTodayTotal').innerHTML = '0,000 TND <small>ventes</small>';
+    }
 }
 
 // ── TTC Pricing Mode ──────────────────────────────────────────
@@ -6061,25 +7513,30 @@ async function posLoadTodaySales() {
         }
         const total = sales.reduce((s, d) => s + (d.totalTTC || 0), 0);
         const payLabels = { cash: 'Espèces', card: 'Carte', mobile: 'Mobile Money', check: 'Chèque' };
-        content.innerHTML = `<div style="margin-bottom:10px;display:flex;justify-content:space-between;font-weight:600;font-size:0.9rem;border-bottom:2px solid var(--border);padding-bottom:6px">
+        content.innerHTML =
+            `<div style="margin-bottom:10px;display:flex;justify-content:space-between;font-weight:600;font-size:0.9rem;border-bottom:2px solid var(--border);padding-bottom:6px">
             <span>${sales.length} vente(s) — Total: ${total.toFixed(3)} TND</span>
-        </div>` + sales.map(s => {
-            const d = new Date(s.created_at);
-            const t = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-            const payLabel = payLabels[s.paymentMode] || s.paymentMode;
-            const isNegative = (s.totalTTC || 0) < 0;
-            const items = typeof s.items_json === 'string' ? JSON.parse(s.items_json) : (s.items || []);
-            const itemsHtml = items.map((item, idx) => {
-                const qty = item.quantity || item.qty || 1;
-                const name = item.description || item.name || 'Article';
-                const lineTotal = qty * (item.price || 0) * (1 - (item.discount || 0) / 100);
-                return `<div style="display:flex;justify-content:space-between;font-size:0.7rem;padding:1px 4px;color:var(--text-muted)">
+        </div>` +
+            sales
+                .map(s => {
+                    const d = new Date(s.created_at);
+                    const t = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    const payLabel = payLabels[s.paymentMode] || s.paymentMode;
+                    const isNegative = (s.totalTTC || 0) < 0;
+                    const items = typeof s.items_json === 'string' ? JSON.parse(s.items_json) : s.items || [];
+                    const itemsHtml = items
+                        .map((item, idx) => {
+                            const qty = item.quantity || item.qty || 1;
+                            const name = item.description || item.name || 'Article';
+                            const lineTotal = qty * (item.price || 0) * (1 - (item.discount || 0) / 100);
+                            return `<div style="display:flex;justify-content:space-between;font-size:0.7rem;padding:1px 4px;color:var(--text-muted)">
                     <span>${escHtml(name)} x${qty}</span>
                     <span>${lineTotal.toFixed(3)} TND</span>
                     ${!isNegative && posActiveSession ? `<button class="btn btn-danger" style="font-size:0.55rem;padding:1px 4px;margin-left:4px" onclick="posRefundLineItem('${s.id}', ${idx});event.stopPropagation()">×</button>` : ''}
                 </div>`;
-            }).join('');
-            return `<div style="padding:8px 6px;border-bottom:1px solid var(--border-light);font-size:0.85rem;${isNegative ? 'opacity:0.6' : ''}">
+                        })
+                        .join('');
+                    return `<div style="padding:8px 6px;border-bottom:1px solid var(--border-light);font-size:0.85rem;${isNegative ? 'opacity:0.6' : ''}">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <div>
                         <strong>#${s.number}</strong> <span style="color:var(--text-muted)">${t}</span>
@@ -6094,14 +7551,22 @@ async function posLoadTodaySales() {
                 </div>
                 ${itemsHtml ? `<div style="margin-top:4px;padding-top:4px;border-top:1px dashed var(--border-light)">${itemsHtml}</div>` : ''}
             </div>`;
-        }).join('');
-    } catch { document.getElementById('posTodaySalesContent').innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">Erreur de chargement</div>'; }
+                })
+                .join('');
+    } catch {
+        document.getElementById('posTodaySalesContent').innerHTML =
+            '<div style="text-align:center;padding:30px;color:var(--danger)">Erreur de chargement</div>';
+    }
 }
 
 async function posRefundLineItem(saleId, itemIndex) {
-    if (!posActiveSession) { showToast('Session active requise', 'warning'); return; }
-    if (!showConfirm) { if (!confirm('Rembourser cet article ?')) return; }
-    else {
+    if (!posActiveSession) {
+        showToast('Session active requise', 'warning');
+        return;
+    }
+    if (!showConfirm) {
+        if (!confirm('Rembourser cet article ?')) return;
+    } else {
         const confirmed = await new Promise(resolve => {
             showConfirm('Remboursement article', 'Rembourser uniquement cet article ? Le stock sera réintégré.', resolve);
         });
@@ -6110,20 +7575,31 @@ async function posRefundLineItem(saleId, itemIndex) {
     showLoading('Remboursement article...');
     try {
         const sale = await window.electronAPI.getPOSSale(saleId);
-        if (!sale) { hideLoading(); showToast('Vente introuvable', 'error'); return; }
-        const items = typeof sale.items === 'string' ? JSON.parse(sale.items) : (sale.items || []);
-        if (!items[itemIndex]) { hideLoading(); showToast('Article introuvable', 'error'); return; }
+        if (!sale) {
+            hideLoading();
+            showToast('Vente introuvable', 'error');
+            return;
+        }
+        const items = typeof sale.items === 'string' ? JSON.parse(sale.items) : sale.items || [];
+        if (!items[itemIndex]) {
+            hideLoading();
+            showToast('Article introuvable', 'error');
+            return;
+        }
         const item = items[itemIndex];
         const qty = item.quantity || item.qty || 1;
         const price = item.price || 0;
         const discount = item.discount || 0;
         const lineHT = qty * price;
-        const discountAmt = lineHT * discount / 100;
+        const discountAmt = (lineHT * discount) / 100;
         const lineTotal = lineHT - discountAmt;
-        const tvaAmt = (item.tva > 0) ? lineTotal * item.tva / 100 : 0;
+        const tvaAmt = item.tva > 0 ? (lineTotal * item.tva) / 100 : 0;
         // Reverse stock
         if (item.serviceId) {
-            await window.electronAPI.updatePOSStock({ id: item.serviceId, quantity: (posAllProducts.find(p => p.id === item.serviceId)?.stock || 0) + qty });
+            await window.electronAPI.updatePOSStock({
+                id: item.serviceId,
+                quantity: (posAllProducts.find(p => p.id === item.serviceId)?.stock || 0) + qty
+            });
         }
         // Create refund document for this line item
         const refundResult = await window.electronAPI.savePOSSale({
@@ -6143,9 +7619,14 @@ async function posRefundLineItem(saleId, itemIndex) {
             loadPOSProducts();
             posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id);
             loadTodayTotal();
-        } else { showToast('Erreur: ' + (refundResult.error || 'Échec'), 'error'); }
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+        } else {
+            showToast('Erreur: ' + (refundResult.error || 'Échec'), 'error');
+        }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // ── Last Receipt Reprint ──────────────────────────────────────
@@ -6159,7 +7640,10 @@ function posReprintLast() {
 
 // ── Hold / Resume Cart ────────────────────────────────────────
 function posHoldCart() {
-    if (posCart.length === 0) { showToast('Panier vide', 'warning'); return; }
+    if (posCart.length === 0) {
+        showToast('Panier vide', 'warning');
+        return;
+    }
     posSaveDraft();
     posHeldCart = JSON.parse(JSON.stringify(posCart));
     posCart = [];
@@ -6174,7 +7658,9 @@ function posHoldCart() {
 function posResumeCart() {
     if (!posHeldCart) return;
     if (posCart.length > 0) {
-        showConfirm('Reprendre', 'Le panier actuel sera remplacé. Continuer ?', () => { doResume(); });
+        showConfirm('Reprendre', 'Le panier actuel sera remplacé. Continuer ?', () => {
+            doResume();
+        });
     } else {
         doResume();
     }
@@ -6190,7 +7676,10 @@ function posResumeCart() {
 
 // ── Z-Report ──────────────────────────────────────────────────
 async function posZReport() {
-    if (!posActiveSession) { showToast('Aucune session active', 'warning'); return; }
+    if (!posActiveSession) {
+        showToast('Aucune session active', 'warning');
+        return;
+    }
     showLoading('Génération du rapport...');
     try {
         const sales = await window.electronAPI.getTodayPOSSales(currentUser.id);
@@ -6202,19 +7691,29 @@ async function posZReport() {
         const now = new Date();
         const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        let storeName = 'FACTARLOU', storeMF = '';
+        let storeName = 'FACTARLOU',
+            storeMF = '';
         try {
             const company = await window.electronAPI.getCompany(currentUser.id);
-            if (company) { storeName = company.name || storeName; storeMF = company.mf || ''; }
-        } catch (e) { console.error('posZReport company:', e); }
+            if (company) {
+                storeName = company.name || storeName;
+                storeMF = company.mf || '';
+            }
+        } catch (e) {
+            console.error('posZReport company:', e);
+        }
         const payLabels = { cash: 'Espèces', card: 'Carte', mobile: 'Mobile Money', check: 'Chèque' };
         let byMethod = '<div style="font-size:0.7rem;margin:4px 0">';
-        if (cashSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Espèces</span><span>${cashSales.toFixed(3)}</span></div>`;
-        if (cardSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Carte</span><span>${cardSales.toFixed(3)}</span></div>`;
+        if (cashSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Espèces</span><span>${cashSales.toFixed(3)}</span></div>`;
+        if (cardSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Carte</span><span>${cardSales.toFixed(3)}</span></div>`;
         const mobileSales = sales.filter(s => s.paymentMode === 'mobile').reduce((sum, s) => sum + (s.totalTTC || 0), 0);
         const checkSales = sales.filter(s => s.paymentMode === 'check').reduce((sum, s) => sum + (s.totalTTC || 0), 0);
-        if (mobileSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Mobile Money</span><span>${mobileSales.toFixed(3)}</span></div>`;
-        if (checkSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Chèque</span><span>${checkSales.toFixed(3)}</span></div>`;
+        if (mobileSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Mobile Money</span><span>${mobileSales.toFixed(3)}</span></div>`;
+        if (checkSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Chèque</span><span>${checkSales.toFixed(3)}</span></div>`;
         byMethod += '</div>';
 
         document.getElementById('posZReportContent').innerHTML = `
@@ -6241,8 +7740,11 @@ async function posZReport() {
             </div>`;
         document.getElementById('posZReportModal').style.display = 'flex';
         if (window.lucide) lucide.createIcons();
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 function posPrintZReport() {
     const content = document.getElementById('posZReportContent').innerHTML;
@@ -6258,7 +7760,10 @@ function posPrintZReport() {
 
 // ── Rapport X (mid-day, no session close) ─────────────────────
 async function posXReport() {
-    if (!posActiveSession) { showToast('Aucune session active', 'warning'); return; }
+    if (!posActiveSession) {
+        showToast('Aucune session active', 'warning');
+        return;
+    }
     showLoading('Génération du rapport...');
     try {
         const sales = await window.electronAPI.getTodayPOSSales(currentUser.id);
@@ -6270,18 +7775,28 @@ async function posXReport() {
         const now = new Date();
         const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        let storeName = 'FACTARLOU', storeMF = '';
+        let storeName = 'FACTARLOU',
+            storeMF = '';
         try {
             const company = await window.electronAPI.getCompany(currentUser.id);
-            if (company) { storeName = company.name || storeName; storeMF = company.mf || ''; }
-        } catch (e) { console.error('posXReport company:', e); }
+            if (company) {
+                storeName = company.name || storeName;
+                storeMF = company.mf || '';
+            }
+        } catch (e) {
+            console.error('posXReport company:', e);
+        }
         const mobileSales = sales.filter(s => s.paymentMode === 'mobile').reduce((sum, s) => sum + (s.totalTTC || 0), 0);
         const checkSales = sales.filter(s => s.paymentMode === 'check').reduce((sum, s) => sum + (s.totalTTC || 0), 0);
         let byMethod = '';
-        if (cashSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Espèces</span><span>${cashSales.toFixed(3)}</span></div>`;
-        if (cardSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Carte</span><span>${cardSales.toFixed(3)}</span></div>`;
-        if (mobileSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Mobile Money</span><span>${mobileSales.toFixed(3)}</span></div>`;
-        if (checkSales > 0) byMethod += `<div style="display:flex;justify-content:space-between"><span>Chèque</span><span>${checkSales.toFixed(3)}</span></div>`;
+        if (cashSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Espèces</span><span>${cashSales.toFixed(3)}</span></div>`;
+        if (cardSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Carte</span><span>${cardSales.toFixed(3)}</span></div>`;
+        if (mobileSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Mobile Money</span><span>${mobileSales.toFixed(3)}</span></div>`;
+        if (checkSales > 0)
+            byMethod += `<div style="display:flex;justify-content:space-between"><span>Chèque</span><span>${checkSales.toFixed(3)}</span></div>`;
         const cashMovesNet = posCashMoves.reduce((s, m) => s + (m.type === 'in' ? m.amount : -m.amount), 0);
         const expectedCash = openingBal + cashSales + cashMovesNet;
 
@@ -6310,8 +7825,11 @@ async function posXReport() {
             </div>`;
         document.getElementById('posZReportModal').style.display = 'flex';
         if (window.lucide) lucide.createIcons();
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // ── Override prix dans le panier ──────────────────────────────
@@ -6333,12 +7851,19 @@ function posOverridePrice(index, span) {
     input.style.fontFamily = 'inherit';
     input.onblur = () => {
         const val = parseFloat(input.value);
-        if (!isNaN(val) && val >= 0) { item.price = val; item.priceOverridden = true; }
+        if (!isNaN(val) && val >= 0) {
+            item.price = val;
+            item.priceOverridden = true;
+        }
         renderPOSCart();
     };
-    input.onkeydown = (e) => {
-        if (e.key === 'Enter') { input.blur(); }
-        if (e.key === 'Escape') { renderPOSCart(); }
+    input.onkeydown = e => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+        if (e.key === 'Escape') {
+            renderPOSCart();
+        }
     };
     span.replaceWith(input);
     input.focus();
@@ -6348,7 +7873,11 @@ function posOverridePrice(index, span) {
 // ── Favoris ───────────────────────────────────────────────────
 function posToggleFavorite(productId) {
     const idx = posFavorites.indexOf(productId);
-    if (idx >= 0) { posFavorites.splice(idx, 1); } else { posFavorites.push(productId); }
+    if (idx >= 0) {
+        posFavorites.splice(idx, 1);
+    } else {
+        posFavorites.push(productId);
+    }
     localStorage.setItem('tuni_pos_favorites', JSON.stringify(posFavorites));
     const activeCat = document.querySelector('.pos-cat-btn.active');
     renderPOSProducts(activeCat ? activeCat.dataset.cat : 'all');
@@ -6374,22 +7903,36 @@ function posCreateProduct() {
     const name = document.getElementById('posNewProdName').value.trim();
     const price = parseFloat(document.getElementById('posNewProdPrice').value) || 0;
     const tva = parseFloat(document.getElementById('posNewProdTVA').value) || 19;
-    if (!name) { showToast('Nom requis', 'warning'); return; }
+    if (!name) {
+        showToast('Nom requis', 'warning');
+        return;
+    }
     showLoading('Création...');
-    window.electronAPI.saveService({
-        userId: currentUser.id, name, price, tva,
-        category: document.getElementById('posNewProdCategory').value.trim() || null,
-        barcode: document.getElementById('posNewProdBarcode').value.trim() || null,
-        stock: parseInt(document.getElementById('posNewProdStock').value) || 0,
-        minStock: 0
-    }).then(result => {
-        hideLoading();
-        if (result.success) {
-            showToast('Produit créé', 'success');
-            document.getElementById('posCreateProductModal').style.display = 'none';
-            loadPOSProducts();
-        } else { showToast('Erreur: ' + (result.error || 'Échec'), 'error'); }
-    }).catch(e => { hideLoading(); showToast('Erreur: ' + e.message, 'error'); });
+    window.electronAPI
+        .saveService({
+            userId: currentUser.id,
+            name,
+            price,
+            tva,
+            category: document.getElementById('posNewProdCategory').value.trim() || null,
+            barcode: document.getElementById('posNewProdBarcode').value.trim() || null,
+            stock: parseInt(document.getElementById('posNewProdStock').value) || 0,
+            minStock: 0
+        })
+        .then(result => {
+            hideLoading();
+            if (result.success) {
+                showToast('Produit créé', 'success');
+                document.getElementById('posCreateProductModal').style.display = 'none';
+                loadPOSProducts();
+            } else {
+                showToast('Erreur: ' + (result.error || 'Échec'), 'error');
+            }
+        })
+        .catch(e => {
+            hideLoading();
+            showToast('Erreur: ' + e.message, 'error');
+        });
 }
 
 // ── Mouvements de caisse ──────────────────────────────────────
@@ -6410,8 +7953,9 @@ function posGetNetCashMoves() {
 
 // ── Remboursement ─────────────────────────────────────────────
 async function posRefundSale(saleId) {
-    if (!showConfirm) { if (!confirm('Rembourser cette vente ?')) return; }
-    else {
+    if (!showConfirm) {
+        if (!confirm('Rembourser cette vente ?')) return;
+    } else {
         const confirmed = await new Promise(resolve => {
             showConfirm('Remboursement', 'Annuler cette vente et rembourser le client ? Le stock sera réintégré.', resolve);
         });
@@ -6420,9 +7964,13 @@ async function posRefundSale(saleId) {
     showLoading('Remboursement...');
     try {
         const sale = await window.electronAPI.getPOSSale(saleId);
-        if (!sale) { hideLoading(); showToast('Vente introuvable', 'error'); return; }
+        if (!sale) {
+            hideLoading();
+            showToast('Vente introuvable', 'error');
+            return;
+        }
         // Reverse stock
-        const items = typeof sale.items === 'string' ? JSON.parse(sale.items) : (sale.items || []);
+        const items = typeof sale.items === 'string' ? JSON.parse(sale.items) : sale.items || [];
         (items || []).forEach(item => {
             if (item.serviceId) {
                 const product = posAllProducts.find(p => p.id === item.serviceId);
@@ -6448,11 +7996,18 @@ async function posRefundSale(saleId) {
             showToast('Vente remboursée', 'success');
             if (posTodaySalesOpen) posLoadTodaySales();
             loadPOSProducts();
-            if (posActiveSession) { posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id); }
+            if (posActiveSession) {
+                posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id);
+            }
             loadTodayTotal();
-        } else { showToast('Erreur: ' + (refundResult.error || 'Échec'), 'error'); }
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+        } else {
+            showToast('Erreur: ' + (refundResult.error || 'Échec'), 'error');
+        }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 // ── Fidélité ──────────────────────────────────────────────────
@@ -6504,11 +8059,16 @@ async function posToggleSession() {
         const movesEl = document.getElementById('posSessCashMoves');
         if (posCashMoves.length > 0) {
             movesEl.style.display = 'block';
-            movesEl.innerHTML = '<div style="font-weight:600;margin-top:4px">Mouvements de caisse:</div>' +
-                posCashMoves.map(m => `<div style="display:flex;justify-content:space-between;font-size:0.75rem;padding:1px 0">
+            movesEl.innerHTML =
+                '<div style="font-weight:600;margin-top:4px">Mouvements de caisse:</div>' +
+                posCashMoves
+                    .map(
+                        m => `<div style="display:flex;justify-content:space-between;font-size:0.75rem;padding:1px 0">
                     <span>${escHtml(m.reason)}</span>
                     <span style="color:${m.type === 'in' ? 'var(--success)' : 'var(--danger)'}">${m.type === 'in' ? '+' : '-'}${m.amount.toFixed(3)}</span>
-                </div>`).join('') +
+                </div>`
+                    )
+                    .join('') +
                 `<div style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:600;padding:2px 0;border-top:1px solid #bbf7d0;margin-top:2px">
                     <span>Net mouvements</span>
                     <span>${cashMovesNet >= 0 ? '+' : ''}${cashMovesNet.toFixed(3)}</span>
@@ -6553,13 +8113,17 @@ async function posConfirmSession() {
         showLoading('Ouverture de session...');
         try {
             posActiveSession = await window.electronAPI.openPOSSession({
-                userId: currentUser.id, openingBalance: amount
+                userId: currentUser.id,
+                openingBalance: amount
             });
             showToast('Session ouverte', 'success');
             modal.style.display = 'none';
             updatePOSSessionUI();
-        } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-        finally { hideLoading(); }
+        } catch (e) {
+            showToast('Erreur: ' + e.message, 'error');
+        } finally {
+            hideLoading();
+        }
     } else {
         const cash = parseFloat(document.getElementById('posSessionClosingCash').value) || 0;
         const card = parseFloat(document.getElementById('posSessionClosingCard').value) || 0;
@@ -6570,21 +8134,32 @@ async function posConfirmSession() {
         const diff = cash - expectedCash;
         const doClose = () => {
             showLoading('Clôture de session...');
-            window.electronAPI.closePOSSession({
-                id: posActiveSession.id, closingCash: cash, closingCard: card
-            }).then(result => {
-                hideLoading();
-                if (result && result.id) {
-                    showToast('Session clôturée', 'success');
-                    modal.style.display = 'none';
-                    posActiveSession = null;
-                    posCashMoves = [];
-                    updatePOSSessionUI();
-                } else { showToast('Erreur de clôture', 'error'); }
-            }).catch(e => { hideLoading(); showToast('Erreur: ' + e.message, 'error'); });
+            window.electronAPI
+                .closePOSSession({
+                    id: posActiveSession.id,
+                    closingCash: cash,
+                    closingCard: card
+                })
+                .then(result => {
+                    hideLoading();
+                    if (result && result.id) {
+                        showToast('Session clôturée', 'success');
+                        modal.style.display = 'none';
+                        posActiveSession = null;
+                        posCashMoves = [];
+                        updatePOSSessionUI();
+                    } else {
+                        showToast('Erreur de clôture', 'error');
+                    }
+                })
+                .catch(e => {
+                    hideLoading();
+                    showToast('Erreur: ' + e.message, 'error');
+                });
         };
         if (Math.abs(diff) > 0.001) {
-            showConfirm('Écart de caisse',
+            showConfirm(
+                'Écart de caisse',
                 `Fond + ventes espèces attendus: ${expectedCash.toFixed(3)} TND\nEspèces déclarées: ${cash.toFixed(3)} TND\nÉcart: ${diff > 0 ? '+' : ''}${diff.toFixed(3)} TND`,
                 doClose
             );
@@ -6600,7 +8175,10 @@ async function loadPOSProducts() {
         renderPOSProducts('all');
         renderPOSCategories();
         checkLowStock();
-    } catch (e) { console.error('loadPOSProducts:', e); showToast('Erreur chargement produits', 'error'); }
+    } catch (e) {
+        console.error('loadPOSProducts:', e);
+        showToast('Erreur chargement produits', 'error');
+    }
 }
 
 async function checkLowStock() {
@@ -6615,17 +8193,21 @@ async function checkLowStock() {
         } else {
             badge.style.display = 'none';
         }
-    } catch (e) { console.error('checkLowStock:', e); }
+    } catch (e) {
+        console.error('checkLowStock:', e);
+    }
 }
 
 function renderPOSCategories() {
     const cats = ['__fav__', 'all', ...new Set(posAllProducts.map(p => p.category || 'Autre').filter(Boolean))];
     const container = document.getElementById('posCategories');
-    container.innerHTML = cats.map(c => {
-        const label = c === '__fav__' ? '⭐ Favoris' : (c === 'all' ? 'Tout' : c);
-        const cls = c === 'all' ? 'active' : '';
-        return `<button class="pos-cat-btn ${cls}" data-cat="${c}" onclick="posFilterCategory(this, '${c}')">${escHtml(label)}</button>`;
-    }).join('');
+    container.innerHTML = cats
+        .map(c => {
+            const label = c === '__fav__' ? '⭐ Favoris' : c === 'all' ? 'Tout' : c;
+            const cls = c === 'all' ? 'active' : '';
+            return `<button class="pos-cat-btn ${cls}" data-cat="${c}" onclick="posFilterCategory(this, '${c}')">${escHtml(label)}</button>`;
+        })
+        .join('');
 }
 
 function posFilterCategory(btn, cat) {
@@ -6644,10 +8226,11 @@ function renderPOSProducts(category) {
     }
     if (posSearchFilter) {
         const q = posSearchFilter.toLowerCase();
-        posFilteredProducts = posFilteredProducts.filter(p =>
-            p.name.toLowerCase().includes(q) ||
-            (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-            (p.category || '').toLowerCase().includes(q)
+        posFilteredProducts = posFilteredProducts.filter(
+            p =>
+                p.name.toLowerCase().includes(q) ||
+                (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+                (p.category || '').toLowerCase().includes(q)
         );
     }
     posProductPage = 1;
@@ -6665,21 +8248,18 @@ function posRenderProductChunk(grid) {
         return;
     }
 
-    grid.innerHTML = chunk.map(p => {
-        const stock = p.stock || 0;
-        const tracking = p.min_stock > 0;
-        const outOfStock = tracking && stock <= 0;
-        const lowStock = tracking && stock <= p.min_stock;
-        const stockLabel = tracking
-            ? (outOfStock ? 'Rupture' : `Stock: ${stock}`)
-            : '';
-        const displayPrice = posTTCMode
-            ? (p.price || 0) * (1 + (p.tva || 19) / 100)
-            : (p.price || 0);
-        const priceLabel = displayPrice.toFixed(3) + (posTTCMode ? ' TTC' : ' TND');
-        const isFav = posFavorites.includes(p.id);
-        const img = p.image || '';
-        return `<div class="pos-product-card ${outOfStock ? 'pos-out-of-stock' : ''}" onclick="${outOfStock ? '' : `posAddToCart('${p.id}')`}" title="${escHtml(p.description || p.name)}">
+    grid.innerHTML = chunk
+        .map(p => {
+            const stock = p.stock || 0;
+            const tracking = p.min_stock > 0;
+            const outOfStock = tracking && stock <= 0;
+            const lowStock = tracking && stock <= p.min_stock;
+            const stockLabel = tracking ? (outOfStock ? 'Rupture' : `Stock: ${stock}`) : '';
+            const displayPrice = posTTCMode ? (p.price || 0) * (1 + (p.tva || 19) / 100) : p.price || 0;
+            const priceLabel = displayPrice.toFixed(3) + (posTTCMode ? ' TTC' : ' TND');
+            const isFav = posFavorites.includes(p.id);
+            const img = p.image || '';
+            return `<div class="pos-product-card ${outOfStock ? 'pos-out-of-stock' : ''}" onclick="${outOfStock ? '' : `posAddToCart('${p.id}')`}" title="${escHtml(p.description || p.name)}">
             <button class="pos-fav-star ${isFav ? 'active' : ''}" onclick="event.stopPropagation();posToggleFavorite('${p.id}')" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '★' : '☆'}</button>
             ${posTTCMode ? `<div class="pos-prod-tag-ttc">TTC</div>` : ''}
             ${img ? `<img class="pos-prod-img" src="${escHtml(img)}" alt="${escHtml(p.name)}" loading="lazy">` : ''}
@@ -6687,7 +8267,8 @@ function posRenderProductChunk(grid) {
             <div class="pos-prod-price">${priceLabel}</div>
             ${stockLabel ? `<div class="pos-prod-stock ${lowStock ? 'low' : ''}">${stockLabel}</div>` : ''}
         </div>`;
-    }).join('');
+        })
+        .join('');
 
     posSetupInfiniteScroll();
     if (hasMore) {
@@ -6711,15 +8292,19 @@ function posSetupInfiniteScroll() {
     if (!area || area._posScrollSetup) return;
     area._posScrollSetup = true;
     let scrollTimer;
-    area.addEventListener('scroll', () => {
-        clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-            if (area.scrollTop + area.clientHeight >= area.scrollHeight - 300) {
-                const loadMore = area.querySelector('.pos-load-more');
-                if (loadMore) loadMore.click();
-            }
-        }, 200);
-    }, { passive: true });
+    area.addEventListener(
+        'scroll',
+        () => {
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+                if (area.scrollTop + area.clientHeight >= area.scrollHeight - 300) {
+                    const loadMore = area.querySelector('.pos-load-more');
+                    if (loadMore) loadMore.click();
+                }
+            }, 200);
+        },
+        { passive: true }
+    );
 }
 
 function posFilterSearch(val) {
@@ -6732,12 +8317,23 @@ function posAddToCart(productId) {
     const product = posAllProducts.find(p => p.id === productId);
     if (!product) return;
     const tracking = product.min_stock > 0;
-    if (tracking && (product.stock || 0) <= 0) { showToast('Stock épuisé', 'warning'); return; }
+    if (tracking && (product.stock || 0) <= 0) {
+        showToast('Stock épuisé', 'warning');
+        return;
+    }
     const existing = posCart.find(c => c.id === productId);
     if (existing) {
         existing.qty += 1;
     } else {
-        posCart.push({ id: product.id, name: product.name, price: product.price || 0, tva: product.tva || 19, qty: 1, discount: 0, priceOverridden: false });
+        posCart.push({
+            id: product.id,
+            name: product.name,
+            price: product.price || 0,
+            tva: product.tva || 19,
+            qty: 1,
+            discount: 0,
+            priceOverridden: false
+        });
     }
     renderPOSCart();
     document.getElementById('posBarcodeInput').focus();
@@ -6777,14 +8373,15 @@ function renderPOSCart() {
     clearBtn.disabled = false;
     payBtn.disabled = false;
 
-    itemsEl.innerHTML = posCart.map((item, i) => {
-        const lineHT = item.qty * item.price;
-        const discountPct = item.discount || 0;
-        const discountAmt = lineHT * discountPct / 100;
-        const total = lineHT - discountAmt;
-        const tvaAmt = (item.tva > 0) ? total * item.tva / 100 : 0;
-        const selected = posSelectedItem === i ? 'selected' : '';
-        return `<div class="pos-cart-item ${selected}" onclick="posSelectCartItem(${i})">
+    itemsEl.innerHTML = posCart
+        .map((item, i) => {
+            const lineHT = item.qty * item.price;
+            const discountPct = item.discount || 0;
+            const discountAmt = (lineHT * discountPct) / 100;
+            const total = lineHT - discountAmt;
+            const tvaAmt = item.tva > 0 ? (total * item.tva) / 100 : 0;
+            const selected = posSelectedItem === i ? 'selected' : '';
+            return `<div class="pos-cart-item ${selected}" onclick="posSelectCartItem(${i})">
             <div style="flex:1;min-width:0">
                 <div class="pos-ci-name">${escHtml(item.name)}</div>
                 <div class="pos-ci-discount">
@@ -6804,17 +8401,18 @@ function renderPOSCart() {
             </div>
             <button class="pos-ci-remove" onclick="posRemoveItem(${i});event.stopPropagation()"><i data-lucide="x" style="width:14px"></i></button>
         </div>`;
-    }).join('');
+        })
+        .join('');
 
     const subtotal = posCart.reduce((s, c) => s + c.qty * c.price, 0);
     const totalDiscount = posCart.reduce((s, c) => {
-        return s + c.qty * c.price * (c.discount || 0) / 100;
+        return s + (c.qty * c.price * (c.discount || 0)) / 100;
     }, 0);
     const tvaByRate = {};
     posCart.forEach(c => {
         const lineHT = c.qty * c.price;
-        const taxable = lineHT - lineHT * (c.discount || 0) / 100;
-        if (c.tva > 0) tvaByRate[c.tva] = (tvaByRate[c.tva] || 0) + taxable * c.tva / 100;
+        const taxable = lineHT - (lineHT * (c.discount || 0)) / 100;
+        if (c.tva > 0) tvaByRate[c.tva] = (tvaByRate[c.tva] || 0) + (taxable * c.tva) / 100;
     });
     const totalTVA = Object.values(tvaByRate).reduce((s, v) => s + v, 0);
     const grandTotal = subtotal - totalDiscount + totalTVA;
@@ -6859,12 +8457,18 @@ function posQuickQty(index, span) {
     input.style.fontFamily = 'inherit';
     input.onblur = () => {
         const val = parseInt(input.value) || 1;
-        if (posCart[index]) { posCart[index].qty = Math.max(1, val); }
+        if (posCart[index]) {
+            posCart[index].qty = Math.max(1, val);
+        }
         renderPOSCart();
     };
-    input.onkeydown = (e) => {
-        if (e.key === 'Enter') { input.blur(); }
-        if (e.key === 'Escape') { renderPOSCart(); }
+    input.onkeydown = e => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+        if (e.key === 'Escape') {
+            renderPOSCart();
+        }
     };
     span.replaceWith(input);
     input.focus();
@@ -6876,7 +8480,10 @@ function posIncQty(index) {
     if (!item) return;
     const product = posAllProducts.find(p => p.id === item.id);
     const tracking = product && product.min_stock > 0;
-    if (tracking && (product.stock || 0) <= item.qty) { showToast('Stock insuffisant', 'warning'); return; }
+    if (tracking && (product.stock || 0) <= item.qty) {
+        showToast('Stock insuffisant', 'warning');
+        return;
+    }
     item.qty += 1;
     renderPOSCart();
 }
@@ -6884,8 +8491,11 @@ function posIncQty(index) {
 function posDecQty(index) {
     const item = posCart[index];
     if (!item) return;
-    if (item.qty <= 1) { posCart.splice(index, 1); }
-    else { item.qty -= 1; }
+    if (item.qty <= 1) {
+        posCart.splice(index, 1);
+    } else {
+        item.qty -= 1;
+    }
     renderPOSCart();
 }
 
@@ -6901,7 +8511,10 @@ function posClearCart() {
 }
 
 function posOpenPayment() {
-    if (posCart.length === 0) { showToast('Panier vide', 'warning'); return; }
+    if (posCart.length === 0) {
+        showToast('Panier vide', 'warning');
+        return;
+    }
     const total = parseFloat(posGetEl('posGrandTotal').textContent) || 0;
     posGetEl('posPayTotal').textContent = total.toFixed(3) + ' TND';
     posGetEl('posAmountReceived').value = '';
@@ -6944,8 +8557,14 @@ function posAddSplitPayment() {
     const total = parseFloat(totalText) || 0;
     const splitTotal = posSplitPayments.reduce((s, p) => s + p.amount, 0);
     const remaining = total - splitTotal;
-    if (remaining <= 0) { showToast('Total déjà atteint', 'warning'); return; }
-    if (!posSelectedMethod || posSelectedMethod === 'multiple') { showToast('Sélectionnez un moyen', 'warning'); return; }
+    if (remaining <= 0) {
+        showToast('Total déjà atteint', 'warning');
+        return;
+    }
+    if (!posSelectedMethod || posSelectedMethod === 'multiple') {
+        showToast('Sélectionnez un moyen', 'warning');
+        return;
+    }
     // Check if this method already exists in split
     const existing = posSplitPayments.find(p => p.method === posSelectedMethod);
     if (existing) {
@@ -6969,14 +8588,18 @@ function posRenderSplitPayments() {
     const total = parseFloat(totalText) || 0;
     const splitTotal = posSplitPayments.reduce((s, p) => s + p.amount, 0);
     const remaining = total - splitTotal;
-    el.innerHTML = posSplitPayments.map((p, i) => `
+    el.innerHTML = posSplitPayments
+        .map(
+            (p, i) => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f0fdf4;border-radius:8px;margin-bottom:4px;font-size:0.85rem">
             <span style="font-weight:600">${payLabels[p.method] || p.method}</span>
             <input type="number" step="0.001" value="${p.amount.toFixed(3)}" onchange="posUpdateSplitAmount(${i},this)" style="width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-weight:600;text-align:right">
             <span>TND</span>
             <button onclick="posRemoveSplitPayment(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:4px"><i data-lucide="x" style="width:14px"></i></button>
         </div>
-    `).join('');
+    `
+        )
+        .join('');
     if (remaining > 0) {
         el.innerHTML += `<div style="text-align:right;font-size:0.85rem;color:#64748b;padding:4px 4px 0">Reste: <strong>${remaining.toFixed(3)} TND</strong></div>`;
     }
@@ -7010,8 +8633,7 @@ function posCalcChange() {
             info.style.cssText = 'font-size:0.75rem;color:#f59e0b;text-align:center;margin-top:4px';
             document.getElementById('posCashSection').appendChild(info);
         }
-        document.getElementById('posRoundingInfo').textContent =
-            `Arrondi espèces: ${total.toFixed(3)} → ${effectiveTotal.toFixed(3)} TND`;
+        document.getElementById('posRoundingInfo').textContent = `Arrondi espèces: ${total.toFixed(3)} → ${effectiveTotal.toFixed(3)} TND`;
     } else {
         const roundedEl = document.getElementById('posRoundingInfo');
         if (roundedEl) roundedEl.textContent = '';
@@ -7102,15 +8724,15 @@ async function posCompleteSale() {
     // Calculate totals (with discounts)
     const subtotal = posCart.reduce((s, c) => s + c.qty * c.price, 0);
     const totalDiscount = posCart.reduce((s, c) => {
-        return s + (c.qty * c.price) * (c.discount || 0) / 100;
+        return s + (c.qty * c.price * (c.discount || 0)) / 100;
     }, 0);
     const discountedHT = subtotal - totalDiscount;
     const tvaByRate = {};
     posCart.forEach(c => {
         const lineHT = c.qty * c.price;
-        const lineDiscount = lineHT * (c.discount || 0) / 100;
+        const lineDiscount = (lineHT * (c.discount || 0)) / 100;
         const taxable = lineHT - lineDiscount;
-        if (c.tva > 0) tvaByRate[c.tva] = (tvaByRate[c.tva] || 0) + taxable * c.tva / 100;
+        if (c.tva > 0) tvaByRate[c.tva] = (tvaByRate[c.tva] || 0) + (taxable * c.tva) / 100;
     });
     const totalTVA = Object.values(tvaByRate).reduce((s, v) => s + v, 0);
     const totalTTC = discountedHT + totalTVA;
@@ -7119,7 +8741,10 @@ async function posCompleteSale() {
     const items = posCart.map(c => {
         const product = posAllProducts.find(p => p.id === c.id);
         return {
-            description: c.name, quantity: c.qty, price: c.price, tva: c.tva,
+            description: c.name,
+            quantity: c.qty,
+            price: c.price,
+            tva: c.tva,
             discount: c.discount || 0,
             serviceId: c.id
         };
@@ -7133,7 +8758,8 @@ async function posCompleteSale() {
     let paymentNote = '';
     if (posSplitPayments.length > 0) {
         const payLabels = { cash: 'Espèces', card: 'Carte', mobile: 'Mobile Money', check: 'Chèque' };
-        paymentNote = 'Paiement multiple: ' + posSplitPayments.map(p => `${payLabels[p.method] || p.method} ${p.amount.toFixed(3)}`).join(' + ');
+        paymentNote =
+            'Paiement multiple: ' + posSplitPayments.map(p => `${payLabels[p.method] || p.method} ${p.amount.toFixed(3)}`).join(' + ');
     }
 
     // Acompte handling
@@ -7172,21 +8798,40 @@ async function posCompleteSale() {
                 const payLabels = { cash: 'Espèces', card: 'Carte', mobile: 'Mobile Money', check: 'Chèque' };
                 payLabel = payLabels[posSelectedMethod] || posSelectedMethod;
             }
-            posShowReceipt({ number: result.number, clientName, items, totalHT: discountedHT, totalDiscount, totalTVA, totalTTC, paymentMethod: payLabel, loyalty: pts, operator: posOperatorName, notes: acompteNote || cartNote || undefined });
+            posShowReceipt({
+                number: result.number,
+                clientName,
+                items,
+                totalHT: discountedHT,
+                totalDiscount,
+                totalTVA,
+                totalTTC,
+                paymentMethod: payLabel,
+                loyalty: pts,
+                operator: posOperatorName,
+                notes: acompteNote || cartNote || undefined
+            });
             posSplitPayments = [];
             posCart = [];
             renderPOSCart();
             loadPOSProducts();
             // Refresh session totals first, then update the display
             if (posActiveSession) {
-                try { posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id); } catch (e) { console.error('posCompleteSale refresh session:', e); }
+                try {
+                    posActiveSession = await window.electronAPI.getActivePOSSession(currentUser.id);
+                } catch (e) {
+                    console.error('posCompleteSale refresh session:', e);
+                }
             }
             loadTodayTotal();
         } else {
             showToast('Erreur: ' + (result.error || 'Échec'), 'error');
         }
-    } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-    finally { hideLoading(); }
+    } catch (e) {
+        showToast('Erreur: ' + e.message, 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 async function posShowReceipt(data) {
@@ -7201,7 +8846,9 @@ async function posShowReceipt(data) {
     document.getElementById('posReprintCartBtn').style.display = '';
 
     // Load store info from company
-    let storeName = 'FACTARLOU', storeInfo = 'Point de Vente', storePhone = '';
+    let storeName = 'FACTARLOU',
+        storeInfo = 'Point de Vente',
+        storePhone = '';
     try {
         const company = await window.electronAPI.getCompany(currentUser.id);
         if (company) {
@@ -7213,7 +8860,9 @@ async function posShowReceipt(data) {
             storeInfo = parts.join(' | ') || 'Point de Vente';
             storePhone = company.phone || '';
         }
-    } catch (e) { console.error('posShowReceipt company:', e); }
+    } catch (e) {
+        console.error('posShowReceipt company:', e);
+    }
 
     let itemsHtml = '';
     data.items.forEach(item => {
@@ -7221,7 +8870,7 @@ async function posShowReceipt(data) {
         const price = item.price || 0;
         const discount = item.discount || 0;
         const lineHT = qty * price;
-        const discountAmt = lineHT * discount / 100;
+        const discountAmt = (lineHT * discount) / 100;
         const total = lineHT - discountAmt;
         itemsHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0">
             <span>${escHtml(item.description)} x${qty}</span>
@@ -7273,42 +8922,70 @@ async function posLoadQuickGrid() {
     if (!container || !itemsEl) return;
     try {
         const sales = await window.electronAPI.getTodayPOSSales(currentUser.id);
-        if (!sales || sales.length === 0) { container.style.display = 'none'; return; }
+        if (!sales || sales.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
         const freq = {};
         sales.forEach(s => {
             try {
-                const items = typeof s.items_json === 'string' ? JSON.parse(s.items_json) : (s.items || []);
+                const items = typeof s.items_json === 'string' ? JSON.parse(s.items_json) : s.items || [];
                 items.forEach(item => {
                     const name = item.description || item.name || '';
                     if (name) freq[name] = (freq[name] || 0) + (item.quantity || 1);
                 });
-            } catch (e) { console.error('posLoadQuickGrid parse:', e); }
+            } catch (e) {
+                console.error('posLoadQuickGrid parse:', e);
+            }
         });
-        const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10);
-        if (top.length === 0) { container.style.display = 'none'; return; }
-        itemsEl.innerHTML = top.map(([name]) => {
-            const product = posAllProducts.find(p => p.name === name);
-            if (!product) return '';
-            return `<span class="pos-quick-item" onclick="posAddToCart('${product.id}')">${escHtml(name)}</span>`;
-        }).filter(Boolean).join('');
+        const top = Object.entries(freq)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
+        if (top.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        itemsEl.innerHTML = top
+            .map(([name]) => {
+                const product = posAllProducts.find(p => p.name === name);
+                if (!product) return '';
+                return `<span class="pos-quick-item" onclick="posAddToCart('${product.id}')">${escHtml(name)}</span>`;
+            })
+            .filter(Boolean)
+            .join('');
         container.style.display = top.some(Boolean) ? 'flex' : 'none';
-    } catch (e) { console.error('posLoadQuickGrid:', e); container.style.display = 'none'; }
+    } catch (e) {
+        console.error('posLoadQuickGrid:', e);
+        container.style.display = 'none';
+    }
 }
 
 // ── Client Search ────────────────────────────────────────────
 function posSearchClient(val) {
     const results = document.getElementById('posClientResults');
-    if (!val || val.length < 1) { results.style.display = 'none'; return; }
-    if (typeof allClients === 'undefined' || !allClients) { results.style.display = 'none'; return; }
+    if (!val || val.length < 1) {
+        results.style.display = 'none';
+        return;
+    }
+    if (typeof allClients === 'undefined' || !allClients) {
+        results.style.display = 'none';
+        return;
+    }
     const q = val.toLowerCase();
     const matches = allClients.filter(c => c.name && c.name.toLowerCase().includes(q)).slice(0, 8);
-    if (matches.length === 0) { results.style.display = 'none'; return; }
-    results.innerHTML = matches.map(c =>
-        `<div class="pos-client-result" onclick="posSelectClient('${escHtml(c.name)}')">
+    if (matches.length === 0) {
+        results.style.display = 'none';
+        return;
+    }
+    results.innerHTML = matches
+        .map(
+            c =>
+                `<div class="pos-client-result" onclick="posSelectClient('${escHtml(c.name)}')">
             <span class="clr-name">${escHtml(c.name)}</span>
             <span class="clr-info">${c.phone ? escHtml(c.phone) : ''}${c.mf ? ' | MF: ' + escHtml(c.mf) : ''}</span>
         </div>`
-    ).join('');
+        )
+        .join('');
     results.style.display = 'block';
 }
 
@@ -7325,27 +9002,39 @@ async function posShowClientHistory(name) {
     if (!historyEl) return;
     try {
         const sales = await window.electronAPI.getTodayPOSSales(currentUser.id);
-        if (!sales || sales.length === 0) { historyEl.style.display = 'none'; return; }
-        const clientSales = sales.filter(s =>
-            (s.client_name || s.clientName || '') === name
-        ).slice(0, 5);
-        if (clientSales.length === 0) { historyEl.style.display = 'none'; return; }
+        if (!sales || sales.length === 0) {
+            historyEl.style.display = 'none';
+            return;
+        }
+        const clientSales = sales.filter(s => (s.client_name || s.clientName || '') === name).slice(0, 5);
+        if (clientSales.length === 0) {
+            historyEl.style.display = 'none';
+            return;
+        }
         historyEl.style.display = 'block';
-        historyEl.innerHTML = '<div style="font-size:0.7rem;font-weight:600;color:var(--text-muted);margin-bottom:4px">Achats récents</div>' +
-            clientSales.map(s => {
-                const d = new Date(s.created_at);
-                const t = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                return `<div style="display:flex;justify-content:space-between;font-size:0.7rem;padding:2px 0">
+        historyEl.innerHTML =
+            '<div style="font-size:0.7rem;font-weight:600;color:var(--text-muted);margin-bottom:4px">Achats récents</div>' +
+            clientSales
+                .map(s => {
+                    const d = new Date(s.created_at);
+                    const t = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    return `<div style="display:flex;justify-content:space-between;font-size:0.7rem;padding:2px 0">
                     <span style="color:var(--text-muted)">${t} — #${s.number}</span>
                     <span style="font-weight:600">${(s.totalTTC || 0).toFixed(3)} TND</span>
                 </div>`;
-            }).join('');
-    } catch { historyEl.style.display = 'none'; }
+                })
+                .join('');
+    } catch {
+        historyEl.style.display = 'none';
+    }
 }
 
 function posRefreshFidelityFromClient(name) {
     const display = document.getElementById('posFidelityDisplay');
-    if (!name || name === 'Client du magasin') { display.style.display = 'none'; return; }
+    if (!name || name === 'Client du magasin') {
+        display.style.display = 'none';
+        return;
+    }
     const pts = posGetLoyalty(name);
     if (pts > 0) {
         display.style.display = 'block';
@@ -7360,7 +9049,8 @@ function posRefreshFidelity() {
     const name = document.getElementById('posFidClient').value.trim();
     const content = document.getElementById('posFidelityContent');
     if (!name) {
-        content.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Entrez un nom de client pour voir ses points</div>';
+        content.innerHTML =
+            '<div style="text-align:center;padding:20px;color:var(--text-muted)">Entrez un nom de client pour voir ses points</div>';
         return;
     }
     const pts = posGetLoyalty(name);
@@ -7383,8 +9073,14 @@ function posApplyAcompte() {
     const totalText = document.getElementById('posPayTotal').textContent;
     const total = parseFloat(totalText) || 0;
     const amount = parseFloat(document.getElementById('posAcompteAmount').value) || 0;
-    if (amount <= 0) { showToast('Montant invalide', 'warning'); return; }
-    if (amount > total) { showToast('L\'acompte ne peut pas dépasser le total', 'warning'); return; }
+    if (amount <= 0) {
+        showToast('Montant invalide', 'warning');
+        return;
+    }
+    if (amount > total) {
+        showToast("L'acompte ne peut pas dépasser le total", 'warning');
+        return;
+    }
     posAcompteAmount = amount;
     const restant = total - amount;
     document.getElementById('posAcompteInfo').innerHTML = `
@@ -7403,10 +9099,11 @@ function posOpenDrafts() {
     if (list.length === 0) {
         container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Aucun brouillon sauvegardé</div>';
     } else {
-        container.innerHTML = list.map((d, i) => {
-            const total = (d.cart || []).reduce((s, c) => s + c.qty * c.price, 0);
-            const items = (d.cart || []).length;
-            return `<div class="pos-draft-item">
+        container.innerHTML = list
+            .map((d, i) => {
+                const total = (d.cart || []).reduce((s, c) => s + c.qty * c.price, 0);
+                const items = (d.cart || []).length;
+                return `<div class="pos-draft-item">
                 <div class="pos-draft-info">
                     <div class="pos-draft-name">${escHtml(d.name || 'Sans nom')}</div>
                     <div class="pos-draft-meta">${items} article(s) · ${total.toFixed(3)} TND · ${d.date || ''}</div>
@@ -7416,7 +9113,8 @@ function posOpenDrafts() {
                     <button class="pos-draft-btn pos-draft-delete" onclick="posDeleteDraft(${i})">Suppr.</button>
                 </div>
             </div>`;
-        }).join('');
+            })
+            .join('');
     }
     document.getElementById('posDraftsModal').style.display = 'flex';
 }
@@ -7426,7 +9124,10 @@ function posCloseDrafts() {
 }
 
 function posSaveDraft() {
-    if (posCart.length === 0) { showToast('Panier vide', 'warning'); return; }
+    if (posCart.length === 0) {
+        showToast('Panier vide', 'warning');
+        return;
+    }
     const name = prompt('Nom du brouillon:', 'Brouillon ' + (posDrafts.length + 1));
     if (!name) return;
     const draft = {
@@ -7443,7 +9144,9 @@ function posRestoreDraft(index) {
     const list = JSON.parse(localStorage.getItem('tuni_pos_drafts') || '[]');
     if (!list[index]) return;
     if (posCart.length > 0) {
-        showConfirm('Restaurer', 'Le panier actuel sera remplacé. Continuer ?', () => { doRestore(index, list); });
+        showConfirm('Restaurer', 'Le panier actuel sera remplacé. Continuer ?', () => {
+            doRestore(index, list);
+        });
     } else {
         doRestore(index, list);
     }
@@ -7483,11 +9186,10 @@ function posSetFooter() {
 // ── Open Fidelity Modal from topbar ──────────────────────────
 function posOpenFidelity() {
     document.getElementById('posFidClient').value = '';
-    document.getElementById('posFidelityContent').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Entrez un nom de client pour voir ses points</div>';
+    document.getElementById('posFidelityContent').innerHTML =
+        '<div style="text-align:center;padding:20px;color:var(--text-muted)">Entrez un nom de client pour voir ses points</div>';
     document.getElementById('posFidelityModal').style.display = 'flex';
 }
-
-
 
 function posCloseReceipt() {
     document.getElementById('posReceiptModal').style.display = 'none';
@@ -7514,9 +9216,10 @@ function posBarcodeSearch(val) {
     if (posScanTimestamps.length > 10) posScanTimestamps.shift();
 
     // Detect scanner: very fast keystrokes (<50ms apart)
-    const isScanner = posScanTimestamps.length >= 3 &&
-        (posScanTimestamps[posScanTimestamps.length - 1] - posScanTimestamps[posScanTimestamps.length - 2]) < POS_SCAN_THRESHOLD_MS &&
-        (posScanTimestamps[posScanTimestamps.length - 2] - posScanTimestamps[posScanTimestamps.length - 3]) < POS_SCAN_THRESHOLD_MS;
+    const isScanner =
+        posScanTimestamps.length >= 3 &&
+        posScanTimestamps[posScanTimestamps.length - 1] - posScanTimestamps[posScanTimestamps.length - 2] < POS_SCAN_THRESHOLD_MS &&
+        posScanTimestamps[posScanTimestamps.length - 2] - posScanTimestamps[posScanTimestamps.length - 3] < POS_SCAN_THRESHOLD_MS;
 
     const delay = isScanner ? 30 : 300;
 
@@ -7532,7 +9235,10 @@ function posBarcodeSearch(val) {
         renderPOSProducts(activeCat ? activeCat.dataset.cat : 'all');
         return;
     }
-    if (val.length < 2) { posSearchFilter = val; return; }
+    if (val.length < 2) {
+        posSearchFilter = val;
+        return;
+    }
     posScanTimer = setTimeout(async () => {
         if (signal.aborted || !currentUser) return;
         const trimmed = val.trim();
@@ -7548,9 +9254,7 @@ function posBarcodeSearch(val) {
             return;
         }
         // Search by name
-        const matches = posAllProducts.filter(p =>
-            p.name.toLowerCase().includes(trimmed.toLowerCase())
-        );
+        const matches = posAllProducts.filter(p => p.name.toLowerCase().includes(trimmed.toLowerCase()));
         if (matches.length === 1) {
             posAddToCart(matches[0].id);
             document.getElementById('posBarcodeInput').value = '';
@@ -7574,7 +9278,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sync numpad input field back to posNpValue on manual keyboard entry
     const npDisplay = document.getElementById('posNpDisplay');
     if (npDisplay) {
-        npDisplay.addEventListener('input', function() {
+        npDisplay.addEventListener('input', function () {
             posNpValue = this.value;
         });
     }

@@ -1,6 +1,6 @@
 const VALID_TVA_RATES = [19, 13, 7, 0];
 const VALID_CURRENCIES = ['TND', 'EUR', 'USD'];
-const VALID_DOC_TYPES = ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir'];
+const VALID_DOC_TYPES = ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir', 'ticket'];
 const VALID_ROUNDING_METHODS = ['half_up', 'ceil', 'floor'];
 const VALID_FREQUENCIES = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
 
@@ -42,7 +42,8 @@ function validateDocSave(data) {
     if (!isString(data.clientName)) errors.push('clientName: required');
     if (!VALID_CURRENCIES.includes(data.currency || 'TND')) errors.push('currency: must be TND, EUR, or USD');
     if (!isOptionalString(data.paymentMode, 50)) errors.push('paymentMode: max 50 chars');
-    if (data.paymentStatus && !['unpaid', 'paid', 'partial'].includes(data.paymentStatus)) errors.push('paymentStatus: must be unpaid/paid/partial');
+    if (data.paymentStatus && !['unpaid', 'paid', 'partial'].includes(data.paymentStatus))
+        errors.push('paymentStatus: must be unpaid/paid/partial');
     if (!isOptionalNumber(data.discountPercent, 0, 100)) errors.push('discountPercent: must be 0-100');
     if (data.items && !Array.isArray(data.items)) errors.push('items: must be an array');
     if (data.items) {
@@ -80,7 +81,8 @@ function validateExpenseSave(data) {
 function validateSettings(data) {
     const errors = [];
     if (data.decimal_places !== undefined && ![0, 1, 2, 3, 4, 5].includes(data.decimal_places)) errors.push('decimal_places: must be 0-5');
-    if (data.rounding_method && !VALID_ROUNDING_METHODS.includes(data.rounding_method)) errors.push('rounding_method: must be half_up/ceil/floor');
+    if (data.rounding_method && !VALID_ROUNDING_METHODS.includes(data.rounding_method))
+        errors.push('rounding_method: must be half_up/ceil/floor');
     return errors;
 }
 

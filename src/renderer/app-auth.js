@@ -1,66 +1,87 @@
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
-    if(window.lucide) lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
     const rememberedUser = localStorage.getItem('rememberedUser');
     const sessionUser = sessionStorage.getItem('currentUser');
     const raw = rememberedUser || sessionUser;
     if (raw) {
-        try { currentUser = JSON.parse(raw); showApp(); }
-        catch { localStorage.removeItem('rememberedUser'); sessionStorage.removeItem('currentUser'); }
+        try {
+            currentUser = JSON.parse(raw);
+            showApp();
+        } catch {
+            localStorage.removeItem('rememberedUser');
+            sessionStorage.removeItem('currentUser');
+        }
     }
 
     // Keyboard shortcuts from main process (tray, globalShortcut)
     if (window.electronAPI?.onShortcut) {
-        window.electronAPI.onShortcut('newDoc', (type) => { createDocOfType(type || 'facture'); });
-        window.electronAPI.onShortcut('navigate', (page) => { navigateTo(page || 'dashboard'); });
+        window.electronAPI.onShortcut('newDoc', type => {
+            createDocOfType(type || 'facture');
+        });
+        window.electronAPI.onShortcut('navigate', page => {
+            navigateTo(page || 'dashboard');
+        });
         window.electronAPI.onShortcut('focusSearch', () => {
             const el = document.getElementById('globalSearch');
-            if (el) { el.focus(); el.select(); }
+            if (el) {
+                el.focus();
+                el.select();
+            }
         });
     }
 
     // In-app keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
         // POS shortcuts
         if (e.key === 'F1') {
             if (document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); posToggleFullscreen();
+                e.preventDefault();
+                posToggleFullscreen();
             }
         }
         if (e.key === 'F2') {
             const barcodeInput = document.getElementById('posBarcodeInput');
             if (barcodeInput && document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); barcodeInput.focus(); barcodeInput.select();
+                e.preventDefault();
+                barcodeInput.focus();
+                barcodeInput.select();
             }
         }
         if (e.key === 'F3') {
             if (document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); posToggleTTCMode();
+                e.preventDefault();
+                posToggleTTCMode();
             }
         }
         if (e.key === 'F4') {
             if (document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); posToggleTodaySales();
+                e.preventDefault();
+                posToggleTodaySales();
             }
         }
         if (e.key === 'F5') {
             if (document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); posXReport();
+                e.preventDefault();
+                posXReport();
             }
         }
         if (e.key === 'F6') {
             if (document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); posShowFavorites();
+                e.preventDefault();
+                posShowFavorites();
             }
         }
         if (e.key === 'F7') {
             if (document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); posOpenCreateProduct();
+                e.preventDefault();
+                posOpenCreateProduct();
             }
         }
         if (e.key === 'F8') {
             if (document.getElementById('page-pos')?.classList.contains('active')) {
-                e.preventDefault(); posAddCashMove();
+                e.preventDefault();
+                posAddCashMove();
             }
         }
         if (e.key === 'Escape') {
@@ -94,8 +115,13 @@ function switchAuthTab(tab, btn) {
     }
     hideError();
 }
-function hideError() { document.getElementById('authError').classList.add('hidden'); }
-function showError(msg) { document.getElementById('errorText').textContent = msg; document.getElementById('authError').classList.remove('hidden'); }
+function hideError() {
+    document.getElementById('authError').classList.add('hidden');
+}
+function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('authError').classList.remove('hidden');
+}
 
 function togglePasswordVisibility(btn) {
     const wrap = btn.closest('.password-wrap');
@@ -110,25 +136,44 @@ function togglePasswordVisibility(btn) {
 }
 
 async function handleLogin(e) {
-    e.preventDefault(); hideError();
+    e.preventDefault();
+    hideError();
     const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Connexion...'; if (window.lucide) lucide.createIcons();
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Connexion...';
+    if (window.lucide) lucide.createIcons();
     try {
-        const result = await window.electronAPI.authLogin({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value });
+        const result = await window.electronAPI.authLogin({
+            email: document.getElementById('loginEmail').value.trim(),
+            password: document.getElementById('loginPassword').value
+        });
         if (result.success) {
-            const safeUser = { id: result.user.id || result.user._id, name: result.user.name || 'User', email: result.user.email, company: result.user.company || '', mf: result.user.mf || '' };
+            const safeUser = {
+                id: result.user.id || result.user._id,
+                name: result.user.name || 'User',
+                email: result.user.email,
+                company: result.user.company || '',
+                mf: result.user.mf || ''
+            };
             currentUser = safeUser;
             if (document.getElementById('rememberMe')?.checked) localStorage.setItem('rememberedUser', JSON.stringify(safeUser));
             else localStorage.removeItem('rememberedUser');
             sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
             showApp();
-        } else { showError(result.error || 'Identifiants incorrects'); }
-    } catch { showError('Erreur de connexion. Veuillez réessayer.'); }
-    finally { btn.disabled = false; btn.textContent = '🔐 Se connecter'; }
+        } else {
+            showError(result.error || 'Identifiants incorrects');
+        }
+    } catch {
+        showError('Erreur de connexion. Veuillez réessayer.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔐 Se connecter';
+    }
 }
 
 async function handleForgotPassword(e) {
-    e.preventDefault(); hideError();
+    e.preventDefault();
+    hideError();
     const btn = e.target.querySelector('button[type="submit"]');
     const email = document.getElementById('forgotEmail').value.trim();
     const masterKey = document.getElementById('forgotMasterKey').value.trim();
@@ -136,7 +181,9 @@ async function handleForgotPassword(e) {
 
     if (newPassword.length < 6) return showError('Minimum 6 caractères');
 
-    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Réinitialisation...'; if (window.lucide) lucide.createIcons();
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Réinitialisation...';
+    if (window.lucide) lucide.createIcons();
     try {
         const result = await window.electronAPI.authResetPasswordMasterKey({ email, masterKey, newPassword });
         if (result.success) {
@@ -150,20 +197,30 @@ async function handleForgotPassword(e) {
     } catch (err) {
         showError('Erreur lors de la réinitialisation.');
     } finally {
-        btn.disabled = false; btn.textContent = '🔑 Réinitialiser le mot de passe';
+        btn.disabled = false;
+        btn.textContent = '🔑 Réinitialiser le mot de passe';
     }
 }
 
 async function handleRegister(e) {
-    e.preventDefault(); hideError();
+    e.preventDefault();
+    hideError();
     const password = document.getElementById('regPassword').value;
     const passwordConfirm = document.getElementById('regPasswordConfirm').value;
     if (password !== passwordConfirm) return showError('Les mots de passe ne correspondent pas');
     if (password.length < 6) return showError('Minimum 6 caractères');
     const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Création...'; if (window.lucide) lucide.createIcons();
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="lucide-sm spin"></i> Création...';
+    if (window.lucide) lucide.createIcons();
     try {
-        const result = await window.electronAPI.authRegister({ name: document.getElementById('regName').value.trim(), email: document.getElementById('regEmail').value.trim(), company: document.getElementById('regCompany').value.trim(), mf: document.getElementById('regMF').value.trim(), password });
+        const result = await window.electronAPI.authRegister({
+            name: document.getElementById('regName').value.trim(),
+            email: document.getElementById('regEmail').value.trim(),
+            company: document.getElementById('regCompany').value.trim(),
+            mf: document.getElementById('regMF').value.trim(),
+            password
+        });
         if (result.success) {
             const mKey = result.user.masterKey;
             showConfirm(
@@ -177,24 +234,33 @@ async function handleRegister(e) {
                 () => {
                     showToast('Compte créé ! Veuillez vous connecter.', 'success', 5000);
                     switchAuthTab('login', document.querySelector('.auth-tab.active'));
-                    document.getElementById('loginEmail').value = document.getElementById('regEmail').value;
+                    document.getElementById('loginEmail').value = document.getElementById('regEmail').value.trim();
                 },
                 "J'ai bien sauvegardé ma clé",
-                "btn-primary"
+                'btn-primary'
             );
+        } else {
+            showError(result.error || 'Erreur lors de la création');
         }
-        else { showError(result.error || 'Erreur lors de la création'); }
-    } catch { showError('Erreur serveur.'); }
-    finally { btn.disabled = false; btn.textContent = '📝 Créer mon compte'; }
+    } catch {
+        showError('Erreur serveur.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📝 Créer mon compte';
+    }
 }
 
-function confirmLogout() { showConfirm('🚪 Déconnexion', 'Tout document non sauvegardé sera perdu. Continuer ?', logout, 'Déconnexion'); }
+function confirmLogout() {
+    showConfirm('🚪 Déconnexion', 'Tout document non sauvegardé sera perdu. Continuer ?', logout, 'Déconnexion');
+}
 function logout() {
     currentUser = null;
-    localStorage.removeItem('rememberedUser'); sessionStorage.removeItem('currentUser');
+    localStorage.removeItem('rememberedUser');
+    sessionStorage.removeItem('currentUser');
     document.getElementById('appContainer').classList.add('hidden');
     document.getElementById('authContainer').classList.remove('hidden');
-    document.getElementById('loginForm').reset(); document.getElementById('registerForm').reset();
+    document.getElementById('loginForm').reset();
+    document.getElementById('registerForm').reset();
 }
 async function showApp() {
     document.getElementById('authContainer').classList.add('hidden');
@@ -250,18 +316,39 @@ function navigateTo(page) {
     if (page === 'achat') loadAchats();
     if (page === 'hr') loadHR();
     if (page === 'retenues') loadRetenues();
-    if (page === 'outils') { document.getElementById('relanceFactureSelect').style.display = 'none'; document.getElementById('fiscalPeriodSelect').style.display = 'none'; }
+    if (page === 'outils') {
+        document.getElementById('relanceFactureSelect').style.display = 'none';
+        document.getElementById('fiscalPeriodSelect').style.display = 'none';
+    }
     if (page === 'notes') loadNotes();
     if (page === 'reminders') loadReminders();
     if (page === 'documents') updateBreadcrumb('Tous les documents');
     if (page === 'new-document') updateBreadcrumb(getDocTypeLabel(currentDocType) + ' — Nouveau');
     if (page === 'audit-log') loadAuditLog();
     if (page === 'annual') loadAnnualReport();
-    if (page === 'settings') { loadSettings(); loadSerialSettings(); loadThemeSettings(); loadDocumentThemeSettings(); loadFormatSettings(); loadRecurringInvoices(); restoreSettingsTab(); }
-    try { localStorage.setItem('tuni_last_page', page); } catch {}
+    if (page === 'settings') {
+        loadSettings();
+        loadSerialSettings();
+        loadThemeSettings();
+        loadDocumentThemeSettings();
+        loadFormatSettings();
+        loadRecurringInvoices();
+        restoreSettingsTab();
+    }
+    try {
+        localStorage.setItem('tuni_last_page', page);
+    } catch {}
 }
 
-function createDocOfType(type) { currentDocType = type; try { localStorage.setItem('tuni_last_doc_type', currentDocType); } catch {} document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === type); updateDocType(); navigateTo('new-document'); }
+function createDocOfType(type) {
+    currentDocType = type;
+    try {
+        localStorage.setItem('tuni_last_doc_type', currentDocType);
+    } catch {}
+    document.querySelectorAll('input[name="docType"]').forEach(r => (r.checked = r.value === type));
+    updateDocType();
+    navigateTo('new-document');
+}
 // ==================== CHANGE PASSWORD ====================
 function openChangePasswordModal() {
     document.getElementById('cpOldPassword').value = '';
@@ -269,20 +356,35 @@ function openChangePasswordModal() {
     document.getElementById('cpConfirmPassword').value = '';
     document.getElementById('changePasswordModal').classList.add('active');
 }
-function closeChangePasswordModal() { document.getElementById('changePasswordModal').classList.remove('active'); }
+function closeChangePasswordModal() {
+    document.getElementById('changePasswordModal').classList.remove('active');
+}
 
 async function saveNewPassword() {
     const oldPw = document.getElementById('cpOldPassword').value;
     const newPw = document.getElementById('cpNewPassword').value;
     const confPw = document.getElementById('cpConfirmPassword').value;
-    if (!oldPw || !newPw) { showToast('Tous les champs sont requis', 'warning'); return; }
-    if (newPw !== confPw) { showToast('Les mots de passe ne correspondent pas', 'warning'); return; }
-    if (newPw.length < 6) { showToast('Minimum 6 caractères', 'warning'); return; }
+    if (!oldPw || !newPw) {
+        showToast('Tous les champs sont requis', 'warning');
+        return;
+    }
+    if (newPw !== confPw) {
+        showToast('Les mots de passe ne correspondent pas', 'warning');
+        return;
+    }
+    if (newPw.length < 6) {
+        showToast('Minimum 6 caractères', 'warning');
+        return;
+    }
     try {
         const r = await window.electronAPI.changePassword({ userId: currentUser.id, oldPassword: oldPw, newPassword: newPw });
-        if (r.success) { showToast('Mot de passe modifié avec succès', 'success'); closeChangePasswordModal(); }
-        else showToast(r.error || 'Erreur', 'error');
-    } catch { showToast('Erreur', 'error'); }
+        if (r.success) {
+            showToast('Mot de passe modifié avec succès', 'success');
+            closeChangePasswordModal();
+        } else showToast(r.error || 'Erreur', 'error');
+    } catch {
+        showToast('Erreur', 'error');
+    }
 }
 // ==================== SIDEBAR TOGGLE ====================
 function toggleSidebar() {
@@ -292,11 +394,13 @@ function toggleSidebar() {
     } else {
         const container = document.getElementById('appContainer');
         const isCollapsed = container.classList.toggle('sidebar-collapsed');
-        try { localStorage.setItem('tuni_sidebar_collapsed', isCollapsed ? '1' : '0'); } catch {}
+        try {
+            localStorage.setItem('tuni_sidebar_collapsed', isCollapsed ? '1' : '0');
+        } catch {}
     }
 }
 // Close sidebar on nav click for mobile
-document.addEventListener('click', (e) => {
+document.addEventListener('click', e => {
     if (window.innerWidth <= 900 && !e.target.closest('.sidebar') && !e.target.closest('.hamburger-btn')) {
         document.querySelector('.sidebar')?.classList.remove('open');
     }

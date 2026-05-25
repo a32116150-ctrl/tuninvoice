@@ -1,222 +1,230 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const invoke = async (channel, data) => {
-    try { return await ipcRenderer.invoke(channel, data); }
-    catch (error) { console.error(`IPC[${channel}]:`, error); return { success: false, error: error.message || 'IPC error' }; }
+    try {
+        return await ipcRenderer.invoke(channel, data);
+    } catch (error) {
+        console.error(`IPC[${channel}]:`, error);
+        return { success: false, error: error.message || 'IPC error' };
+    }
 };
 
-contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
+contextBridge.exposeInMainWorld(
+    'electronAPI',
+    Object.freeze({
+        // ── APP ──────────────────────────────────────────────────────────
+        getAppVersion: () => invoke('app:version'),
 
-    // ── APP ──────────────────────────────────────────────────────────
-    getAppVersion:   ()     => invoke('app:version'),
+        // ── AUTO-UPDATER ─────────────────────────────────────────────────
+        checkForUpdates: () => invoke('updater:check'),
+        installUpdate: () => invoke('updater:install'),
+        onUpdaterEvent: cb => {
+            ipcRenderer.on('updater:event', (_, payload) => cb(payload));
+        },
 
-    // ── AUTO-UPDATER ─────────────────────────────────────────────────
-    checkForUpdates: ()     => invoke('updater:check'),
-    installUpdate:   ()     => invoke('updater:install'),
-    onUpdaterEvent:  (cb)   => { ipcRenderer.on('updater:event', (_, payload) => cb(payload)); },
+        // ── AUTH ─────────────────────────────────────────────────────────
+        authRegister: d => invoke('auth:register', d),
+        authLogin: d => invoke('auth:login', d),
+        changePassword: d => invoke('auth:changePassword', d),
+        authResetPasswordMasterKey: d => invoke('auth:resetPasswordMasterKey', d),
 
-    // ── AUTH ─────────────────────────────────────────────────────────
-    authRegister:    (d)    => invoke('auth:register', d),
-    authLogin:       (d)    => invoke('auth:login', d),
-    changePassword:  (d)    => invoke('auth:changePassword', d),
-    authResetPasswordMasterKey: (d) => invoke('auth:resetPasswordMasterKey', d),
+        // ── DOCUMENTS ────────────────────────────────────────────────────
+        getDocuments: params => invoke('docs:getAll', params),
+        getDocumentsByType: params => invoke('docs:getByType', params),
+        getDocument: id => invoke('docs:getById', id),
+        saveDocument: data => invoke('docs:save', data),
+        updateDocument: data => invoke('docs:update', data),
+        deleteDocument: id => invoke('docs:delete', id),
+        getNextDocNumber: params => invoke('docs:getNextNumber', params),
+        peekNextDocNumber: params => invoke('docs:peekNextNumber', params),
+        getCounterStatus: params => invoke('docs:counterStatus', params),
+        convertDocument: data => invoke('docs:convert', data),
+        duplicateDocument: data => invoke('docs:duplicate', data),
+        searchDocuments: params => invoke('docs:search', params),
+        getOverdueDocuments: userId => invoke('docs:overdue', userId),
+        getExpiringDocuments: params => invoke('docs:expiring', params),
 
-    // ── DOCUMENTS ────────────────────────────────────────────────────
-    getDocuments:        (params)  => invoke('docs:getAll', params),
-    getDocumentsByType:  (params)  => invoke('docs:getByType', params),
-    getDocument:         (id)      => invoke('docs:getById', id),
-    saveDocument:        (data)    => invoke('docs:save', data),
-    updateDocument:      (data)    => invoke('docs:update', data),
-    deleteDocument:      (id)      => invoke('docs:delete', id),
-    getNextDocNumber:    (params)  => invoke('docs:getNextNumber', params),
-    peekNextDocNumber:   (params)  => invoke('docs:peekNextNumber', params),
-    getCounterStatus:    (params)  => invoke('docs:counterStatus', params),
-    convertDocument:     (data)    => invoke('docs:convert', data),
-    duplicateDocument:   (data)    => invoke('docs:duplicate', data),
-    searchDocuments:     (params)  => invoke('docs:search', params),
-    getOverdueDocuments: (userId)  => invoke('docs:overdue', userId),
-    getExpiringDocuments:(params)  => invoke('docs:expiring', params),
+        // ── PAYMENTS ─────────────────────────────────────────────────────
+        addPayment: data => invoke('payments:add', data),
+        getPayments: docId => invoke('payments:getAll', docId),
+        deletePayment: id => invoke('payments:delete', id),
 
-    // ── PAYMENTS ─────────────────────────────────────────────────────
-    addPayment:    (data)  => invoke('payments:add', data),
-    getPayments:   (docId) => invoke('payments:getAll', docId),
-    deletePayment: (id)    => invoke('payments:delete', id),
+        // ── CLIENTS ──────────────────────────────────────────────────────
+        getClients: userId => invoke('clients:getAll', userId),
+        getClient: id => invoke('clients:getById', id),
+        saveClient: data => invoke('clients:save', data),
+        deleteClient: id => invoke('clients:delete', id),
+        getClientHistory: params => invoke('clients:history', params),
 
-    // ── CLIENTS ──────────────────────────────────────────────────────
-    getClients:      (userId)  => invoke('clients:getAll', userId),
-    getClient:       (id)      => invoke('clients:getById', id),
-    saveClient:      (data)    => invoke('clients:save', data),
-    deleteClient:    (id)      => invoke('clients:delete', id),
-    getClientHistory:(params)  => invoke('clients:history', params),
+        // ── COMPANY ──────────────────────────────────────────────────────
+        getCompany: userId => invoke('company:get', userId),
+        saveCompany: data => invoke('company:save', data),
+        saveCompanyImages: data => invoke('company:saveImages', data),
+        removeCompanyImage: data => invoke('company:removeImage', data),
 
-    // ── COMPANY ──────────────────────────────────────────────────────
-    getCompany:         (userId) => invoke('company:get', userId),
-    saveCompany:        (data)   => invoke('company:save', data),
-    saveCompanyImages:  (data)   => invoke('company:saveImages', data),
-    removeCompanyImage: (data)   => invoke('company:removeImage', data),
+        // ── STATS ────────────────────────────────────────────────────────
+        getStats: userId => invoke('stats:get', userId),
+        getAnnualStats: params => invoke('stats:annual', params),
+        getClientStats: params => invoke('stats:client', params),
+        getExpenseStats: params => invoke('stats:expenses', params),
 
-    // ── STATS ────────────────────────────────────────────────────────
-    getStats:        (userId)  => invoke('stats:get', userId),
-    getAnnualStats:  (params)  => invoke('stats:annual', params),
-    getClientStats:  (params)  => invoke('stats:client', params),
-    getExpenseStats: (params)  => invoke('stats:expenses', params),
+        // ── SERVICES ─────────────────────────────────────────────────────
+        getServices: userId => invoke('services:getAll', userId),
+        saveService: data => invoke('services:save', data),
+        deleteService: id => invoke('services:delete', id),
+        getServiceCategories: userId => invoke('services:cats:get', userId),
+        saveServiceCategory: data => invoke('services:cats:save', data),
+        deleteServiceCategory: id => invoke('services:cats:del', id),
 
-    // ── SERVICES ─────────────────────────────────────────────────────
-    getServices:          (userId) => invoke('services:getAll', userId),
-    saveService:          (data)   => invoke('services:save', data),
-    deleteService:        (id)     => invoke('services:delete', id),
-    getServiceCategories: (userId) => invoke('services:cats:get', userId),
-    saveServiceCategory:  (data)   => invoke('services:cats:save', data),
-    deleteServiceCategory:(id)     => invoke('services:cats:del', id),
+        // ── SETTINGS ─────────────────────────────────────────────────────
+        getSettings: userId => invoke('settings:get', userId),
+        updateSettings: data => invoke('settings:update', data),
+        resetCounter: data => invoke('settings:resetCounter', data),
+        testSmtpConnection: data => invoke('email:test', data),
 
-    // ── SETTINGS ─────────────────────────────────────────────────────
-    getSettings:         (userId) => invoke('settings:get', userId),
-    updateSettings:      (data)   => invoke('settings:update', data),
-    resetCounter:        (data)   => invoke('settings:resetCounter', data),
-    testSmtpConnection:  (data)   => invoke('email:test', data),
+        // ── THEMES ───────────────────────────────────────────────────────
+        getThemeSettings: userId => invoke('theme:get', userId),
+        saveThemeSettings: data => invoke('theme:save', data),
+        getDocumentTheme: userId => invoke('doctheme:get', userId),
+        saveDocumentTheme: data => invoke('doctheme:save', data),
 
-    // ── THEMES ───────────────────────────────────────────────────────
-    getThemeSettings:  (userId) => invoke('theme:get', userId),
-    saveThemeSettings: (data)   => invoke('theme:save', data),
-    getDocumentTheme:  (userId) => invoke('doctheme:get', userId),
-    saveDocumentTheme: (data)   => invoke('doctheme:save', data),
+        // ── EXCEL ────────────────────────────────────────────────────────
+        exportExcelDocuments: params => invoke('export:excel:documents', params),
+        exportExcelClients: params => invoke('export:excel:clients', params),
+        exportExcelRetenues: params => invoke('export:excel:retenues', params),
+        exportXLSX: params => invoke('export:xlsx', params),
 
-    // ── EXCEL ────────────────────────────────────────────────────────
-    exportExcelDocuments: (params) => invoke('export:excel:documents', params),
-    exportExcelClients:   (params) => invoke('export:excel:clients', params),
-    exportExcelRetenues:  (params) => invoke('export:excel:retenues', params),
-    exportXLSX:          (params) => invoke('export:xlsx', params),
+        // ── CSV ──────────────────────────────────────────────────────────
+        exportCSVDocument: params => invoke('export:csv:document', params),
 
-    // ── CSV ──────────────────────────────────────────────────────────
-    exportCSVDocument:    (params) => invoke('export:csv:document', params),
+        // ── BACKUP ───────────────────────────────────────────────────────
+        getBackupSettings: () => invoke('backup:settings:get'),
+        saveBackupSettings: s => invoke('backup:settings:save', s),
+        createManualBackup: () => invoke('backup:create:manual'),
+        getBackupList: () => invoke('backup:list'),
+        restoreBackup: path => invoke('backup:restore', path),
+        generateBackupReport: userId => invoke('backup:report', userId),
 
-    // ── BACKUP ───────────────────────────────────────────────────────
-    getBackupSettings:  ()     => invoke('backup:settings:get'),
-    saveBackupSettings: (s)    => invoke('backup:settings:save', s),
-    createManualBackup: ()     => invoke('backup:create:manual'),
-    getBackupList:      ()     => invoke('backup:list'),
-    restoreBackup:      (path) => invoke('backup:restore', path),
-    generateBackupReport: (userId) => invoke('backup:report', userId),
+        // ── PDF ──────────────────────────────────────────────────────────
+        savePDF: params => invoke('pdf:save', params),
+        printPDF: params => invoke('pdf:print', params),
+        generatePDFBuffer: params => invoke('pdf:generateBuffer', params),
+        generateDocumentPDF: params => invoke('docs:generatePDF', params),
 
-    // ── PDF ──────────────────────────────────────────────────────────
-    savePDF:           (params) => invoke('pdf:save', params),
-    printPDF:          (params) => invoke('pdf:print', params),
-    generatePDFBuffer: (params) => invoke('pdf:generateBuffer', params),
-    generateDocumentPDF: (params) => invoke('docs:generatePDF', params),
+        // ── CONTRACTS ────────────────────────────────────────────────────
+        getContracts: userId => invoke('contracts:getAll', userId),
+        getContract: id => invoke('contracts:getById', id),
+        saveContract: data => invoke('contracts:save', data),
+        deleteContract: id => invoke('contracts:delete', id),
 
-    // ── CONTRACTS ────────────────────────────────────────────────────
-    getContracts:   (userId) => invoke('contracts:getAll', userId),
-    getContract:    (id)     => invoke('contracts:getById', id),
-    saveContract:   (data)   => invoke('contracts:save', data),
-    deleteContract: (id)     => invoke('contracts:delete', id),
+        // ── RETENUE À LA SOURCE ──────────────────────────────────────────
+        getRetenues: userId => invoke('retenues:getAll', userId),
+        getRetenue: id => invoke('retenues:getById', id),
+        saveRetenue: data => invoke('retenues:save', data),
+        deleteRetenue: id => invoke('retenues:delete', id),
+        createRetenueFromFacture: params => invoke('retenues:createFromFacture', params),
+        getRetenuesByFacture: factureId => invoke('retenues:byFacture', factureId),
+        buildRetenueHTML: params => invoke('retenues:buildHTML', params),
 
-    // ── RETENUE À LA SOURCE ──────────────────────────────────────────
-    getRetenues:   (userId)  => invoke('retenues:getAll', userId),
-    getRetenue:    (id)      => invoke('retenues:getById', id),
-    saveRetenue:   (data)    => invoke('retenues:save', data),
-    deleteRetenue: (id)      => invoke('retenues:delete', id),
-    createRetenueFromFacture: (params) => invoke('retenues:createFromFacture', params),
-    getRetenuesByFacture: (factureId) => invoke('retenues:byFacture', factureId),
-    buildRetenueHTML: (params) => invoke('retenues:buildHTML', params),
+        // ── EXPENSES ─────────────────────────────────────────────────────
+        getExpenses: userId => invoke('expenses:getAll', userId),
+        getExpense: id => invoke('expenses:getById', id),
+        saveExpense: data => invoke('expenses:save', data),
+        deleteExpense: id => invoke('expenses:delete', id),
+        getExpenseSummary: params => invoke('expenses:summary', params),
 
-    // ── EXPENSES ─────────────────────────────────────────────────────
-    getExpenses:       (userId) => invoke('expenses:getAll', userId),
-    getExpense:        (id)     => invoke('expenses:getById', id),
-    saveExpense:       (data)   => invoke('expenses:save', data),
-    deleteExpense:     (id)     => invoke('expenses:delete', id),
-    getExpenseSummary: (params) => invoke('expenses:summary', params),
+        // ── SCANNER ──────────────────────────────────────────────────────
+        scannerPickFile: () => invoke('scanner:pickFile'),
+        scannerStoreFile: srcPath => invoke('scanner:storeFile', srcPath),
+        scannerExtractPdfText: filePath => invoke('scanner:extractPdfText', filePath),
+        scannerOcrImage: filePath => invoke('scanner:ocrImage', filePath),
+        scannerOpenAttachment: filePath => invoke('scanner:openAttachment', filePath),
+        scannerDeleteAttachment: filePath => invoke('scanner:deleteAttachment', filePath),
 
-    // ── SCANNER ──────────────────────────────────────────────────────
-    scannerPickFile:      ()         => invoke('scanner:pickFile'),
-    scannerStoreFile:     (srcPath)  => invoke('scanner:storeFile', srcPath),
-    scannerExtractPdfText:(filePath) => invoke('scanner:extractPdfText', filePath),
-    scannerOcrImage:      (filePath) => invoke('scanner:ocrImage', filePath),
-    scannerOpenAttachment:(filePath) => invoke('scanner:openAttachment', filePath),
-    scannerDeleteAttachment:(filePath)=> invoke('scanner:deleteAttachment', filePath),
+        // ── NOTES ────────────────────────────────────────────────────────
+        getNotes: userId => invoke('notes:getAll', userId),
+        saveNote: data => invoke('notes:save', data),
+        deleteNote: id => invoke('notes:delete', id),
 
-    // ── NOTES ────────────────────────────────────────────────────────
-    getNotes:    (userId) => invoke('notes:getAll', userId),
-    saveNote:    (data)   => invoke('notes:save', data),
-    deleteNote:  (id)     => invoke('notes:delete', id),
+        // ── ACTIVITY LOG ─────────────────────────────────────────────────
+        getActivityLog: params => invoke('activity:getAll', params),
+        clearActivityLog: userId => invoke('activity:clear', userId),
 
-    // ── ACTIVITY LOG ─────────────────────────────────────────────────
-    getActivityLog:  (params) => invoke('activity:getAll', params),
-    clearActivityLog:(userId) => invoke('activity:clear', userId),
+        // ── REMINDERS ────────────────────────────────────────────────────
+        getReminders: userId => invoke('reminders:getAll', userId),
+        saveReminder: data => invoke('reminders:save', data),
+        deleteReminder: id => invoke('reminders:delete', id),
+        markReminderDone: id => invoke('reminders:markDone', id),
+        onReminderDue: cb => ipcRenderer.on('reminder:due', (_, r) => cb(r)),
+        saveRelance: data => invoke('relances:save', data),
+        getRelancesByInvoice: invoiceId => invoke('relances:getByInvoice', invoiceId),
+        getRelanceAttemptCount: invoiceId => invoke('relances:attemptCount', invoiceId),
+        getExchangeRates: userId => invoke('rates:getAll', userId),
+        saveExchangeRate: data => invoke('rates:save', data),
+        deleteExchangeRate: data => invoke('rates:delete', data),
 
-    // ── REMINDERS ────────────────────────────────────────────────────
-    getReminders:    (userId) => invoke('reminders:getAll', userId),
-    saveReminder:    (data)   => invoke('reminders:save', data),
-    deleteReminder:  (id)     => invoke('reminders:delete', id),
-    markReminderDone:(id)     => invoke('reminders:markDone', id),
-    onReminderDue:   (cb)     => ipcRenderer.on('reminder:due', (_, r) => cb(r)),
-    saveRelance:     (data)   => invoke('relances:save', data),
-    getRelancesByInvoice: (invoiceId) => invoke('relances:getByInvoice', invoiceId),
-    getRelanceAttemptCount: (invoiceId) => invoke('relances:attemptCount', invoiceId),
-    getExchangeRates:  (userId) => invoke('rates:getAll', userId),
-    saveExchangeRate:  (data)   => invoke('rates:save', data),
-    deleteExchangeRate:(data)   => invoke('rates:delete', data),
+        // ── HR (EMPLOYEES & PAYSLIPS) ────────────────────────────────────
+        getEmployees: userId => invoke('hr:getEmployees', userId),
+        saveEmployee: data => invoke('hr:saveEmployee', data),
+        deleteEmployee: id => invoke('hr:deleteEmployee', id),
+        getPayslips: userId => invoke('hr:getPayslips', userId),
+        savePayslip: data => invoke('hr:savePayslip', data),
+        deletePayslip: id => invoke('hr:deletePayslip', id),
+        buildPayslipHTML: p => invoke('hr:buildPayslipHTML', p),
 
-    // ── HR (EMPLOYEES & PAYSLIPS) ────────────────────────────────────
-    getEmployees:    (userId) => invoke('hr:getEmployees', userId),
-    saveEmployee:    (data)   => invoke('hr:saveEmployee', data),
-    deleteEmployee:  (id)     => invoke('hr:deleteEmployee', id),
-    getPayslips:     (userId) => invoke('hr:getPayslips', userId),
-    savePayslip:     (data)   => invoke('hr:savePayslip', data),
-    deletePayslip:   (id)     => invoke('hr:deletePayslip', id),
-    buildPayslipHTML:(p)      => invoke('hr:buildPayslipHTML', p),
+        // ── TOOLS ────────────────────────────────────────────────────────
+        openCalculator: () => invoke('tools:openCalculator'),
+        generateRelanceLetter: params => invoke('tools:relanceLetter', params),
+        generateFiscalSummary: params => invoke('tools:fiscalSummary', params),
+        searchRNE: mf => invoke('tools:searchRNE', mf),
 
-    // ── TOOLS ────────────────────────────────────────────────────────
-    openCalculator:         ()     => invoke('tools:openCalculator'),
-    generateRelanceLetter:  (params) => invoke('tools:relanceLetter', params),
-    generateFiscalSummary:  (params) => invoke('tools:fiscalSummary', params),
-    searchRNE:              (mf)     => invoke('tools:searchRNE', mf),
+        // ── RECURRING INVOICES ───────────────────────────────────────────
+        getRecurringInvoices: userId => invoke('recurring:getAll', userId),
+        saveRecurringInvoice: data => invoke('recurring:save', data),
+        deleteRecurringInvoice: id => invoke('recurring:delete', id),
 
-    // ── RECURRING INVOICES ───────────────────────────────────────────
-    getRecurringInvoices: (userId) => invoke('recurring:getAll', userId),
-    saveRecurringInvoice: (data)   => invoke('recurring:save', data),
-    deleteRecurringInvoice: (id)   => invoke('recurring:delete', id),
+        // ── XLSX IMPORT ──────────────────────────────────────────────────
+        importXLSX: params => invoke('import:xlsx', params),
 
-    // ── XLSX IMPORT ──────────────────────────────────────────────────
-    importXLSX: (params) => invoke('import:xlsx', params),
+        // ── TEJ EXPORT ───────────────────────────────────────────────────
+        getTEJData: params => invoke('export:tej:getData', params),
+        exportTEJ: params => invoke('export:tej:generate', params),
 
-    // ── TEJ EXPORT ───────────────────────────────────────────────────
-    getTEJData: (params) => invoke('export:tej:getData', params),
-    exportTEJ: (params) => invoke('export:tej:generate', params),
+        // ── EMAIL ──────────────────────────────────────────────────────────
+        sendEmail: params => invoke('email:send', params),
 
-    // ── EMAIL ──────────────────────────────────────────────────────────
-    sendEmail: (params) => invoke('email:send', params),
+        // ── SHORTCUTS (from main process) ─────────────────────────────────
+        onShortcut: (channel, cb) => {
+            const ALLOWED_SHORTCUTS = ['newDoc', 'focusSearch', 'navigate'];
+            if (!ALLOWED_SHORTCUTS.includes(channel)) return;
+            ipcRenderer.on(`shortcut:${channel}`, (_, payload) => cb(payload));
+        },
 
-    // ── SHORTCUTS (from main process) ─────────────────────────────────
-    onShortcut: (channel, cb) => {
-        const ALLOWED_SHORTCUTS = ['newDoc', 'focusSearch', 'navigate'];
-        if (!ALLOWED_SHORTCUTS.includes(channel)) return;
-        ipcRenderer.on(`shortcut:${channel}`, (_, payload) => cb(payload));
-    },
+        // ── DOCUMENT TEMPLATES ───────────────────────────────────────────
+        getTemplates: userId => invoke('templates:getAll', userId),
+        saveTemplate: data => invoke('templates:save', data),
+        deleteTemplate: id => invoke('templates:delete', id),
 
-    // ── DOCUMENT TEMPLATES ───────────────────────────────────────────
-    getTemplates:   (userId) => invoke('templates:getAll', userId),
-    saveTemplate:   (data)   => invoke('templates:save', data),
-    deleteTemplate: (id)     => invoke('templates:delete', id),
+        // ── POS (Point of Sale) ─────────────────────────────────────────
+        getPOSProducts: userId => invoke('pos:getProducts', userId),
+        getPOSProductsPaginated: params => invoke('pos:getProductsPaginated', params),
+        getPOSProductByBarcode: params => invoke('pos:getProductByBarcode', params),
+        savePOSSale: data => invoke('pos:saveSale', data),
+        getPOSSales: params => invoke('pos:getSales', params),
+        getTodayPOSSales: userId => invoke('pos:getTodaySales', userId),
+        getPOSSale: id => invoke('pos:getSaleById', id),
+        deletePOSSale: id => invoke('pos:deleteSale', id),
+        updatePOSStock: params => invoke('pos:updateStock', params),
+        openPOSSession: params => invoke('pos:openSession', params),
+        closePOSSession: params => invoke('pos:closeSession', params),
+        getActivePOSSession: userId => invoke('pos:getActiveSession', userId),
+        getPOSSessions: userId => invoke('pos:getSessions', userId),
+        getPOSLowStock: userId => invoke('pos:getLowStock', userId),
+        getPOSLoyaltyPoints: params => invoke('pos:getLoyaltyPoints', params),
+        addPOSLoyaltyPoints: params => invoke('pos:addLoyaltyPoints', params),
 
-    // ── POS (Point of Sale) ─────────────────────────────────────────
-    getPOSProducts:      (userId)     => invoke('pos:getProducts', userId),
-    getPOSProductsPaginated: (params) => invoke('pos:getProductsPaginated', params),
-    getPOSProductByBarcode: (params)  => invoke('pos:getProductByBarcode', params),
-    savePOSSale:         (data)       => invoke('pos:saveSale', data),
-    getPOSSales:         (params)     => invoke('pos:getSales', params),
-    getTodayPOSSales:    (userId)     => invoke('pos:getTodaySales', userId),
-    getPOSSale:          (id)         => invoke('pos:getSaleById', id),
-    deletePOSSale:       (id)         => invoke('pos:deleteSale', id),
-    updatePOSStock:      (params)     => invoke('pos:updateStock', params),
-    openPOSSession:      (params)     => invoke('pos:openSession', params),
-    closePOSSession:     (params)     => invoke('pos:closeSession', params),
-    getActivePOSSession: (userId)     => invoke('pos:getActiveSession', userId),
-    getPOSSessions:      (userId)     => invoke('pos:getSessions', userId),
-    getPOSLowStock:      (userId)     => invoke('pos:getLowStock', userId),
-    getPOSLoyaltyPoints: (params)     => invoke('pos:getLoyaltyPoints', params),
-    addPOSLoyaltyPoints: (params)     => invoke('pos:addLoyaltyPoints', params),
-
-    // ── FILE SYSTEM ──────────────────────────────────────────────────
-    openFolder:   (path) => invoke('fs:openFolder', path),
-    selectFolder: ()     => invoke('fs:selectFolder'),
-}));
+        // ── FILE SYSTEM ──────────────────────────────────────────────────
+        openFolder: path => invoke('fs:openFolder', path),
+        selectFolder: () => invoke('fs:selectFolder')
+    })
+);
