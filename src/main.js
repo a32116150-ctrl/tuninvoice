@@ -200,13 +200,13 @@ autoUpdater.on('download-progress', (p) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
         const fraction = p.percent / 100;
         if (process.platform === 'win32') mainWindow.setProgressBar(fraction);
-        else if (process.platform === 'darwin') app.dock.setProgressBar(fraction);
+        else if (process.platform === 'darwin' && app.dock?.setProgressBar) app.dock.setProgressBar(fraction);
     }
 });
 autoUpdater.on('update-downloaded', (info) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
         if (process.platform === 'win32') mainWindow.setProgressBar(-1);
-        else if (process.platform === 'darwin') app.dock.setProgressBar(-1);
+        else if (process.platform === 'darwin' && app.dock?.setProgressBar) app.dock.setProgressBar(-1);
     }
     sendUpdate('downloaded', { version: info.version });
 
