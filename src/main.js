@@ -797,6 +797,26 @@ ipcMain.handle('clients:history', async (_, { userId, clientName }) => {
     }
 });
 
+// ==================== FOURNISSEURS ====================
+ipcMain.handle('fournisseurs:getAll', async (_, userId) => db.getFournisseurs(userId));
+ipcMain.handle('fournisseurs:getById', async (_, id) => db.getFournisseurById(id));
+ipcMain.handle('fournisseurs:save', async (_, data) => {
+    try {
+        if (!data.name) return { success: false, error: 'Validation échouée: Le nom est requis.' };
+        return { success: true, fournisseur: db.saveFournisseur(data) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('fournisseurs:delete', async (_, id) => {
+    try {
+        db.deleteFournisseur(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
 // ==================== SERVICES ====================
 ipcMain.handle('services:getAll', async (_, userId) => db.getServices(userId));
 ipcMain.handle('services:save', async (_, data) => {
@@ -809,6 +829,14 @@ ipcMain.handle('services:save', async (_, data) => {
 ipcMain.handle('services:delete', async (_, id) => {
     try {
         db.deleteService(id);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+ipcMain.handle('services:updateStock', async (_, updates) => {
+    try {
+        db.updateStock(updates);
         return { success: true };
     } catch (e) {
         return { success: false, error: e.message };

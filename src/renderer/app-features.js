@@ -154,6 +154,7 @@ async function loadDashboard() {
         renderDashboardCharts(stats);
         renderTopClients(stats.topClients || []);
         renderRecentActivity(stats.recentActivity || []);
+        renderDashboardStockAlerts();
         renderDashboardNotes();
         autoCreateOverdueReminders();
     } catch (e) {
@@ -211,26 +212,49 @@ function renderRecentDocs(docs) {
             .map(
                 doc => `<tr>
             <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
-            <td style="font-family:monospace;font-size:0.82rem">${doc.number}</td>
-            <td>${escapeHtml(doc.clientName)}</td>
-            <td>${formatDate(doc.date)}</td>
-            <td style="font-weight:600">${formatAmount(doc.totalTTC)} ${doc.currency}</td>
+            <td style="font-family:monospace;font-size:0.82rem;white-space:nowrap">${doc.number}</td>
+            <td><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${escapeHtml(doc.clientName)}</div></td>
+            <td style="white-space:nowrap">${formatDate(doc.date)}</td>
+            <td style="font-weight:600;white-space:nowrap">${formatAmount(doc.totalTTC)} ${doc.currency}</td>
             <td>${renderPaymentBadge(doc)}</td>
             <td class="actions-cell">
                 <button class="btn-icon btn-view"   onclick="viewDocument('${doc.id}')"     title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
                 ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
                 <button class="btn-icon btn-edit"   onclick="editExistingDoc('${doc.id}')"  title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>
-                <button class="btn-icon" style="color:#3b82f6" onclick="emailSingleDoc('${doc.id}')" title="Email"><i data-lucide="mail" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-pdf"    onclick="downloadDocPDF('${doc.id}')"   title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                </button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteDoc('${doc.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
     </tbody></table>`;
     if (window.lucide) lucide.createIcons();
+}
+
+async function renderDashboardStockAlerts() {
+    const container = document.getElementById('dashboardStockAlerts');
+    if (!container) return;
+    
+    // Check local services for low stock
+    if (!allServices || allServices.length === 0) {
+        try {
+            allServices = await window.electronAPI.getServices(currentUser.id);
+        } catch {}
+    }
+    
+    const lowStockItems = (allServices || []).filter(s => s.minStock > 0 && s.stock <= s.minStock);
+    
+    if (lowStockItems.length === 0) {
+        container.innerHTML = `<div style="text-align:center;padding:12px;color:var(--text-light);font-size:0.85rem">Aucun produit en stock faible.</div>`;
+        return;
+    }
+    
+    container.innerHTML = lowStockItems.map(s => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--border-light)">
+            <div>
+                <div style="font-weight:600;font-size:0.85rem">${escapeHtml(s.name)}</div>
+                <div style="font-size:0.75rem;color:var(--text-light)">Min: ${s.minStock}</div>
+            </div>
+            <span style="padding:2px 6px;border-radius:4px;font-size:0.8rem;background:#fee2e2;color:#ef4444;font-weight:700">${s.stock}</span>
+        </div>
+    `).join('');
 }
 
 function renderPaymentBadge(doc) {
@@ -1155,23 +1179,31 @@ function renderServicesTable(services = allServices) {
         container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛍️</div><h3>Aucun service</h3><p>Ajoutez vos produits et services pour un remplissage rapide des documents</p></div>`;
         return;
     }
-    container.innerHTML = `<table><thead><tr><th style="width:32px">...</th><th>Nom</th><th>Description</th><th>Catégorie</th><th>Prix HT</th><th>TVA</th><th>Actions</th></tr></thead><tbody>
+    container.innerHTML = `<table><thead><tr><th style="width:32px">...</th><th>Nom</th><th>Description</th><th>Catégorie</th><th>Prix HT</th><th>TVA</th><th>En Stock</th><th>Actions</th></tr></thead><tbody>
         ${services
             .map(
-                s => `<tr>
+                s => {
+                    const isLowStock = s.minStock > 0 && s.stock <= s.minStock;
+                    const stockBadge = s.minStock > 0 
+                        ? `<span style="padding:2px 6px;border-radius:4px;font-size:0.8rem;background:${isLowStock ? '#fee2e2' : '#f0fdf4'};color:${isLowStock ? '#ef4444' : '#22c55e'}">${s.stock} (Min: ${s.minStock})</span>`
+                        : `<span style="color:var(--text-light)">—</span>`;
+                    return `<tr>
             <td><input type="checkbox" class="service-checkbox" data-service-id="${s.id}" onchange="updateSelectedServices()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td style="font-weight:600">${escapeHtml(s.name)}</td>
             <td>${escapeHtml(s.description) || '—'}</td>
             <td>${escapeHtml(s.category) || '—'}</td>
             <td>${formatAmount(parseFloat(s.price))} TND</td>
             <td>${s.tva}%</td>
+            <td>${stockBadge}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-edit"   onclick="editService('${s.id}')"         title="Modifier">✏️</button>
+                <button class="btn-icon btn-edit"   onclick="editService('${s.id}')"         title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteService('${s.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
-            </td></tr>`
+            </td></tr>`;
+                }
             )
             .join('')}
     </tbody></table>`;
+    if (window.lucide) lucide.createIcons();
 }
 
 function filterServices() {
@@ -1658,6 +1690,22 @@ document.addEventListener('click', e => {
     }
 });
 
+async function deductStockFromDoc(docData) {
+    if (docData.type !== 'facture' && docData.type !== 'bl') return;
+    const stockUpdates = [];
+    for (const item of docData.items) {
+        // Try to match the service name
+        const product = allServices.find(s => s.name === item.description);
+        if (product && product.stock !== undefined) {
+            stockUpdates.push({ id: product.id, qty: -item.quantity });
+        }
+    }
+    if (stockUpdates.length > 0) {
+        await window.electronAPI.updateStock(stockUpdates);
+        await loadServices(); // reload stock in UI
+    }
+}
+
 async function saveAndDownloadPDF() {
     if (!validateDocumentForm()) return;
     showLoading('Enregistrement...');
@@ -1673,6 +1721,13 @@ async function saveAndDownloadPDF() {
         const result = await window.electronAPI.saveDocument(docData);
         if (result.success) {
             showToast('Document enregistré', 'success');
+            
+            // Deduct stock if new doc (result.isNew could be checked, but for now we deduct if we just created/updated)
+            // Wait, if it's an update, this will deduct again. Let's only deduct if docData.id is null (new doc).
+            if (!docData.id) {
+                await deductStockFromDoc(docData);
+            }
+
             generatePreviewHTML();
             const html = buildFullHTML();
             let filename = `${result.document.number}.pdf`;
@@ -1785,6 +1840,7 @@ function collectFormData() {
         referenceDoc: get('docReference'),
         currency: get('docCurrency'),
         paymentMode: get('docPayment'),
+        discountPercent: parseFloat(document.getElementById('discountPercent')?.value) || 0,
         companyName: get('docCompanyName'),
         companyMF: get('docCompanyMF'),
         companyAddress: get('docCompanyAddress'),
@@ -1844,6 +1900,9 @@ function restoreDraft() {
         setVal('docClientPhone', draft.clientPhone);
         setVal('docClientEmail', draft.clientEmail);
         setVal('docNotes', draft.notes);
+        // Restore discount
+        const discEl = document.getElementById('discountPercent');
+        if (discEl && draft.discountPercent) discEl.value = draft.discountPercent;
         document.getElementById('applyTimbre').checked = draft.applyTimbre || false;
         if (draft.items?.length > 0) {
             draft.items.forEach(item => addItem(item));
@@ -1853,7 +1912,7 @@ function restoreDraft() {
         calculateTotals();
         showToast('Brouillon restauré', 'info', 2000);
         localStorage.removeItem(DRAFT_KEY);
-    } catch {}
+    } catch (e) { console.error('restoreDraft error:', e); }
 }
 
 function clearDraft() {
@@ -1886,6 +1945,16 @@ function collectDocumentData() {
         else if (item.tva === 13) tva13 += item.total * 0.13;
         else if (item.tva === 7) tva7 += item.total * 0.07;
     });
+    // Apply discount before computing TTC (mirrors calculateTotals display logic)
+    const discountPct = parseFloat(document.getElementById('discountPercent')?.value) || 0;
+    const discountAmount = discountPct > 0 ? totalHTRaw * (discountPct / 100) : 0;
+    if (discountPct > 0) {
+        const f = 1 - discountPct / 100;
+        totalHTRaw *= f;
+        tva19 *= f;
+        tva13 *= f;
+        tva7 *= f;
+    }
     const totalTTCRaw = totalHTRaw + tva19 + tva13 + tva7 + timbreAmount;
     const totalTTCRounded = roundValue(totalTTCRaw);
     const roundingAdjustment = parseFloat((totalTTCRounded - totalTTCRaw).toFixed(10));
@@ -1915,6 +1984,8 @@ function collectDocumentData() {
         items,
         applyTimbre: document.getElementById('applyTimbre').checked,
         timbreAmount,
+        discountPercent: discountPct,
+        discountAmount: roundValue(discountAmount),
         roundingAdjustment,
         totalHT: roundValue(totalHTRaw),
         totalTTC: totalTTCRounded,
@@ -2080,6 +2151,13 @@ function renderPipelineBadge(doc) {
         const converted = allDocuments.find(d => d.reference_doc === doc.id);
         if (converted)
             return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#d1fae5;color:#065f46;white-space:nowrap"><i data-lucide="check" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Converti → ${converted.number}</span>`;
+        // Check expiry: devis older than 30 days without conversion = Expiré
+        const docDate = new Date(doc.date);
+        const daysSince = Math.floor((Date.now() - docDate.getTime()) / 86400000);
+        const expiryDays = parseInt(localStorage.getItem('tuni_devis_expiry_days') || '30', 10);
+        if (daysSince > expiryDays) {
+            return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#fee2e2;color:#991b1b;white-space:nowrap"><i data-lucide="alert-circle" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> Expiré (${daysSince}j)</span>`;
+        }
         return `<span style="font-size:0.72rem;padding:3px 8px;border-radius:4px;background:#fef3c7;color:#92400e;white-space:nowrap"><i data-lucide="clock" style="width:10px;height:10px;display:inline;vertical-align:middle"></i> En attente</span>`;
     }
     return '<span style="color:var(--text-muted);font-size:0.75rem">—</span>';
@@ -2768,7 +2846,14 @@ async function loadClients() {
 
 function updateClientStats(clients) {
     const total = clients.length;
-    const active = clients.length; // Assuming all clients are active for now
+    // Count clients who have had a document in the last 12 months
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+    const activeNames = new Set(
+        (allDocuments || []).filter(d => d.date >= oneYearAgoStr).map(d => d.clientName)
+    );
+    const active = clients.filter(c => activeNames.has(c.name)).length;
     const elTotal = document.getElementById('clientsTotalCount');
     const elActive = document.getElementById('clientsActiveCount');
     if (elTotal) elTotal.textContent = total;
@@ -2778,7 +2863,7 @@ function updateClientStats(clients) {
 function renderClientsTable(clients = allClients) {
     const container = document.getElementById('clientsTable');
     if (!clients.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>Aucun client</h3><p>Ajoutez votre premier client</p></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="users" style="width:32px;height:32px"></i></div><h3>Aucun client</h3><p>Ajoutez votre premier client</p></div>`;
         return;
     }
     container.innerHTML = `<table><thead><tr><th style="width:32px">...</th><th>Nom</th><th>MF</th><th>Téléphone</th><th>Email</th><th style="text-align:right">Actions</th></tr></thead><tbody>
@@ -2791,33 +2876,133 @@ function renderClientsTable(clients = allClients) {
             <td>${escapeHtml(c.phone) || '—'}</td>
             <td>${escapeHtml(c.email) || '—'}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="viewClientPreview('${c.id}')"   title="Aperçu">👁️</button>
-                <button class="btn-icon btn-edit"   onclick="openClientModal('${c.id}')"     title="Modifier">✏️</button>
+                <button class="btn-icon btn-view"   onclick="viewClientPreview('${c.id}')"   title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   onclick="openClientModal('${c.id}')"     title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteClient('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
     </tbody></table>`;
+    if (window.lucide) lucide.createIcons();
 }
 
 function viewClientPreview(clientId) {
     const client = allClients.find(c => c.id == clientId);
     if (!client) return;
+    // Compute financial history from in-memory allDocuments
+    const clientDocs = (allDocuments || []).filter(d => d.clientName === client.name);
+    const invoices = clientDocs.filter(d => d.type === 'facture');
+    const totalRevenue = invoices.reduce((s, d) => s + (d.totalTTC || 0), 0);
+    const totalPaid = invoices.reduce((s, d) => s + (d.paidAmount || 0), 0);
+    const balance = totalRevenue - totalPaid;
+    const lastDoc = clientDocs.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+    const unpaidCount = invoices.filter(d => d.paymentStatus !== 'paid').length;
     const html = `
         <div style="padding:10px; text-align:left;">
-            <div style="font-size:1.4rem; font-weight:800; color:var(--primary); margin-bottom:15px;">${escapeHtml(client.name)}</div>
-            <div style="display:grid; grid-template-columns:110px 1fr; gap:8px; font-size:0.95rem;">
+            <div style="display:grid; grid-template-columns:120px 1fr; gap:8px; font-size:0.9rem; margin-bottom:16px;">
                 <b style="color:var(--text-muted)">MF:</b> <span>${escapeHtml(client.mf) || '—'}</span>
                 <b style="color:var(--text-muted)">Adresse:</b> <span>${escapeHtml(client.address) || '—'}</span>
                 <b style="color:var(--text-muted)">Téléphone:</b> <span>${escapeHtml(client.phone) || '—'}</span>
                 <b style="color:var(--text-muted)">Email:</b> <span>${escapeHtml(client.email) || '—'}</span>
             </div>
-            <div style="margin-top:20px; padding:12px; background:var(--gray-50); border-radius:8px; font-size:0.85rem; color:var(--text-secondary); text-align:center;">
-                Historique des transactions bientôt disponible.
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:12px">
+                <div style="background:#f0f9ff;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:1.3rem;font-weight:800;color:#0369a1">${clientDocs.length}</div>
+                    <div style="font-size:0.72rem;color:#64748b">Documents</div>
+                </div>
+                <div style="background:#f0fdf4;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:1.1rem;font-weight:800;color:#15803d">${formatAmount(totalRevenue)}</div>
+                    <div style="font-size:0.72rem;color:#64748b">CA Total TND</div>
+                </div>
+                <div style="background:${balance > 0 ? '#fef2f2' : '#f0fdf4'};border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:1.1rem;font-weight:800;color:${balance > 0 ? '#dc2626' : '#15803d'}">${formatAmount(balance)}</div>
+                    <div style="font-size:0.72rem;color:#64748b">Solde TND</div>
+                </div>
+                <div style="background:#fefce8;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:1.3rem;font-weight:800;color:#b45309">${unpaidCount}</div>
+                    <div style="font-size:0.72rem;color:#64748b">Impayées</div>
+                </div>
+            </div>
+            ${lastDoc ? `<div style="margin-top:12px;font-size:0.8rem;color:#6b7280;text-align:center">Dernier document: <strong>${escapeHtml(lastDoc.number)}</strong> le ${formatDate(lastDoc.date)}</div>` : ''}
+            <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+                <button class="btn btn-secondary btn-sm" onclick="openRelevéClient('${escapeHtml(client.name).replace(/'/g, "\\'")}')">📄 Relevé de compte</button>
+                <button class="btn btn-primary btn-sm" onclick="closeModal('confirmModal');navigateTo('new-document');setTimeout(()=>{const el=document.getElementById('docClientName');if(el)el.value='${escapeHtml(client.name).replace(/'/g, "\\'")}'}, 300)">➕ Nouvelle facture</button>
             </div>
         </div>
     `;
     showConfirm(escapeHtml(client.name), html, null, 'Fermer', 'btn-secondary', false);
+}
+
+// ==================== RELEVÉ DE COMPTE ====================
+function openRelevéClient(clientName) {
+    const clientDocs = (allDocuments || []).filter(d =>
+        d.clientName === clientName && (d.type === 'facture' || d.type === 'avoir')
+    ).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const company = (window.currentCompanySettings || {});
+    let balance = 0;
+    const rows = clientDocs.map(doc => {
+        const debit = doc.type === 'facture' ? (doc.totalTTC || 0) : 0;
+        const credit = doc.type === 'avoir' ? (doc.totalTTC || 0) : 0;
+        // Also add payments as credit
+        balance += debit - credit;
+        const statusBg = balance > 0 ? '#fef2f2' : '#f0fdf4';
+        const statusColor = balance > 0 ? '#dc2626' : '#15803d';
+        return `<tr>
+            <td>${formatDate(doc.date)}</td>
+            <td style="font-family:monospace;font-size:0.82rem">${escapeHtml(doc.number)}</td>
+            <td>${doc.type === 'facture' ? 'Facture' : 'Avoir'}</td>
+            <td style="text-align:right;font-weight:500;color:#166534">${debit > 0 ? formatAmount(debit) : '—'}</td>
+            <td style="text-align:right;font-weight:500;color:#dc2626">${credit > 0 ? formatAmount(credit) : '—'}</td>
+            <td style="text-align:right;font-weight:700;background:${statusBg};color:${statusColor};padding:4px 8px;border-radius:4px">${formatAmount(balance)}</td>
+        </tr>`;
+    }).join('');
+    const totalDebit = clientDocs.filter(d => d.type === 'facture').reduce((s, d) => s + (d.totalTTC || 0), 0);
+    const totalCredit = clientDocs.filter(d => d.type === 'avoir').reduce((s, d) => s + (d.totalTTC || 0), 0);
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+    <title>Relevé de Compte — ${escapeHtml(clientName)}</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 32px; color: #1e293b; background: #fff; }
+        .header { display:flex; justify-content:space-between; margin-bottom:32px; border-bottom:3px solid #1e3a8a; padding-bottom:16px; }
+        .company { font-size:1.1rem; font-weight:700; color:#1e3a8a; }
+        h1 { font-size:1.6rem; font-weight:800; color:#1e293b; margin:0 0 4px; }
+        table { width:100%; border-collapse:collapse; margin-top:16px; }
+        th { background:#1e3a8a; color:#fff; padding:10px 12px; text-align:left; font-size:0.85rem; }
+        td { padding:8px 12px; border-bottom:1px solid #e2e8f0; font-size:0.9rem; }
+        tr:nth-child(even) td { background:#f8fafc; }
+        .total-row td { font-weight:700; border-top:2px solid #1e3a8a; background:#f0f4ff; }
+        .summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin:24px 0; }
+        .stat { background:#f8fafc; border-radius:8px; padding:16px; text-align:center; }
+        .stat-val { font-size:1.4rem; font-weight:800; }
+        .stat-label { font-size:0.75rem; color:#64748b; margin-top:4px; }
+        @media print { body { margin:0; padding:20px; } }
+    </style></head><body>
+    <div class="header">
+        <div>
+            <div class="company">${escapeHtml(company.name || '')}</div>
+            <div style="font-size:0.8rem;color:#64748b">${escapeHtml(company.mf || '')}</div>
+            <div style="font-size:0.8rem;color:#64748b">${escapeHtml(company.address || '')}</div>
+        </div>
+        <div style="text-align:right">
+            <h1>Relevé de Compte</h1>
+            <div style="font-size:1rem;font-weight:600;color:#374151">${escapeHtml(clientName)}</div>
+            <div style="font-size:0.8rem;color:#64748b">Edité le: ${new Date().toLocaleDateString('fr-FR')}</div>
+        </div>
+    </div>
+    <div class="summary">
+        <div class="stat"><div class="stat-val" style="color:#166534">${formatAmount(totalDebit)} TND</div><div class="stat-label">Total Facturé</div></div>
+        <div class="stat"><div class="stat-val" style="color:#dc2626">${formatAmount(totalCredit)} TND</div><div class="stat-label">Total Avoirs</div></div>
+        <div class="stat"><div class="stat-val" style="color:${balance > 0 ? '#dc2626' : '#166534'}">${formatAmount(Math.abs(balance))} TND</div><div class="stat-label">${balance > 0 ? 'Solde Débiteur' : 'Solde Créditeur'}</div></div>
+    </div>
+    <table>
+        <thead><tr><th>Date</th><th>Référence</th><th>Nature</th><th style="text-align:right">Débit (TND)</th><th style="text-align:right">Crédit (TND)</th><th style="text-align:right">Solde (TND)</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:#6b7280">Aucun document</td></tr>'}</tbody>
+        <tfoot><tr class="total-row"><td colspan="3">Totaux</td><td style="text-align:right">${formatAmount(totalDebit)}</td><td style="text-align:right">${formatAmount(totalCredit)}</td><td style="text-align:right;color:${balance > 0 ? '#dc2626' : '#166534'}">${formatAmount(Math.abs(balance))}</td></tr></tfoot>
+    </table>
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:0.75rem;color:#9ca3af;text-align:center">Document généré par Factarlou — ${new Date().toLocaleDateString('fr-FR', {year:'numeric',month:'long',day:'numeric'})}</div>
+    <script>window.onload = () => window.print();<\/script>
+    </body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
 }
 
 function filterClients() {
@@ -2999,6 +3184,127 @@ async function exportClientsXLSX() {
         filename: 'clients.xlsx'
     });
     if (result?.success) showToast('Excel exporté', 'success');
+}
+
+// ==================== FOURNISSEURS ====================
+async function loadFournisseurs() {
+    try {
+        allFournisseurs = await window.electronAPI.getFournisseurs(currentUser.id);
+        renderFournisseursTable(allFournisseurs);
+        const elTotal = document.getElementById('fournisseursTotalCount');
+        if (elTotal) elTotal.textContent = allFournisseurs.length;
+        
+        // Populate the datalist in Expenses
+        const dl = document.getElementById('fournisseursList');
+        if (dl) {
+            dl.innerHTML = allFournisseurs.map(f => `<option value="${escapeHtml(f.name)}">`).join('');
+        }
+    } catch {
+        showToast('Erreur chargement fournisseurs', 'error');
+    }
+}
+
+function renderFournisseursTable(fournisseurs = allFournisseurs) {
+    const container = document.getElementById('fournisseursTable');
+    if (!container) return;
+    if (!fournisseurs.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="truck" style="width:32px;height:32px"></i></div><h3>Aucun fournisseur</h3><p>Ajoutez votre premier fournisseur</p></div>`;
+        return;
+    }
+    container.innerHTML = `<table><thead><tr><th>Nom</th><th>MF</th><th>Téléphone</th><th>Email</th><th style="text-align:right">Actions</th></tr></thead><tbody>
+        ${fournisseurs
+            .map(
+                f => `<tr>
+            <td style="font-weight:600">${escapeHtml(f.name)}</td>
+            <td>${escapeHtml(f.mf) || '—'}</td>
+            <td>${escapeHtml(f.phone) || '—'}</td>
+            <td>${escapeHtml(f.email) || '—'}</td>
+            <td class="actions-cell">
+                <button class="btn-icon btn-edit"   onclick="openFournisseurModal('${f.id}')"     title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" onclick="confirmDeleteFournisseur('${f.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+            </td></tr>`
+            )
+            .join('')}
+    </tbody></table>`;
+    if (window.lucide) lucide.createIcons();
+}
+
+function filterFournisseurs() {
+    const q = (document.getElementById('searchFournisseurs')?.value || '').toLowerCase();
+    const filtered = allFournisseurs.filter(f =>
+        (f.name || '').toLowerCase().includes(q) ||
+        (f.mf || '').toLowerCase().includes(q) ||
+        (f.phone || '').toLowerCase().includes(q) ||
+        (f.email || '').toLowerCase().includes(q)
+    );
+    renderFournisseursTable(filtered);
+}
+
+function openFournisseurModal(id = null) {
+    const modal = document.getElementById('fournisseurModal');
+    if (!modal) return;
+    modal.dataset.editingId = id || '';
+    if (id) {
+        const f = allFournisseurs.find(x => x.id === id);
+        if (f) {
+            document.getElementById('newFournisseurName').value = f.name || '';
+            document.getElementById('newFournisseurMF').value = f.mf || '';
+            document.getElementById('newFournisseurAddress').value = f.address || '';
+            document.getElementById('newFournisseurPhone').value = f.phone || '';
+            document.getElementById('newFournisseurEmail').value = f.email || '';
+            modal.querySelector('h2').innerHTML = `<i data-lucide="truck"></i> Modifier Fournisseur`;
+        }
+    } else {
+        ['newFournisseurName', 'newFournisseurMF', 'newFournisseurAddress', 'newFournisseurPhone', 'newFournisseurEmail'].forEach(
+            id => (document.getElementById(id).value = '')
+        );
+        modal.querySelector('h2').innerHTML = `<i data-lucide="truck"></i> Nouveau Fournisseur`;
+    }
+    if (window.lucide) lucide.createIcons();
+    openModal('fournisseurModal');
+    setTimeout(() => document.getElementById('newFournisseurName').focus(), 50);
+}
+
+function closeFournisseurModal() {
+    closeModal('fournisseurModal');
+}
+
+async function saveNewFournisseur() {
+    const name = document.getElementById('newFournisseurName').value.trim();
+    if (!name) return showToast('Nom requis', 'error');
+
+    const data = {
+        id: document.getElementById('fournisseurModal').dataset.editingId || null,
+        userId: currentUser.id,
+        name,
+        mf: document.getElementById('newFournisseurMF').value.trim(),
+        address: document.getElementById('newFournisseurAddress').value.trim(),
+        phone: document.getElementById('newFournisseurPhone').value.trim(),
+        email: document.getElementById('newFournisseurEmail').value.trim()
+    };
+
+    const res = await window.electronAPI.saveFournisseur(data);
+    if (res.success) {
+        showToast('Fournisseur enregistré', 'success');
+        closeFournisseurModal();
+        await loadFournisseurs();
+    } else {
+        showToast(res.error, 'error');
+    }
+}
+
+function confirmDeleteFournisseur(id) {
+    const f = allFournisseurs.find(x => x.id === id);
+    if (!f) return;
+    openConfirm(`Voulez-vous vraiment supprimer le fournisseur "${f.name}" ?`, async () => {
+        const res = await window.electronAPI.deleteFournisseur(id);
+        if (res.success) {
+            showToast('Fournisseur supprimé', 'success');
+            await loadFournisseurs();
+        } else {
+            showToast('Erreur suppression', 'error');
+        }
+    });
 }
 
 // ==================== COMPANY ====================
@@ -3326,7 +3632,8 @@ function applyEmailTemplateVars(text, doc, currency) {
         .replace(/\{\{dueDate\}\}/g, doc?.dueDate || '')
         .replace(/\{\{date\}\}/g, doc?.date || '');
 }
-async function saveEmailTemplates() {
+// Saves default subject/body email settings to DB (distinct from localStorage template list)
+async function saveDefaultEmailSettings() {
     if (!currentUser) return;
     const settings = {
         email_default_subject: document.getElementById('emailDefaultSubject').value.trim(),
@@ -3336,7 +3643,8 @@ async function saveEmailTemplates() {
         const result = await window.electronAPI.updateSettings({ userId: currentUser.id, settings });
         if (result.success) showToast("Modèles d'email enregistrés", 'success');
         else showToast('Erreur: ' + result.error, 'error');
-    } catch {
+    } catch (e) {
+        console.error('saveDefaultEmailSettings:', e);
         showToast('Erreur de communication', 'error');
     }
 }
@@ -3650,11 +3958,11 @@ const CONTRACT_TYPES = {
     cdi: { label: 'CDI', icon: 'clipboard-list', desc: 'Durée Indéterminée' },
     cdd: { label: 'CDD', icon: 'file-text', desc: 'Durée Déterminée' },
     essai: { label: "Période d'Essai", icon: 'search', desc: "Contrat d'essai" },
-    prestation: { label: 'Prestation de service', icon: '🤝', desc: 'Prestation de services' },
-    alternance: { label: 'Alternance', icon: '🎓', desc: "Contrat d'alternance" },
-    stage: { label: 'Stage', icon: '🏫', desc: 'Convention de stage' },
-    freelance: { label: 'Freelance', icon: '💻', desc: 'Indépendant' },
-    interim: { label: 'Intérim', icon: '⏱️', desc: 'Mission intérimaire' },
+    prestation: { label: 'Prestation de service', icon: 'handshake', desc: 'Prestation de services' },
+    alternance: { label: 'Alternance', icon: 'graduation-cap', desc: "Contrat d'alternance" },
+    stage: { label: 'Stage', icon: 'school', desc: 'Convention de stage' },
+    freelance: { label: 'Freelance', icon: 'laptop', desc: 'Indépendant' },
+    interim: { label: 'Intérim', icon: 'timer', desc: 'Mission intérimaire' },
     parttime: { label: 'Temps partiel', icon: 'clock', desc: 'À temps partiel' },
     consulting: { label: 'Consulting', icon: 'bar-chart-3', desc: 'Conseil & expertise' }
 };
@@ -3686,14 +3994,15 @@ function renderContractsTable(contracts) {
             <td>${formatDate(c.startDate)}</td>
             <td><span class="badge badge-${c.status === 'signé' ? 'active' : 'pending'}">${c.status || 'brouillon'}</span></td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="previewContract('${c.id}')"      title="Aperçu">👁️</button>
-                <button class="btn-icon btn-edit"   onclick="editContract('${c.id}')"         title="Modifier">✏️</button>
+                <button class="btn-icon btn-view"   onclick="previewContract('${c.id}')"      title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   onclick="editContract('${c.id}')"         title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-pdf"    onclick="downloadContractPDF('${c.id}')"  title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteContract('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
     </tbody></table>`;
+    if (window.lucide) lucide.createIcons();
 }
 
 function openNewContractModal(type) {
@@ -4635,8 +4944,8 @@ function renderRetenuesTable(retenues) {
             <td style="font-weight:700;color:#b45309">${formatAmount(r.montantRetenue)} TND</td>
             <td><span class="badge" style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:6px;font-size:0.75rem">${r.status || 'emis'}</span></td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="previewRetenue('${r.id}')"        title="Aperçu">👁️</button>
-                <button class="btn-icon btn-edit"   onclick="editRetenue('${r.id}')"           title="Modifier">✏️</button>
+                <button class="btn-icon btn-view"   onclick="previewRetenue('${r.id}')"        title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   onclick="editRetenue('${r.id}')"           title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-pdf"    onclick="downloadRetenuePDF('${r.id}')"    title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteRetenue('${r.id}')"  title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
@@ -5273,7 +5582,8 @@ function filterExpenses() {
 function renderExpensesTable(expenses) {
     const container = document.getElementById('expensesTable');
     if (!expenses.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛒</div><h3>Aucune dépense</h3><p>Ajoutez une dépense manuellement ou scannez un document</p></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i data-lucide="shopping-cart" style="width:32px;height:32px"></i></div><h3>Aucune dépense</h3><p>Ajoutez une dépense manuellement ou scannez un document</p></div>`;
+        if (window.lucide) lucide.createIcons();
         return;
     }
     container.innerHTML = `<table><thead><tr>
@@ -5290,9 +5600,9 @@ function renderExpensesTable(expenses) {
         <td style="font-weight:600;color:#0f172a">${formatAmount(e.amountTTC)} TND</td>
         <td style="color:#ef4444">${e.retenueSource > 0 ? formatAmount(e.retenueSource) + ' TND' : '—'}</td>
         <td style="font-family:monospace;font-size:0.8rem">${escapeHtml(e.reference || '—')}</td>
-        <td>${e.attachmentPath ? `<button class="btn-icon" onclick="viewAttachment('${e.attachmentPath.replace(/\\/g, '\\\\')}')" title="Aperçu">📎</button>` : '—'}</td>
+        <td>${e.attachmentPath ? `<button class="btn-icon" onclick="viewAttachment('${e.attachmentPath.replace(/\\/g, '\\\\')}')" title="Aperçu"><i data-lucide="paperclip" class="lucide-sm"></i></button>` : '—'}</td>
         <td class="actions-cell">
-            <button class="btn-icon btn-edit" onclick="openExpenseModal('${e.id}')" title="Modifier">✏️</button>
+            <button class="btn-icon btn-edit" onclick="openExpenseModal('${e.id}')" title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
             <button class="btn-icon btn-delete" onclick="confirmDeleteExpense('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
         </td>
     </tr>`
@@ -5717,7 +6027,7 @@ function renderEmployeesTable() {
             <td>${escapeHtml(e.cnss || '—')}</td>
             <td><span class="badge ${e.active ? 'badge-paid' : 'badge-unpaid'}">${e.active ? 'Actif' : 'Inactif'}</span></td>
             <td class="actions-cell">
-                <button class="btn-icon btn-edit" onclick="openEmployeeModal('${e.id}')" title="Modifier">✏️</button>
+                <button class="btn-icon btn-edit" onclick="openEmployeeModal('${e.id}')" title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeleteEmployee('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
         </tr>`
@@ -5757,9 +6067,9 @@ function renderPayslipsTable() {
             <td>${formatAmount(p.gross_salary)} TND</td>
             <td style="font-weight:700;color:#166534">${formatAmount(p.net_salary)} TND</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view" onclick="previewPayslip('${p.id}')" title="Aperçu">👁️</button>
+                <button class="btn-icon btn-view" onclick="previewPayslip('${p.id}')" title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-download" onclick="savePayslipPDF('${p.id}')" title="Enregistrer PDF"><i data-lucide="save" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-edit" onclick="printPayslip('${p.id}')" title="Imprimer">🖨️</button>
+                <button class="btn-icon btn-edit" onclick="printPayslip('${p.id}')" title="Imprimer"><i data-lucide="printer" class="lucide-sm"></i></button>
                 <button class="btn-icon btn-delete" onclick="confirmDeletePayslip('${p.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
         </tr>`
@@ -9095,7 +9405,13 @@ function posApplyAcompte() {
 // ── Drafts ───────────────────────────────────────────────────
 function posOpenDrafts() {
     const container = document.getElementById('posDraftsContent');
-    const list = JSON.parse(localStorage.getItem('tuni_pos_drafts') || '[]');
+    let list = [];
+    try {
+        list = JSON.parse(localStorage.getItem('tuni_pos_drafts') || '[]');
+        if (!Array.isArray(list)) list = [];
+    } catch {
+        list = [];
+    }
     if (list.length === 0) {
         container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Aucun brouillon sauvegardé</div>';
     } else {
@@ -9116,11 +9432,15 @@ function posOpenDrafts() {
             })
             .join('');
     }
-    document.getElementById('posDraftsModal').style.display = 'flex';
+    const modal = document.getElementById('posDraftsModal');
+    modal.style.display = 'flex';
+    modal.classList.add('active');
 }
 
 function posCloseDrafts() {
-    document.getElementById('posDraftsModal').style.display = 'none';
+    const modal = document.getElementById('posDraftsModal');
+    modal.style.display = 'none';
+    modal.classList.remove('active');
 }
 
 function posSaveDraft() {
@@ -9128,12 +9448,13 @@ function posSaveDraft() {
         showToast('Panier vide', 'warning');
         return;
     }
-    const name = prompt('Nom du brouillon:', 'Brouillon ' + (posDrafts.length + 1));
-    if (!name) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+    const name = 'Brouillon ' + timeStr + ' (' + (posDrafts.length + 1) + ')';
     const draft = {
-        name: name.trim(),
+        name: name,
         cart: JSON.parse(JSON.stringify(posCart)),
-        date: new Date().toLocaleDateString('fr-FR')
+        date: now.toLocaleDateString('fr-FR')
     };
     posDrafts.push(draft);
     localStorage.setItem('tuni_pos_drafts', JSON.stringify(posDrafts));
@@ -9287,4 +9608,190 @@ document.addEventListener('DOMContentLoaded', () => {
 function escHtml(t) {
     if (!t) return '';
     return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ==================== KEYBOARD SHORTCUT MODAL ====================
+function openKeyboardShortcutsModal() {
+    const existing = document.getElementById('kbShortcutsModal');
+    if (existing) { existing.classList.add('active'); return; }
+    const shortcuts = [
+        { key: 'Ctrl+N', label: 'Nouveau document' },
+        { key: 'Ctrl+S', label: 'Enregistrer le document' },
+        { key: 'Ctrl+F', label: 'Recherche globale' },
+        { key: 'Ctrl+P', label: 'Imprimer' },
+        { key: 'Ctrl+B', label: 'Sauvegarde manuelle' },
+        { key: 'F1', label: 'Tableau de bord' },
+        { key: 'F2', label: 'Nouveau document' },
+        { key: 'F3', label: 'Mes documents' },
+        { key: 'F4', label: 'Clients' },
+        { key: 'F5', label: 'Services & Produits' },
+        { key: 'F6', label: 'Caisse (POS)' },
+        { key: 'F7', label: 'Paramètres' },
+        { key: 'F8', label: 'Aide (ce menu)' },
+        { key: 'Escape', label: 'Fermer la fenêtre active' },
+        { key: 'Alt+↑/↓', label: 'Article suivant/précédent (POS)' },
+    ];
+    const modal = document.createElement('div');
+    modal.id = 'kbShortcutsModal';
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width:480px">
+            <div class="modal-header">
+                <h3 style="display:flex;align-items:center;gap:8px"><i data-lucide="keyboard" style="width:18px;height:18px"></i> Raccourcis Clavier</h3>
+                <button class="modal-close" onclick="this.closest('.modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:16px">
+                <table style="width:100%;border-collapse:collapse">
+                    <tbody>
+                    ${shortcuts.map(s => `<tr>
+                        <td style="padding:8px 12px;border-bottom:1px solid var(--border)">
+                            <kbd style="background:#1e293b;color:#f1f5f9;border-radius:5px;padding:3px 8px;font-family:monospace;font-size:0.82rem;letter-spacing:0.02em">${s.key}</kbd>
+                        </td>
+                        <td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text)">${s.label}</td>
+                    </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('active'); });
+    if (window.lucide) lucide.createIcons();
+}
+// Expose globally
+window.openKeyboardShortcutsModal = openKeyboardShortcutsModal;
+// F8 shortcut key
+document.addEventListener('keydown', e => {
+    if (e.key === 'F8') { e.preventDefault(); openKeyboardShortcutsModal(); }
+});
+
+// ==================== EXPENSE ANALYTICS ====================
+function renderExpenseAnalytics(expenses) {
+    // Monthly trend (last 12 months)
+    const monthlyEl = document.getElementById('expenseMonthlyChart');
+    const donutEl = document.getElementById('expenseCategoryChart');
+    if (!monthlyEl && !donutEl) return;
+
+    const now = new Date();
+    const months = [];
+    const monthlyData = {};
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+        months.push({ key, label });
+        monthlyData[key] = 0;
+    }
+    expenses.forEach(e => {
+        const m = (e.date || '').substring(0, 7);
+        if (monthlyData[m] !== undefined) monthlyData[m] += e.amountTTC || 0;
+    });
+    const vals = months.map(m => monthlyData[m.key]);
+    const maxVal = Math.max(...vals, 1);
+
+    // Category breakdown
+    const catData = {};
+    expenses.forEach(e => {
+        const cat = e.category || 'Autre';
+        catData[cat] = (catData[cat] || 0) + (e.amountTTC || 0);
+    });
+    const catColors = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#84cc16'];
+    const sortedCats = Object.entries(catData).sort((a,b) => b[1]-a[1]);
+
+    if (monthlyEl) {
+        monthlyEl.innerHTML = `
+        <div style="margin-bottom:8px;font-size:0.85rem;font-weight:600;color:var(--text)">Tendance mensuelle (12 mois)</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:120px;">
+            ${months.map((m, i) => {
+                const pct = maxVal > 0 ? (vals[i] / maxVal * 100) : 0;
+                return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                    <div title="${formatAmount(vals[i])} TND" style="width:100%;background:linear-gradient(180deg,#6366f1,#4f46e5);border-radius:4px 4px 0 0;height:${Math.max(pct, 2)}%;min-height:2px;transition:height 0.3s"></div>
+                    <div style="font-size:0.6rem;color:var(--text-muted);writing-mode:vertical-lr;transform:rotate(180deg);white-space:nowrap">${m.label}</div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    if (donutEl && sortedCats.length) {
+        const total = sortedCats.reduce((s, [,v]) => s + v, 0);
+        let angle = 0;
+        const segments = sortedCats.map(([cat, val], i) => {
+            const pct = total > 0 ? val / total : 0;
+            const start = angle;
+            angle += pct * 360;
+            return { cat, val, pct, start, end: angle, color: catColors[i % catColors.length] };
+        });
+        // SVG donut
+        function polarToXY(deg, r) {
+            const rad = (deg - 90) * Math.PI / 180;
+            return { x: 50 + r * Math.cos(rad), y: 50 + r * Math.sin(rad) };
+        }
+        function arcPath(startDeg, endDeg, r, ri) {
+            if (endDeg - startDeg >= 359.9) endDeg = startDeg + 359.9;
+            const s = polarToXY(startDeg, r), e = polarToXY(endDeg, r);
+            const si = polarToXY(startDeg, ri), ei = polarToXY(endDeg, ri);
+            const lg = endDeg - startDeg > 180 ? 1 : 0;
+            return `M${s.x} ${s.y} A${r} ${r} 0 ${lg} 1 ${e.x} ${e.y} L${ei.x} ${ei.y} A${ri} ${ri} 0 ${lg} 0 ${si.x} ${si.y} Z`;
+        }
+        const paths = segments.map(seg => `<path d="${arcPath(seg.start, seg.end, 40, 24)}" fill="${seg.color}" title="${escapeHtml(seg.cat)}: ${formatAmount(seg.val)} TND (${(seg.pct*100).toFixed(1)}%)"></path>`).join('');
+        donutEl.innerHTML = `
+        <div style="margin-bottom:8px;font-size:0.85rem;font-weight:600;color:var(--text)">Répartition par catégorie</div>
+        <div style="display:flex;gap:16px;align-items:center">
+            <svg viewBox="0 0 100 100" width="100" height="100" style="flex-shrink:0">${paths}<text x="50" y="53" text-anchor="middle" font-size="7" font-weight="700" fill="var(--text)">${sortedCats.length} cat.</text></svg>
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto">
+                ${sortedCats.slice(0,8).map(([cat,val],i) => `<div style="display:flex;align-items:center;gap:6px;font-size:0.75rem">
+                    <div style="width:10px;height:10px;border-radius:2px;background:${catColors[i % catColors.length]};flex-shrink:0"></div>
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${escapeHtml(cat)}</span>
+                    <span style="color:var(--text-muted);flex-shrink:0">${formatAmount(val)}</span>
+                </div>`).join('')}
+            </div>
+        </div>`;
+    }
+}
+
+// Hook analytics into loadAchats
+const _origLoadAchats = loadAchats;
+loadAchats = async function() {
+    await _origLoadAchats.apply(this, arguments);
+    renderExpenseAnalytics(allExpenses || []);
+};
+
+// ==================== DASHBOARD ENHANCEMENTS ====================
+function renderDashboardBonusKPIs(docs, expenses) {
+    const invoices = (docs || []).filter(d => d.type === 'facture');
+    const totalInvoiced = invoices.reduce((s, d) => s + (d.totalTTC || 0), 0);
+    const totalPaid = invoices.reduce((s, d) => s + (d.paidAmount || (d.paymentStatus === 'paid' ? d.totalTTC : 0) || 0), 0);
+    const recouvrementRate = totalInvoiced > 0 ? Math.round((totalPaid / totalInvoiced) * 100) : 100;
+
+    // DSO (Days Sales Outstanding)
+    const paidInvoices = invoices.filter(d => d.paymentStatus === 'paid' && d.date && d.paid_date);
+    let dso = 0;
+    if (paidInvoices.length) {
+        const avgDays = paidInvoices.reduce((s, d) => {
+            return s + Math.max(0, Math.floor((new Date(d.paid_date) - new Date(d.date)) / 86400000));
+        }, 0) / paidInvoices.length;
+        dso = Math.round(avgDays);
+    }
+
+    // Upcoming dues (next 14 days)
+    const today = new Date().toISOString().split('T')[0];
+    const in14 = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+    const upcoming = invoices.filter(d =>
+        d.paymentStatus !== 'paid' && d.dueDate && d.dueDate >= today && d.dueDate <= in14
+    );
+    const upcomingAmount = upcoming.reduce((s, d) => s + (d.totalTTC || 0), 0);
+
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setEl('kpiRecouvrementRate', recouvrementRate + '%');
+    setEl('kpiDSO', dso + ' j');
+    setEl('kpiUpcomingDues', upcoming.length + ' (' + formatAmount(upcomingAmount) + ' TND)');
+}
+
+// Hook into dashboard load
+const _origLoadDashboard = loadDashboard;
+if (typeof loadDashboard === 'function') {
+    loadDashboard = async function() {
+        await _origLoadDashboard.apply(this, arguments);
+        renderDashboardBonusKPIs(allDocuments, allExpenses);
+        renderExpenseAnalytics(allExpenses || []);
+    };
 }

@@ -181,6 +181,9 @@ class AppDatabase {
             "CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, mf TEXT, address TEXT, phone TEXT, email TEXT, notes TEXT, tags TEXT, credit_limit REAL DEFAULT 0, category TEXT DEFAULT 'standard', rib TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
         );
         this.db.exec(
+            "CREATE TABLE IF NOT EXISTS fournisseurs (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, mf TEXT, address TEXT, phone TEXT, email TEXT, notes TEXT, category TEXT DEFAULT 'standard', rib TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+        );
+        this.db.exec(
             'CREATE TABLE IF NOT EXISTS companies (user_id TEXT PRIMARY KEY, name TEXT, mf TEXT, address TEXT, phone TEXT, email TEXT, rc TEXT, website TEXT, bank TEXT, rib TEXT, logo_image TEXT, stamp_image TEXT, signature_image TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)'
         );
         this.db.exec(
@@ -1134,6 +1137,72 @@ class AppDatabase {
         };
     }
 
+    // ==================== FOURNISSEURS ====================
+    saveFournisseur(fData) {
+        const id = fData.id || uuidv4();
+        const existing = this.db.prepare('SELECT id FROM fournisseurs WHERE id=?').get(id);
+        if (existing) {
+            this.db
+                .prepare('UPDATE fournisseurs SET name=?,mf=?,address=?,phone=?,email=?,notes=?,category=?,rib=? WHERE id=?')
+                .run(
+                    fData.name,
+                    fData.mf || null,
+                    fData.address || null,
+                    fData.phone || null,
+                    fData.email || null,
+                    fData.notes || null,
+                    fData.category || 'standard',
+                    fData.rib || null,
+                    id
+                );
+        } else {
+            this.db
+                .prepare('INSERT INTO fournisseurs (id,user_id,name,mf,address,phone,email,notes,category,rib) VALUES (?,?,?,?,?,?,?,?,?,?)')
+                .run(
+                    id,
+                    fData.userId,
+                    fData.name,
+                    fData.mf || null,
+                    fData.address || null,
+                    fData.phone || null,
+                    fData.email || null,
+                    fData.notes || null,
+                    fData.category || 'standard',
+                    fData.rib || null
+                );
+        }
+        this.logActivity(fData.userId, existing ? 'update_fournisseur' : 'create_fournisseur', 'fournisseur', id, fData.name);
+        return this.getFournisseurById(id);
+    }
+    getFournisseurs(userId) {
+        return this.db
+            .prepare('SELECT * FROM fournisseurs WHERE user_id=? ORDER BY name ASC')
+            .all(userId)
+            .map(f => this.formatFournisseur(f));
+    }
+    getFournisseurById(id) {
+        const f = this.db.prepare('SELECT * FROM fournisseurs WHERE id=?').get(id);
+        return f ? this.formatFournisseur(f) : null;
+    }
+    deleteFournisseur(id) {
+        this.db.prepare('DELETE FROM fournisseurs WHERE id=?').run(id);
+    }
+    formatFournisseur(f) {
+        return {
+            id: f.id,
+            userId: f.user_id,
+            name: f.name,
+            mf: f.mf,
+            address: f.address,
+            phone: f.phone,
+            email: f.email,
+            notes: f.notes,
+            category: f.category,
+            rib: f.rib,
+            createdAt: f.created_at
+        };
+    }
+
     // ==================== SERVICES ====================
     saveService(d) {
         const id = d.id || uuidv4();
@@ -1182,6 +1251,17 @@ class AppDatabase {
     deleteService(id) {
         this.db.prepare('DELETE FROM services WHERE id=?').run(id);
     }
+    updateStock(updates) {
+        // updates is an array of { id, qty }
+        const stmt = this.db.prepare('UPDATE services SET stock = stock + ? WHERE id = ?');
+        const transaction = this.db.transaction((items) => {
+            for (const item of items) {
+                stmt.run(item.qty, item.id);
+            }
+        });
+        transaction(updates);
+    }
+
 
     // ==================== SERVICE CATEGORIES ====================
     saveServiceCategory(d) {

@@ -8,6 +8,7 @@ let signatureImage = null;
 let timbreAmount = 0;
 let allDocuments = [];
 let allClients = [];
+let allFournisseurs = [];
 let allServices = [];
 let allContracts = [];
 let allExpenses = [];

@@ -12,7 +12,7 @@
   <a href="https://factarlou.online">
     <img src="https://img.shields.io/badge/website-factarlou.online-00e5ff?style=for-the-badge&logo=google-chrome" alt="Website"/>
   </a>
-  <img src="https://img.shields.io/badge/version-4.0.0-blue?style=for-the-badge" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-4.5.0-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -30,7 +30,7 @@ De la génération de factures conformes à l'exportation XML pour la plateforme
 
 ---
 
-## What's New in v4.0.0
+## What's New in v4.5.0
 
 ### UI/UX & Quality-of-Life
 

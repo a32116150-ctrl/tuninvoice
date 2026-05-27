@@ -2,7 +2,7 @@
 
 ## Project Overview
 - **App Name**: Factarlou (Product Name) / TuniInvoice Pro (Internal Name)
-- **Version**: 4.0.0
+- **Version**: 4.5.0
 - **Description**: A comprehensive, high-performance desktop application tailored for the Tunisian market to manage invoicing, taxation (Retenue), and business operations.
 - **Tech Stack**: 
   - **Framework**: Electron (v28+)

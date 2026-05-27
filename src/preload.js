@@ -56,6 +56,12 @@ contextBridge.exposeInMainWorld(
         deleteClient: id => invoke('clients:delete', id),
         getClientHistory: params => invoke('clients:history', params),
 
+        // Fournisseurs
+        getFournisseurs: userId => invoke('fournisseurs:getAll', userId),
+        getFournisseur: id => invoke('fournisseurs:getById', id),
+        saveFournisseur: data => invoke('fournisseurs:save', data),
+        deleteFournisseur: id => invoke('fournisseurs:delete', id),
+
         // ── COMPANY ──────────────────────────────────────────────────────
         getCompany: userId => invoke('company:get', userId),
         saveCompany: data => invoke('company:save', data),
@@ -72,6 +78,7 @@ contextBridge.exposeInMainWorld(
         getServices: userId => invoke('services:getAll', userId),
         saveService: data => invoke('services:save', data),
         deleteService: id => invoke('services:delete', id),
+        updateStock: updates => invoke('services:updateStock', updates),
         getServiceCategories: userId => invoke('services:cats:get', userId),
         saveServiceCategory: data => invoke('services:cats:save', data),
         deleteServiceCategory: id => invoke('services:cats:del', id),

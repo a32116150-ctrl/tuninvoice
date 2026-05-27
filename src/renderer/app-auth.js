@@ -308,6 +308,7 @@ function navigateTo(page) {
     if (page === 'dashboard') loadDashboard();
     if (page === 'documents') loadDocuments();
     if (page === 'clients') loadClients();
+    if (page === 'fournisseurs') loadFournisseurs();
     if (page === 'services') loadServices();
     if (page === 'pos') loadPOS();
     else document.body.classList.remove('pos-mode');
