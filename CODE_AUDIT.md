@@ -1,6 +1,6 @@
 # TuniInvoice Desktop — Code Audit & Fix Log
 
-> **Initial Audit:** 2026-05-21 | **Fixes Applied:** 2026-05-22 | Version: 3.5.0
+> **Initial Audit:** 2026-05-21 (v3.5.0) | **Production Audit:** 2026-07-29 | **Version:** 4.7.0
 
 ---
 

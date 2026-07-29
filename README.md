@@ -12,7 +12,7 @@
   <a href="https://factarlou.online">
     <img src="https://img.shields.io/badge/website-factarlou.online-00e5ff?style=for-the-badge&logo=google-chrome" alt="Website"/>
   </a>
-  <img src="https://img.shields.io/badge/version-4.5.0-blue?style=for-the-badge" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-4.7.0-blue?style=for-the-badge" alt="Version"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge" alt="Platform"/>
   <img src="https://img.shields.io/badge/built%20with-Electron-47848F?style=for-the-badge&logo=electron" alt="Electron"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="License"/>
@@ -22,7 +22,7 @@
 
 ## À propos
 
-**Factarlou** est bien plus qu'un simple logiciel de facturation. C'est un écosystème complet de gestion conçu spécifiquement pour le cadre légal et fiscal **Tunisien**. Entièrement **Offline-First**, il garantit que vos données financières sensibles restent exclusivement sur votre machine, sans aucun passage par le cloud.
+**Factarlou** est bien plus qu'un simple logiciel de facturation. C'est un écosystème complet de gestion conçu spécifiquement pour le cadre légal et fiscal **Tunisien**. Entièrement **Offline-First**, il garantit que vos données financières sensibles restent exclusivement sur votre machine, sans aucun passage par cloud.
 
 > 🌐 **Site web officiel : [factarlou.online](https://factarlou.online)** — Documentation, blog, guides fiscaux et téléchargement.
 
@@ -30,7 +30,25 @@ De la génération de factures conformes à l'exportation XML pour la plateforme
 
 ---
 
-## What's New in v4.5.0
+## What's New in v4.7.0
+
+### 🇹🇳 Conformité Fiscale Tunisienne & Législation
+- **Timbre Fiscal (0.600 TND)** : Calcul conforme à la loi de finances 2018 (Loi n° 2017-66, Art. 44). Suppression du seuil erroné de 1000 TND.
+- **Factures Complètes & Légales** : Ajout automatique des mentions légales sur le PDF (Registre de Commerce, Téléphone, Email, unité de mesure, taux TVA par article, ventilation TVA et sous-total après remise).
+- **Stockage de la TVA en Base** : Colonne `total_tva` dédiée dans SQLite pour des déclarations fiscales mensuelles exactes.
+- **Format Matricule Fiscal (MF)** : Validation stricte au format officiel tunisien `NNNNNNN/L/L/NNN` (ex: `1234567/A/M/000`).
+- **Retenue à la Source (Art. 52 IRPP/IS)** : Ajout des taux 1% (grossistes/fabricants) et 20% (redevances non-résidents) avec titres de sections officiels (A. Payeur, B. Bénéficiaire, C. Montants).
+- **Export XML TEJ (DGF)** : Export conforme au schéma DGF avec balises `<NatureRevenu>`, `<TauxRetenue>`, `<BaseLegale>` et dates au format `JJ/MM/AAAA`.
+
+### 🛡️ Sécurité & Protection des Données
+- **Protection des Factures lors de la Suppression Client** : La suppression d'un client conserve l'historique des factures comptables en réassignant `client_id = NULL`.
+- **Protection contre le Path Traversal** : Sécurisation des pièces jointes et du protocole custom avec `realpathSync`.
+- **Limitation de Connexion Persistante** : Table SQLite `login_attempts` pour le verrouillage (15 minutes après 5 échecs), même en cas de redémarrage de l'application.
+- **Fermeture Propre SQLite** : Nettoyage automatique des fichiers temporaires PDF et fermeture propre du fichier `.db` (mode WAL).
+
+### 💼 Paie & Droits Socials (CNSS & IRPP)
+- **Calculateur de Paie Tunisiens** : Auto-calcul CNSS salarié (9.18%), CNSS employeur (16.57%), et barème progressif d'IRPP (0%, 26%, 28%, 32%, 35%).
+- **Numérotation des Bulletins de Paie** : Auto-génération de la référence séquentielle `PE-YYYY-001`.
 
 ### UI/UX & Quality-of-Life
 
