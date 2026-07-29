@@ -12,6 +12,17 @@ class AppDatabase {
         this.db = new Database(this.dbPath);
         this.db.pragma('journal_mode = WAL');
         this.db.pragma('foreign_keys = ON');
+
+        // CRIT-15: Verify database integrity on startup
+        try {
+            const integrityResult = this.db.pragma('integrity_check');
+            if (integrityResult[0]?.integrity_check !== 'ok') {
+                console.error('[DB] Database integrity check FAILED:', integrityResult);
+            }
+        } catch (e) {
+            console.error('[DB] Integrity check error:', e.message);
+        }
+
         this.initTables();
         this.runMigrations();
         this.initIndexes();
@@ -82,6 +93,12 @@ class AppDatabase {
         tryAlter('ALTER TABLE retenues ADD COLUMN beneficiaire_code_cat TEXT');
         tryAlter('ALTER TABLE retenues ADD COLUMN beneficiaire_n_etab TEXT');
         tryAlter("ALTER TABLE documents ADD COLUMN custom_fields TEXT DEFAULT '[]'");
+        // CRIT-03: Add total_tva column for authoritative TVA storage
+        tryAlter('ALTER TABLE documents ADD COLUMN total_tva REAL DEFAULT 0');
+        // H-17 & H-18: Payslip employer CNSS and sequential number migrations
+        tryAlter('ALTER TABLE payslips ADD COLUMN employer_cnss REAL DEFAULT 0');
+        tryAlter('ALTER TABLE payslips ADD COLUMN number TEXT');
+        tryAlter("ALTER TABLE user_settings ADD COLUMN prefix_payslip TEXT DEFAULT 'PE'");
         try {
             const docCols = this.db
                 .prepare('PRAGMA table_info(documents)')
@@ -283,6 +300,10 @@ class AppDatabase {
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS pos_loyalty (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, client_name TEXT NOT NULL, points INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, client_name))'
         );
+        // H-05: Persistent login rate limiting table
+        this.db.exec(
+            'CREATE TABLE IF NOT EXISTS login_attempts (email TEXT PRIMARY KEY, attempts INTEGER DEFAULT 0, locked_until DATETIME)'
+        );
     }
 
     initIndexes() {
@@ -323,6 +344,8 @@ class AppDatabase {
         this.db.pragma('journal_mode = WAL');
         this.db.pragma('foreign_keys = ON');
         this.initTables();
+        this.runMigrations();
+        this.initIndexes();
     }
 
     // ==================== AUTH ====================
@@ -347,21 +370,68 @@ class AppDatabase {
         return { id, name, email, company, mf, masterKey: rawMasterKey };
     }
     loginUser(email, password) {
+        // H-05: Persistent rate limit check
+        const rateCheck = this.checkLoginRateLimit(email);
+        if (rateCheck.locked) {
+            throw new Error(`Compte temporairement verrouillé suite à plusieurs échecs. Réessayez dans ${rateCheck.remainingSeconds} secondes.`);
+        }
+
         const user = this.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-        if (!user) throw new Error('Utilisateur introuvable');
+        if (!user) {
+            this.recordLoginFailure(email);
+            throw new Error('Identifiants invalides');
+        }
 
         let match = false;
         try {
             match = bcrypt.compareSync(password, user.password_hash);
         } catch (e) {
-            if (password === user.password_hash) {
-                match = true;
-                this.db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(bcrypt.hashSync(password, 10), user.id);
-            }
+            // CRIT-10: Never fall back to plaintext comparison — reject login on bcrypt error
+            console.error('[auth] bcrypt error, rejecting login:', e.message);
+            match = false;
         }
 
-        if (!match) throw new Error('Identifiants invalides');
+        if (!match) {
+            this.recordLoginFailure(email);
+            throw new Error('Identifiants invalides');
+        }
+
+        this.resetLoginAttempts(email);
         return { id: user.id, name: user.name, email: user.email, company: user.company, mf: user.mf };
+    }
+
+    // H-05: Persistent Rate Limiting Helper Methods
+    checkLoginRateLimit(email) {
+        if (!email) return { locked: false, attempts: 0 };
+        const row = this.db.prepare('SELECT attempts, locked_until FROM login_attempts WHERE email=?').get(email);
+        if (!row) return { locked: false, attempts: 0 };
+        if (row.locked_until && new Date(row.locked_until) > new Date()) {
+            const remainingSeconds = Math.ceil((new Date(row.locked_until).getTime() - Date.now()) / 1000);
+            return { locked: true, remainingSeconds, attempts: row.attempts };
+        }
+        return { locked: false, attempts: row.attempts };
+    }
+
+    recordLoginFailure(email) {
+        if (!email) return;
+        const now = new Date();
+        const row = this.db.prepare('SELECT attempts FROM login_attempts WHERE email=?').get(email);
+        const attempts = (row?.attempts || 0) + 1;
+        let lockedUntil = null;
+        if (attempts >= 5) {
+            // Lock out for 15 minutes after 5 consecutive failed attempts
+            lockedUntil = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+        }
+        this.db.prepare(`
+            INSERT INTO login_attempts (email, attempts, locked_until)
+            VALUES (?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET attempts=?, locked_until=?
+        `).run(email, attempts, lockedUntil, attempts, lockedUntil);
+    }
+
+    resetLoginAttempts(email) {
+        if (!email) return;
+        this.db.prepare('DELETE FROM login_attempts WHERE email=?').run(email);
     }
     changePassword(userId, oldPassword, newPassword) {
         const user = this.db.prepare('SELECT * FROM users WHERE id=?').get(userId);
@@ -445,74 +515,80 @@ class AppDatabase {
     }
 
     // ==================== DOCUMENTS ====================
+    // CRIT-14: Wrapped in transaction so counter increment + save are atomic (no number gaps)
     saveDocument(docData) {
-        const id = docData.id || uuidv4();
-        const number = docData.number || this.getNextDocumentNumber(docData.userId, docData.type, new Date().getFullYear());
-        const existing = this.db.prepare('SELECT id FROM documents WHERE id=?').get(id);
-        const vals = [
-            docData.type,
-            number,
-            docData.date,
-            docData.dueDate || null,
-            docData.expiryDate || null,
-            docData.currency || 'TND',
-            docData.paymentMode || null,
-            docData.paymentStatus || 'unpaid',
-            docData.paidAmount || 0,
-            docData.paidDate || null,
-            docData.companyName || null,
-            docData.companyMF || null,
-            docData.companyAddress || null,
-            docData.companyPhone || null,
-            docData.companyEmail || null,
-            docData.companyRC || null,
-            docData.companyBank || null,
-            docData.companyRIB || null,
-            docData.clientId || null,
-            docData.clientName,
-            docData.clientMF || null,
-            docData.clientAddress || null,
-            docData.clientPhone || null,
-            docData.clientEmail || null,
-            JSON.stringify(docData.items || []),
-            docData.applyTimbre ? 1 : 0,
-            docData.timbreAmount || 0,
-            docData.roundingAdjustment || 0,
-            docData.discountPercent || 0,
-            docData.discountAmount || 0,
-            docData.totalHT || 0,
-            docData.totalTTC || 0,
-            docData.logoImage || null,
-            docData.stampImage || null,
-            docData.signatureImage || null,
-            docData.notes || null,
-            docData.referenceDoc || null,
-            docData.internalNotes || null,
-            JSON.stringify(docData.customFields || []),
-            docData.isPos ? 1 : 0,
-            docData.posSessionId || null
-        ];
-        if (existing) {
-            this.db
-                .prepare(
-                    'UPDATE documents SET type=?,number=?,date=?,due_date=?,expiry_date=?,currency=?,payment_mode=?,payment_status=?,paid_amount=?,paid_date=?,company_name=?,company_mf=?,company_address=?,company_phone=?,company_email=?,company_rc=?,company_bank=?,company_rib=?,client_id=?,client_name=?,client_mf=?,client_address=?,client_phone=?,client_email=?,items_json=?,apply_timbre=?,timbre_amount=?,rounding_adjustment=?,discount_percent=?,discount_amount=?,total_ht=?,total_ttc=?,logo_image=?,stamp_image=?,signature_image=?,notes=?,reference_doc=?,internal_notes=?,custom_fields=?,is_pos=?,pos_session_id=? WHERE id=?'
-                )
-                .run(...vals, id);
-        } else {
-            this.db
-                .prepare(
-                    'INSERT INTO documents (id,user_id,type,number,date,due_date,expiry_date,currency,payment_mode,payment_status,paid_amount,paid_date,company_name,company_mf,company_address,company_phone,company_email,company_rc,company_bank,company_rib,client_id,client_name,client_mf,client_address,client_phone,client_email,items_json,apply_timbre,timbre_amount,rounding_adjustment,discount_percent,discount_amount,total_ht,total_ttc,logo_image,stamp_image,signature_image,notes,reference_doc,internal_notes,custom_fields,is_pos,pos_session_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-                )
-                .run(id, docData.userId, ...vals);
-        }
-        this.logActivity(
-            docData.userId,
-            existing ? 'update_document' : 'create_document',
-            'document',
-            id,
-            `${(docData.type || '').toUpperCase()} N° ${number}`
-        );
-        return this.getDocumentById(id);
+        const saveTransaction = this.db.transaction(() => {
+            const id = docData.id || uuidv4();
+            const number = docData.number || this.getNextDocumentNumber(docData.userId, docData.type, new Date().getFullYear());
+            const existing = this.db.prepare('SELECT id FROM documents WHERE id=?').get(id);
+            const vals = [
+                docData.type,
+                number,
+                docData.date,
+                docData.dueDate || null,
+                docData.expiryDate || null,
+                docData.currency || 'TND',
+                docData.paymentMode || null,
+                docData.paymentStatus || 'unpaid',
+                docData.paidAmount || 0,
+                docData.paidDate || null,
+                docData.companyName || null,
+                docData.companyMF || null,
+                docData.companyAddress || null,
+                docData.companyPhone || null,
+                docData.companyEmail || null,
+                docData.companyRC || null,
+                docData.companyBank || null,
+                docData.companyRIB || null,
+                docData.clientId || null,
+                docData.clientName,
+                docData.clientMF || null,
+                docData.clientAddress || null,
+                docData.clientPhone || null,
+                docData.clientEmail || null,
+                JSON.stringify(docData.items || []),
+                docData.applyTimbre ? 1 : 0,
+                docData.timbreAmount || 0,
+                docData.roundingAdjustment || 0,
+                docData.discountPercent || 0,
+                docData.discountAmount || 0,
+                docData.totalHT || 0,
+                docData.totalTVA || 0,
+                docData.totalTTC || 0,
+                docData.logoImage || null,
+                docData.stampImage || null,
+                docData.signatureImage || null,
+                docData.notes || null,
+                docData.referenceDoc || null,
+                docData.internalNotes || null,
+                JSON.stringify(docData.customFields || []),
+                docData.isPos ? 1 : 0,
+                docData.posSessionId || null
+            ];
+            if (existing) {
+                this.db
+                    .prepare(
+                        'UPDATE documents SET type=?,number=?,date=?,due_date=?,expiry_date=?,currency=?,payment_mode=?,payment_status=?,paid_amount=?,paid_date=?,company_name=?,company_mf=?,company_address=?,company_phone=?,company_email=?,company_rc=?,company_bank=?,company_rib=?,client_id=?,client_name=?,client_mf=?,client_address=?,client_phone=?,client_email=?,items_json=?,apply_timbre=?,timbre_amount=?,rounding_adjustment=?,discount_percent=?,discount_amount=?,total_ht=?,total_tva=?,total_ttc=?,logo_image=?,stamp_image=?,signature_image=?,notes=?,reference_doc=?,internal_notes=?,custom_fields=?,is_pos=?,pos_session_id=? WHERE id=?'
+                    )
+                    .run(...vals, id);
+            } else {
+                this.db
+                    .prepare(
+                        'INSERT INTO documents (id,user_id,type,number,date,due_date,expiry_date,currency,payment_mode,payment_status,paid_amount,paid_date,company_name,company_mf,company_address,company_phone,company_email,company_rc,company_bank,company_rib,client_id,client_name,client_mf,client_address,client_phone,client_email,items_json,apply_timbre,timbre_amount,rounding_adjustment,discount_percent,discount_amount,total_ht,total_tva,total_ttc,logo_image,stamp_image,signature_image,notes,reference_doc,internal_notes,custom_fields,is_pos,pos_session_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                    )
+                    .run(id, docData.userId, ...vals);
+            }
+            this.logActivity(
+                docData.userId,
+                existing ? 'update_document' : 'create_document',
+                'document',
+                id,
+                `${(docData.type || '').toUpperCase()} N° ${number}`
+            );
+            return id;
+        });
+        const savedId = saveTransaction();
+        return this.getDocumentById(savedId);
     }
     getDocuments(userId) {
         return this.db
@@ -539,7 +615,12 @@ class AppDatabase {
         const doc = this.db.prepare('SELECT * FROM documents WHERE id=?').get(docId);
         return doc ? this.formatDocument(doc) : null;
     }
-    deleteDocument(docId) {
+    // CRIT-12: Verify ownership before delete (if userId provided)
+    deleteDocument(docId, userId) {
+        if (userId) {
+            const doc = this.db.prepare('SELECT id FROM documents WHERE id=? AND user_id=?').get(docId, userId);
+            if (!doc) throw new Error('Document introuvable ou accès non autorisé');
+        }
         this.db.prepare('DELETE FROM payments WHERE document_id=?').run(docId);
         this.db.prepare('DELETE FROM retenues WHERE facture_id=?').run(docId);
         this.db.prepare('DELETE FROM recurring_invoices WHERE template_id=?').run(docId);
@@ -615,6 +696,7 @@ class AppDatabase {
             discountPercent: doc.discount_percent || 0,
             discountAmount: doc.discount_amount || 0,
             totalHT: doc.total_ht || 0,
+            totalTVA: doc.total_tva || 0,
             totalTTC: doc.total_ttc || 0,
             logoImage: doc.logo_image,
             stampImage: doc.stamp_image,
@@ -976,11 +1058,8 @@ class AppDatabase {
     deleteClient(id) {
         const client = this.getClientById(id);
         if (client) {
-            // Cascade: delete invoices/devis/avoir for this client (not POS tickets)
-            const docs = this.db
-                .prepare("SELECT id FROM documents WHERE user_id=? AND client_name=? AND type NOT IN ('ticket')")
-                .all(client.user_id, client.name);
-            docs.forEach(d => this.deleteDocument(d.id));
+            // H-10: Preserve financial invoice history — detach client_id rather than deleting historical invoices
+            this.db.prepare("UPDATE documents SET client_id = NULL WHERE user_id=? AND client_name=?").run(client.user_id, client.name);
         }
         this.db.prepare('DELETE FROM clients WHERE id=?').run(id);
     }
@@ -1251,7 +1330,8 @@ class AppDatabase {
     deleteService(id) {
         this.db.prepare('DELETE FROM services WHERE id=?').run(id);
     }
-    updateStock(updates) {
+    // CRIT-13: Renamed from updateStock to addStockBatch to resolve name collision with POS updateStock
+    addStockBatch(updates) {
         // updates is an array of { id, qty }
         const stmt = this.db.prepare('UPDATE services SET stock = stock + ? WHERE id = ?');
         const transaction = this.db.transaction((items) => {
@@ -1847,30 +1927,39 @@ class AppDatabase {
     savePayslip(p) {
         const id = p.id || uuidv4();
         const existing = this.db.prepare('SELECT id FROM payslips WHERE id=?').get(id);
+        const grossSalary = p.gross_salary || ((p.base_salary || 0) + (p.transport_allowance || 0) + (p.other_allowances || 0));
+        // H-17: Employer CNSS contribution (16.57% per Tunisian law)
+        const employerCNSS = p.employer_cnss || Math.round(grossSalary * 0.1657 * 1000) / 1000;
+        // H-18: Sequential payslip numbering
+        const year = p.period_year || new Date().getFullYear();
+        const number = p.number || this.getNextDocumentNumber(p.userId, 'payslip', year);
+
         const vals = [
             p.employee_id,
+            number,
             p.period_month,
             p.period_year,
             p.date,
             p.base_salary,
             p.transport_allowance,
             p.other_allowances,
-            p.gross_salary,
+            grossSalary,
             p.cnss_deduction,
             p.irpp_deduction,
+            employerCNSS,
             p.net_salary,
             p.status || 'unpaid'
         ];
         if (existing)
             this.db
                 .prepare(
-                    'UPDATE payslips SET employee_id=?, period_month=?, period_year=?, date=?, base_salary=?, transport_allowance=?, other_allowances=?, gross_salary=?, cnss_deduction=?, irpp_deduction=?, net_salary=?, status=? WHERE id=?'
+                    'UPDATE payslips SET employee_id=?, number=?, period_month=?, period_year=?, date=?, base_salary=?, transport_allowance=?, other_allowances=?, gross_salary=?, cnss_deduction=?, irpp_deduction=?, employer_cnss=?, net_salary=?, status=? WHERE id=?'
                 )
                 .run(...vals, id);
         else
             this.db
                 .prepare(
-                    'INSERT INTO payslips (id,user_id,employee_id,period_month,period_year,date,base_salary,transport_allowance,other_allowances,gross_salary,cnss_deduction,irpp_deduction,net_salary,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                    'INSERT INTO payslips (id,user_id,employee_id,number,period_month,period_year,date,base_salary,transport_allowance,other_allowances,gross_salary,cnss_deduction,irpp_deduction,employer_cnss,net_salary,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
                 )
                 .run(id, p.userId, ...vals);
         return id;
@@ -1989,7 +2078,8 @@ class AppDatabase {
         return this.db.prepare('SELECT * FROM services WHERE user_id=? AND barcode=?').get(userId, barcode);
     }
 
-    updateStock(id, quantity) {
+    // CRIT-13: Renamed from updateStock to setStock to resolve name collision
+    setStock(id, quantity) {
         this.db.prepare('UPDATE services SET stock=? WHERE id=?').run(quantity, id);
     }
 

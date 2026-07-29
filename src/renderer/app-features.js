@@ -890,7 +890,7 @@ function calculateTotals() {
         tva7 *= f;
     }
     const applyTimbre = document.getElementById('applyTimbre').checked;
-    timbreAmount = applyTimbre && totalHTRaw > 1000 ? 1.0 : 0;
+    timbreAmount = applyTimbre ? 0.600 : 0;
     document.getElementById('timbreDisplay').textContent = formatAmount(timbreAmount) + ' TND';
 
     // Raw total TTC (full precision)
@@ -7347,7 +7347,7 @@ function simCalculateTotals(items, options = {}) {
             tvaLines.push({ rate: parseInt(rate), amount: amt });
         });
     totalTVA = round(totalTVA);
-    const timbreAmount = applyTimbre && totalHT > 1000 ? round(1.0) : 0;
+    const timbreAmount = applyTimbre ? round(0.600) : 0;
     const totalTTC = round(totalHT + totalTVA + timbreAmount);
     return { totalHT, totalTVA, totalTTC, timbreAmount, tvaLines, roundingAdjustment: 0 };
 }

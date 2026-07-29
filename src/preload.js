@@ -19,7 +19,9 @@ contextBridge.exposeInMainWorld(
         checkForUpdates: () => invoke('updater:check'),
         installUpdate: () => invoke('updater:install'),
         onUpdaterEvent: cb => {
-            ipcRenderer.on('updater:event', (_, payload) => cb(payload));
+            const listener = (_, payload) => cb(payload);
+            ipcRenderer.on('updater:event', listener);
+            return () => ipcRenderer.removeListener('updater:event', listener);
         },
 
         // ── AUTH ─────────────────────────────────────────────────────────
@@ -162,7 +164,11 @@ contextBridge.exposeInMainWorld(
         saveReminder: data => invoke('reminders:save', data),
         deleteReminder: id => invoke('reminders:delete', id),
         markReminderDone: id => invoke('reminders:markDone', id),
-        onReminderDue: cb => ipcRenderer.on('reminder:due', (_, r) => cb(r)),
+        onReminderDue: cb => {
+            const listener = (_, r) => cb(r);
+            ipcRenderer.on('reminder:due', listener);
+            return () => ipcRenderer.removeListener('reminder:due', listener);
+        },
         saveRelance: data => invoke('relances:save', data),
         getRelancesByInvoice: invoiceId => invoke('relances:getByInvoice', invoiceId),
         getRelanceAttemptCount: invoiceId => invoke('relances:attemptCount', invoiceId),
@@ -204,7 +210,9 @@ contextBridge.exposeInMainWorld(
         onShortcut: (channel, cb) => {
             const ALLOWED_SHORTCUTS = ['newDoc', 'focusSearch', 'navigate'];
             if (!ALLOWED_SHORTCUTS.includes(channel)) return;
-            ipcRenderer.on(`shortcut:${channel}`, (_, payload) => cb(payload));
+            const listener = (_, payload) => cb(payload);
+            ipcRenderer.on(`shortcut:${channel}`, listener);
+            return () => ipcRenderer.removeListener(`shortcut:${channel}`, listener);
         },
 
         // ── DOCUMENT TEMPLATES ───────────────────────────────────────────

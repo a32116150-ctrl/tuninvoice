@@ -1,6 +1,6 @@
 const VALID_TVA_RATES = [19, 13, 7, 0];
 const VALID_CURRENCIES = ['TND', 'EUR', 'USD'];
-const VALID_DOC_TYPES = ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir', 'ticket'];
+const VALID_DOC_TYPES = ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir', 'ticket', 'proforma'];
 const VALID_ROUNDING_METHODS = ['half_up', 'ceil', 'floor'];
 const VALID_FREQUENCIES = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
 
@@ -29,8 +29,19 @@ function isDate(v) {
 }
 
 function isMF(v) {
-    if (!v) return true;
-    return typeof v === 'string' && v.length <= 20;
+    if (!v) return true; // MF is optional for some clients
+    if (typeof v !== 'string') return false;
+    // Tunisian MF format: 7 digits / 1 letter (code TVA) / 1 letter (catégorie) / 3 digits (n° établissement)
+    // Accept with slashes: 1234567/A/M/000  or compact: 1234567AM000
+    const cleaned = v.trim().toUpperCase();
+    return /^\d{7}\/[A-Z]\/[A-Z]\/\d{3}$/.test(cleaned)
+        || /^\d{7}[A-Z][A-Z]\d{3}$/.test(cleaned);
+}
+
+function isCIN(v) {
+    if (!v) return true; // Optional field
+    if (typeof v !== 'string') return false;
+    return /^\d{8}$/.test(v.trim());
 }
 
 function validateDocSave(data) {
@@ -96,6 +107,8 @@ function validateRecurringInvoice(data) {
 }
 
 module.exports = {
+    isCIN,
+    isMF,
     validateDocSave,
     validateClientSave,
     validateExpenseSave,

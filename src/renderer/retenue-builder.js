@@ -294,9 +294,9 @@ function buildRetenueHTML(data, _theme) {
     ${payeur.rep ? `<div class="info-row"><div class="info-label">Représentant légal :</div><div class="info-value">${esc(payeur.rep)}</div></div>` : ''}
   </div>
 
-  <!-- Section C : Bénéficiaire -->
+  <!-- Section B : Bénéficiaire -->
   <div class="section">
-    <div class="section-title">C. BENEFICIAIRE :</div>
+    <div class="section-title">B. BENEFICIAIRE</div>
     <div class="info-row">
       <div class="info-label">Nom, prénoms ou raison sociale :</div>
       <div class="info-value">${esc(benef.name)}</div>
@@ -322,9 +322,9 @@ function buildRetenueHTML(data, _theme) {
     ${benef.rib ? `<div class="info-row"><div class="info-label">RIB :</div><div class="info-value">${esc(benef.rib)}</div></div>` : ''}
   </div>
 
-  <!-- Montants -->
+  <!-- Section C : Montants -->
   <div class="section">
-    <div class="section-title">D. MONTANTS DE LA RETENUE</div>
+    <div class="section-title">C. MONTANTS DE LA RETENUE</div>
     <table class="amount-table">
       <thead>
         <tr>
@@ -501,13 +501,30 @@ function buildFiscalSummaryHTML(summary, company) {
   <table>
     <tr><th colspan="2">Résumé des Opérations</th></tr>
     <tr><td>Nombre total de factures émises</td><td class="num">${summary.docCount}</td></tr>
-    <tr><td>Factures impayées</td><td class="num">N/A</td></tr>
     <tr><td>Total Hors Taxes (HT) facturé</td><td class="num">${fmt3(summary.totalHT)} TND</td></tr>
     <tr><td>Total TVA collectée</td><td class="num">${fmt3(summary.totalTVA)} TND</td></tr>
     <tr><td>Total Droit de Timbre</td><td class="num">${fmt3(summary.totalTimbre)} TND</td></tr>
     <tr><td>Total Retenues à la Source déduites</td><td class="num">${fmt3(summary.totalRetenuesSubi)} TND</td></tr>
     <tr class="total-row"><td>Chiffre d'Affaires Global (TTC)</td><td class="num">${fmt3(summary.totalTTC)} TND</td></tr>
   </table>
+
+  ${summary.tvaByRate && summary.tvaByRate.length > 0 ? `
+  <table>
+    <tr><th colspan="3">Ventilation par Taux de TVA (pour Déclaration Mensuelle)</th></tr>
+    <tr>
+      <th>Taux de TVA</th>
+      <th style="text-align:right">Base Imposable (HT)</th>
+      <th style="text-align:right">Montant TVA</th>
+    </tr>
+    ${summary.tvaByRate.map(row => `
+      <tr>
+        <td>TVA ${row.rate}%</td>
+        <td class="num">${fmt3(row.baseHT)} TND</td>
+        <td class="num">${fmt3(row.tvaAmount)} TND</td>
+      </tr>
+    `).join('')}
+  </table>
+  ` : ''}
 
   <div style="font-style:italic; font-size: 11px;">
     Ce document est un récapitulatif généré à titre indicatif pour faciliter vos déclarations fiscales.
@@ -659,12 +676,14 @@ function buildPayslipHTML(payslip, employee, company) {
 
 // Constants
 const TAUX_RETENUE = [
+    { value: 1, label: '1%   — Achats auprès de fabricants et grossistes' },
     { value: 1.5, label: '1.5% — Honoraires & commissions (personnes morales résidentes)' },
     { value: 2.5, label: '2.5% — Honoraires (personnes physiques, hors régime réel)' },
     { value: 3, label: '3%   — Loyers immobiliers / revenus fonciers' },
     { value: 5, label: '5%   — Travaux / services (non-résidents)' },
     { value: 10, label: '10%  — Dividendes / valeurs mobilières' },
     { value: 15, label: '15%  — Intérêts / capitaux mobiliers' },
+    { value: 20, label: '20%  — Redevances (non-résidents avec convention)' },
     { value: 25, label: '25%  — Paiements à non-résidents (sans convention)' }
 ];
 const NATURES_REVENU = [

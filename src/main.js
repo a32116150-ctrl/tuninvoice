@@ -102,18 +102,26 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    const { protocol } = require('electron');
-    protocol.registerFileProtocol('media', (request, callback) => {
-        const url = decodeURIComponent(request.url.replace('media://', ''));
-        const resolved = path.resolve(url);
-        const allowedDirs = [app.getPath('userData'), app.getPath('pictures'), app.getPath('home')];
-        if (!allowedDirs.some(dir => resolved.startsWith(dir))) {
-            return callback({ statusCode: 403 });
-        }
+    const { protocol, net } = require('electron');
+    const { pathToFileURL } = require('url');
+
+    // H-08: Use protocol.handle for Electron 28+
+    protocol.handle('media', async (request) => {
         try {
-            return callback(resolved);
-        } catch (error) {
-            console.error(error);
+            const urlPath = decodeURIComponent(request.url.replace('media://', ''));
+            const resolved = path.resolve(urlPath);
+            const real = fs.existsSync(resolved) ? fs.realpathSync(resolved) : resolved;
+            const allowedDirs = [app.getPath('userData'), app.getPath('pictures'), app.getPath('home')];
+            const isAllowed = allowedDirs.some(dir => {
+                const realDir = fs.existsSync(dir) ? fs.realpathSync(dir) : path.resolve(dir);
+                return real.startsWith(realDir);
+            });
+            if (!isAllowed) {
+                return new Response('Access Denied', { status: 403 });
+            }
+            return net.fetch(pathToFileURL(real).toString());
+        } catch (e) {
+            return new Response(e.message, { status: 500 });
         }
     });
 
@@ -129,6 +137,7 @@ app.whenReady().then(() => {
     createTray();
     registerShortcuts();
     startRecurringCron();
+    cleanupTempPDFs();
     setTimeout(() => {
         autoUpdater.checkForUpdatesAndNotify().catch(err => console.log('[updater] skipped:', err.message));
     }, 3000);
@@ -223,16 +232,27 @@ function registerShortcuts() {
             mainWindow.webContents.send('shortcut:newDoc', 'devis');
         }
     });
-    globalShortcut.register('CommandOrControl+F', () => {
-        if (mainWindow) {
-            mainWindow.show();
-            mainWindow.webContents.send('shortcut:focusSearch');
+    // H-09: Ctrl+F removed from global shortcuts to prevent system-wide Find hijacking
+}
+
+// H-13: Clean up temporary PDF files
+function cleanupTempPDFs() {
+    try {
+        const tempDir = path.join(app.getPath('userData'), 'temp-pdfs');
+        if (fs.existsSync(tempDir)) {
+            const files = fs.readdirSync(tempDir);
+            for (const f of files) {
+                try { fs.unlinkSync(path.join(tempDir, f)); } catch {}
+            }
         }
-    });
+    } catch (e) {
+        console.error('[cleanup] temp-pdfs error:', e.message);
+    }
 }
 
 app.on('will-quit', () => {
     globalShortcut.unregisterAll();
+    cleanupTempPDFs();
     if (appTray) {
         appTray.destroy();
         appTray = null;
@@ -241,10 +261,20 @@ app.on('will-quit', () => {
         ocrWorker.terminate();
         ocrWorker = null;
     }
+    // H-12: Graceful database shutdown
+    if (db && typeof db.getDatabase === 'function' && db.getDatabase()) {
+        try {
+            db.getDatabase().close();
+            console.log('[DB] Database closed cleanly on quit');
+        } catch (e) {
+            console.error('[DB] Error closing database on quit:', e.message);
+        }
+    }
 });
 
 // ==================== AUTO-UPDATER ====================
-autoUpdater.autoDownload = true;
+// H-11: Require user confirmation before downloading software updates
+autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 const sendUpdate = (event, payload = {}) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:event', { event, ...payload });
@@ -586,6 +616,18 @@ ipcMain.handle('docs:convert', async (_, { sourceId, targetType, userId, year })
             paymentStatus: 'unpaid',
             paidAmount: 0
         });
+
+        // H-01: Bi-directional link — update original document internal notes when creating an Avoir
+        if (targetType === 'avoir') {
+            try {
+                const noteMsg = `[AVOIR ÉMIS] Avoir N° ${num} généré le ${new Date().toISOString().split('T')[0]}`;
+                db.getDatabase().prepare("UPDATE documents SET internal_notes = COALESCE(internal_notes || '\n', '') || ? WHERE id = ?")
+                    .run(noteMsg, src.id);
+            } catch (e) {
+                console.error('[avoir] bi-directional update error:', e.message);
+            }
+        }
+
         return { success: true, document: newDoc };
     } catch (e) {
         return { success: false, error: e.message };
@@ -724,7 +766,7 @@ ipcMain.handle('docs:generatePDF', async (_, { doc, company, decimalPlaces }) =>
             stampImage: imagePathToBase64(doc.stampImage) || company?.stamp_image || '',
             signatureImage: imagePathToBase64(doc.signatureImage) || company?.signature_image || '',
             totalHT: doc.totalHT || totalHT || 0,
-            totalTTC: doc.totalTTC || doc.totalTTC || 0,
+            totalTTC: doc.totalTTC || 0,
             timbreFiscal: doc.timbreAmount || 0,
             decimalPlaces: decimalPlaces ?? 3,
             tvaLines: Object.entries(tvaBuckets)
@@ -836,7 +878,7 @@ ipcMain.handle('services:delete', async (_, id) => {
 });
 ipcMain.handle('services:updateStock', async (_, updates) => {
     try {
-        db.updateStock(updates);
+        db.addStockBatch(updates);
         return { success: true };
     } catch (e) {
         return { success: false, error: e.message };
@@ -891,7 +933,12 @@ ipcMain.handle('settings:get', async (_, userId) => {
     if (settings && settings.smtp_pass && safeStorage.isEncryptionAvailable()) {
         try {
             settings.smtp_pass = safeStorage.decryptString(Buffer.from(settings.smtp_pass, 'base64'));
-        } catch {}
+        } catch (e) {
+            // CRIT-11: Clear rather than leak encrypted blob on decryption failure
+            console.error('[settings] SMTP password decryption failed:', e.message);
+            settings.smtp_pass = '';
+            settings._smtp_decrypt_error = true;
+        }
     }
     return settings;
 });
@@ -1412,7 +1459,7 @@ ipcMain.handle('pos:getProductsPaginated', async (_, { userId, page, pageSize })
 ipcMain.handle('pos:getProductByBarcode', async (_, { userId, barcode }) => db.getProductByBarcode(userId, barcode));
 ipcMain.handle('pos:updateStock', async (_, { id, quantity }) => {
     try {
-        db.updateStock(id, quantity);
+        db.setStock(id, quantity);
         return { success: true };
     } catch (e) {
         return { success: false, error: e.message };
@@ -1425,7 +1472,9 @@ ipcMain.handle('pos:saveSale', async (_, data) => {
         const today = now.split('T')[0];
         // Reserve a document number
         const number = db.getNextDocumentNumber(data.userId, 'ticket', new Date().getFullYear());
-        // Create a document for the POS sale
+        // H-14: POS sale Timbre fiscal support
+        const applyTimbre = data.applyTimbre === true;
+        const timbreAmount = applyTimbre ? 0.600 : 0;
         const docData = {
             id,
             userId: data.userId,
@@ -1435,7 +1484,10 @@ ipcMain.handle('pos:saveSale', async (_, data) => {
             clientName: data.clientName || 'Client du magasin',
             items: data.items,
             totalHT: data.totalHT,
+            totalTVA: data.totalTVA || 0,
             totalTTC: data.totalTTC,
+            applyTimbre,
+            timbreAmount,
             paymentStatus: 'paid',
             paidAmount: data.totalTTC,
             paidDate: today,
@@ -1542,6 +1594,7 @@ ipcMain.handle('scanner:pickFile', async () => {
 ipcMain.handle('scanner:storeFile', async (_, srcPath) => {
     try {
         const resolved = path.resolve(srcPath);
+        const real = fs.existsSync(resolved) ? fs.realpathSync(resolved) : resolved;
         const allowed = [
             app.getPath('home'),
             app.getPath('downloads'),
@@ -1549,7 +1602,12 @@ ipcMain.handle('scanner:storeFile', async (_, srcPath) => {
             app.getPath('documents'),
             app.getPath('pictures')
         ];
-        if (!allowed.some(dir => resolved.startsWith(dir))) {
+        // H-06: Use realpathSync to prevent path traversal via symlinks
+        const isAllowed = allowed.some(dir => {
+            const realDir = fs.existsSync(dir) ? fs.realpathSync(dir) : path.resolve(dir);
+            return real.startsWith(realDir);
+        });
+        if (!isAllowed) {
             return { success: false, error: 'Chemin de fichier non autorisé' };
         }
         const attachDir = path.join(app.getPath('userData'), 'attachments');
@@ -1577,6 +1635,20 @@ ipcMain.handle('scanner:extractPdfText', async (_, filePath) => {
     }
 });
 
+let ocrTimer = null;
+function scheduleOcrCleanup() {
+    if (ocrTimer) clearTimeout(ocrTimer);
+    ocrTimer = setTimeout(async () => {
+        if (ocrWorker) {
+            try {
+                await ocrWorker.terminate();
+                ocrWorker = null;
+                console.log('[OCR] Worker terminated due to 3m inactivity');
+            } catch (e) {}
+        }
+    }, 3 * 60 * 1000);
+}
+
 ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
     if (!filePath || !fs.existsSync(filePath)) {
         return { success: false, error: 'Fichier non trouvé' };
@@ -1597,6 +1669,7 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
         const {
             data: { text }
         } = await ocrWorker.recognize(filePath);
+        scheduleOcrCleanup();
         if (process.env.NODE_ENV === 'development') {
             console.log('--- RAW OCR START ---');
             console.log(text);
@@ -1612,11 +1685,13 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
 ipcMain.handle('scanner:openAttachment', async (_, filePath) => {
     try {
         const resolved = path.resolve(filePath);
+        const real = fs.existsSync(resolved) ? fs.realpathSync(resolved) : resolved;
         const attachDir = path.join(app.getPath('userData'), 'attachments');
-        if (!resolved.startsWith(attachDir)) {
+        const realAttachDir = fs.existsSync(attachDir) ? fs.realpathSync(attachDir) : path.resolve(attachDir);
+        if (!real.startsWith(realAttachDir)) {
             return { success: false, error: 'Chemin non autorisé' };
         }
-        shell.openPath(resolved);
+        shell.openPath(real);
         return { success: true };
     } catch (e) {
         return { success: false, error: e.message };
@@ -1627,11 +1702,13 @@ ipcMain.handle('scanner:deleteAttachment', async (_, filePath) => {
     try {
         if (filePath) {
             const resolved = path.resolve(filePath);
+            const real = fs.existsSync(resolved) ? fs.realpathSync(resolved) : resolved;
             const attachDir = path.join(app.getPath('userData'), 'attachments');
-            if (!resolved.startsWith(attachDir)) {
+            const realAttachDir = fs.existsSync(attachDir) ? fs.realpathSync(attachDir) : path.resolve(attachDir);
+            if (!real.startsWith(realAttachDir)) {
                 return { success: false, error: 'Chemin non autorisé' };
             }
-            if (fs.existsSync(resolved)) fs.unlinkSync(resolved);
+            if (fs.existsSync(real)) fs.unlinkSync(real);
         }
         return { success: true };
     } catch (e) {
@@ -1850,7 +1927,7 @@ function generateDueRecurring() {
                     totalHT: ht,
                     totalTTC: netTotal,
                     timbreAmount: 0,
-                    paymentStatus: 'impaye'
+                    paymentStatus: 'unpaid'
                 });
 
                 // Calculate next run
@@ -1962,6 +2039,15 @@ ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeAct
                 .ele('AjouterCertificats');
 
             data.forEach(item => {
+                // CRIT-06: Format date as DD/MM/YYYY per DGF spec
+                let formattedDate = item.date || '';
+                try {
+                    if (formattedDate && formattedDate.includes('-')) {
+                        const d = new Date(formattedDate);
+                        formattedDate = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+                    }
+                } catch {}
+
                 root.ele('Certificat')
                     .ele('Beneficiaire')
                     .ele('Identifiant')
@@ -1973,13 +2059,22 @@ ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeAct
                     .up()
                     .ele('DetailsCertificat')
                     .ele('DateCertificat')
-                    .txt(item.date || '')
+                    .txt(formattedDate)
+                    .up()
+                    .ele('NatureRevenu')
+                    .txt(item.nature_revenu || 'Honoraires et commissions')
                     .up()
                     .ele('MontantBrut')
                     .txt((item.montant_brut || 0).toFixed(3))
                     .up()
+                    .ele('TauxRetenue')
+                    .txt((item.taux_retenue || 1.5).toFixed(2))
+                    .up()
                     .ele('MontantRetenue')
                     .txt((item.montant_retenue || 0).toFixed(3))
+                    .up()
+                    .ele('BaseLegale')
+                    .txt(item.base_legale || "Art. 52 du Code de l'IRPP et de l'IS")
                     .up()
                     .up()
                     .up();
