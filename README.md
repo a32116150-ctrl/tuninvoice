@@ -30,6 +30,31 @@ De la génération de factures conformes à l'exportation XML pour la plateforme
 
 ---
 
+## 🌟 What's New in v5.0.1 (The "Perfection" Update)
+
+La version **5.0.1** est l'aboutissement d'un audit de code complet (63 points) visant à garantir une conformité fiscale tunisienne absolue et une sécurité de niveau entreprise ("Offline-First").
+
+### 🛡️ Sécurité & Résilience (Architecture "Offline-First")
+- **Refonte CSP (Content Security Policy) Stricte** : Suppression totale des scripts `unsafe-inline` dans l'UI. Plus de 360 gestionnaires d'événements ont été migrés vers un routeur de délégation d'événements global pour éliminer tout risque XSS.
+- **Chiffrement des Identifiants** : Les mots de passe sensibles (comme le SMTP) sont désormais chiffrés nativement via l'API OS `safeStorage` (Electron) avant d'être sauvegardés en base de données.
+- **Défense en Profondeur** : Activation du mode `sandbox: true` sur toutes les fenêtres Electron et sécurisation rigoureuse du bridge IPC (`contextIsolation`).
+- **Protection SQL Injection** : Assainissement avancé des requêtes de recherche JSON (`searchDocuments`) empêchant toute injection par wildcards (`%`, `_`).
+- **Mécanisme Anti-Crash & Journalisation** : Implémentation d'un module de journalisation structurée (rotation à 5Mo) capturant les `uncaughtException` et prévenant les fermetures abruptes de l'application.
+
+### 🇹🇳 Conformité Fiscale (DGF) & Lois Tunisiennes
+- **Détection des Gaps de Numérotation** : Nouveau scanner intégré empêchant les sauts de numéros de factures, une exigence stricte de la loi tunisienne pour la continuité des séries.
+- **Régime Forfaitaire** : Prise en charge native du régime forfaitaire (TVA bloquée à 0% sur l'ensemble du document).
+- **Contrôle Strict des Tarifs** : Bloquage des prix négatifs, quantités nulles et application simultanée de remises (% et montants absolus) pour éviter les incohérences comptables.
+- **Retenue à la Source (Art. 52 IRPP/IS)** : Ajout des catégories manquantes (Achat auprès de fabricants/grossistes, redevances, plus-values, gains de jeux). Le modèle généré respecte strictement la structure DGF (Sections A, B, C).
+- **Validation CIN** : Contrôle strict de 8 chiffres pour les Cartes d'Identité Nationales tunisiennes.
+
+### ⚙️ Fonctionnalités & QoL
+- **Expiration Automatique des Devis** : Application automatique d'une validité de 30 jours pour les devis sans date d'expiration spécifiée.
+- **Relevés de Compte Client (Extrait)** : Intégration améliorée de l'historique financier des clients avec détection des chevauchements.
+- **Optimisation des Ressources** : Arrêt automatique du worker OCR (Tesseract) après 3 minutes d'inactivité pour libérer la RAM système.
+
+---
+
 ## What's New in v4.7.0
 
 ### 🇹🇳 Conformité Fiscale Tunisienne & Législation
