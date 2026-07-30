@@ -55,7 +55,7 @@ function imagePathToBase64(filePath) {
             return `data:${mime};base64,${buf.toString('base64')}`;
         }
     } catch (e) {
-        console.error(`[base64] Error converting ${filePath}:`, e.message);
+        logger.error(`[base64] Error converting ${filePath}:`, e.message);
     }
     return null; // Return null if conversion fails
 }
@@ -233,7 +233,7 @@ function createTray() {
             }
         });
     } catch (e) {
-        console.error('[tray] Failed to create tray:', e.message);
+        logger.error('[tray] Failed to create tray:', e.message);
     }
 }
 
@@ -265,7 +265,7 @@ function cleanupTempPDFs() {
             }
         }
     } catch (e) {
-        console.error('[cleanup] temp-pdfs error:', e.message);
+        logger.error('[cleanup] temp-pdfs error:', e.message);
     }
 }
 
@@ -286,7 +286,7 @@ app.on('will-quit', () => {
             db.getDatabase().close();
             console.log('[DB] Database closed cleanly on quit');
         } catch (e) {
-            console.error('[DB] Error closing database on quit:', e.message);
+            logger.error('[DB] Error closing database on quit:', e.message);
         }
     }
 });
@@ -386,7 +386,7 @@ autoUpdater.on('update-downloaded', info => {
                     }
                 });
         } catch (e) {
-            console.error('[updater] Mac copy error:', e);
+            logger.error('[updater] Mac copy error:', e);
             shell.openExternal('https://www.factarlou.online/');
         }
     } else {
@@ -413,7 +413,7 @@ autoUpdater.on('update-downloaded', info => {
 });
 autoUpdater.on('error', err => {
     sendUpdate('error', { message: err.message });
-    console.error('[updater]', err);
+    logger.error('[updater]', err);
 });
 
 ipcMain.handle('updater:check', async () => {
@@ -659,7 +659,7 @@ ipcMain.handle('docs:convert', async (_, { sourceId, targetType, userId, year })
                 db.getDatabase().prepare("UPDATE documents SET internal_notes = COALESCE(internal_notes || '\n', '') || ? WHERE id = ?")
                     .run(noteMsg, src.id);
             } catch (e) {
-                console.error('[avoir] bi-directional update error:', e.message);
+                logger.error('[avoir] bi-directional update error:', e.message);
             }
         }
 
@@ -970,7 +970,7 @@ ipcMain.handle('settings:get', async (_, userId) => {
             settings.smtp_pass = safeStorage.decryptString(Buffer.from(settings.smtp_pass, 'base64'));
         } catch (e) {
             // CRIT-11: Clear rather than leak encrypted blob on decryption failure
-            console.error('[settings] SMTP password decryption failed:', e.message);
+            logger.error('[settings] SMTP password decryption failed:', e.message);
             settings.smtp_pass = '';
             settings._smtp_decrypt_error = true;
         }
@@ -1712,7 +1712,7 @@ ipcMain.handle('scanner:ocrImage', async (_, filePath) => {
         }
         return { success: true, text };
     } catch (e) {
-        console.error('OCR Error:', e);
+        logger.error('OCR Error:', e);
         return { success: false, error: e.message, text: '' };
     }
 });
@@ -1854,7 +1854,7 @@ ipcMain.handle('tools:searchRNE', async (_, mf) => {
         const data = await response.json();
         return { success: true, data };
     } catch (e) {
-        console.error('[RNE Search Error]:', e);
+        logger.error('[RNE Search Error]:', e);
         return { success: false, error: e.message };
     }
 });
@@ -1984,11 +1984,11 @@ function generateDueRecurring() {
                 nextDate.setDate(r.day_of_month || 15);
                 db.updateRecurringNextRun(r.id, dateStr, nextDate.toISOString().split('T')[0]);
             } catch (e) {
-                console.error('Failed to generate recurring invoice:', r.id, e);
+                logger.error('Failed to generate recurring invoice:', r.id, e);
             }
         });
     } catch (e) {
-        console.error('Recurring cron error:', e);
+        logger.error('Recurring cron error:', e);
     }
 }
 
@@ -2027,7 +2027,7 @@ ipcMain.handle('export:tej:getData', async (_, params) => {
     try {
         return db.getTEJData(params);
     } catch (e) {
-        console.error(e);
+        logger.error(e);
         return [];
     }
 });
@@ -2172,7 +2172,7 @@ ipcMain.handle('export:tej:generate', async (event, { type, month, year, codeAct
         fs.writeFileSync(filePath, xmlString, 'utf8');
         return { success: true, path: filePath };
     } catch (e) {
-        console.error('TEJ Export Error:', e);
+        logger.error('TEJ Export Error:', e);
         return { success: false, error: e.message };
     }
 });

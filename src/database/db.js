@@ -4,6 +4,7 @@ const { app } = require('electron');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
+const logger = require('../logger');
 
 class AppDatabase {
     constructor() {
@@ -17,10 +18,10 @@ class AppDatabase {
         try {
             const integrityResult = this.db.pragma('integrity_check');
             if (integrityResult[0]?.integrity_check !== 'ok') {
-                console.error('[DB] Database integrity check FAILED:', integrityResult);
+                logger.error('[DB] Database integrity check FAILED:', integrityResult);
             }
         } catch (e) {
-            console.error('[DB] Integrity check error:', e.message);
+            logger.error('[DB] Integrity check error:', e.message);
         }
 
         this.initTables();
@@ -83,7 +84,7 @@ class AppDatabase {
             if (!svcCols.includes('min_stock')) this.db.exec('ALTER TABLE services ADD COLUMN min_stock INTEGER DEFAULT 0');
             if (!svcCols.includes('image')) this.db.exec('ALTER TABLE services ADD COLUMN image TEXT');
         } catch (e) {
-            console.error('[migration] services columns:', e.message);
+            logger.error('[migration] services columns:', e.message);
         }
         tryAlter('ALTER TABLE contracts ADD COLUMN signed_at TEXT');
         tryAlter('ALTER TABLE contracts ADD COLUMN pdf_path TEXT');
@@ -109,7 +110,7 @@ class AppDatabase {
             if (!docCols.includes('company_bank')) this.db.exec('ALTER TABLE documents ADD COLUMN company_bank TEXT');
             if (!docCols.includes('company_rib')) this.db.exec('ALTER TABLE documents ADD COLUMN company_rib TEXT');
         } catch (e) {
-            console.error('[migration] documents columns:', e.message);
+            logger.error('[migration] documents columns:', e.message);
         }
 
         // ── Expenses table schema migration ─────────────────────────
@@ -161,7 +162,7 @@ class AppDatabase {
                 this.db.exec('ALTER TABLE expenses_new RENAME TO expenses');
             }
         } catch (e) {
-            console.error('[migration] expenses table migration failed:', e);
+            logger.error('[migration] expenses table migration failed:', e);
         }
 
         // expenses: ensure all columns exist (handles pre-existing partial table)
@@ -387,7 +388,7 @@ class AppDatabase {
             match = bcrypt.compareSync(password, user.password_hash);
         } catch (e) {
             // CRIT-10: Never fall back to plaintext comparison — reject login on bcrypt error
-            console.error('[auth] bcrypt error, rejecting login:', e.message);
+            logger.error('[auth] bcrypt error, rejecting login:', e.message);
             match = false;
         }
 

@@ -218,9 +218,9 @@ function renderRecentDocs(docs) {
             <td style="font-weight:600;white-space:nowrap">${formatAmount(doc.totalTTC)} ${doc.currency}</td>
             <td>${renderPaymentBadge(doc)}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="viewDocument('${doc.id}')"     title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
-                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
-                <button class="btn-icon btn-edit"   onclick="editExistingDoc('${doc.id}')"  title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-view"   data-onclick="viewDocument('${doc.id}')"     title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" data-onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
+                <button class="btn-icon btn-edit"   data-onclick="editExistingDoc('${doc.id}')"  title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
@@ -267,7 +267,7 @@ function renderPaymentBadge(doc) {
         unpaid: '<i data-lucide="x-circle" class="lucide-sm"></i> Impayée'
     };
     const cls = { paid: 'badge-paid', partial: 'badge-partial', unpaid: 'badge-unpaid' };
-    return `<span class="badge ${cls[status] || 'badge-unpaid'}" onclick="openPaymentModal('${doc.id}')" style="cursor:pointer" title="Gérer paiement">${map[status] || status}</span>`;
+    return `<span class="badge ${cls[status] || 'badge-unpaid'}" data-onclick="openPaymentModal('${doc.id}')" style="cursor:pointer" title="Gérer paiement">${map[status] || status}</span>`;
 }
 
 let lastDashboardStats = null;
@@ -524,13 +524,13 @@ async function renderDashboardNotes() {
         const recent = notes.slice(0, 4);
         if (!recent.length) {
             container.innerHTML =
-                '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem">Aucune note — <a href="#" onclick="navigateTo(\'notes\');return false" style="color:var(--primary)">Créer une note</a></div>';
+                '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem">Aucune note — <a href="#" data-onclick="navigateTo(\'notes\');return false" style="color:var(--primary)">Créer une note</a></div>';
             return;
         }
         container.innerHTML = recent
             .map(
                 note => `
-            <div class="note-card" style="background:${note.color || '#fef9c3'};border-radius:10px;padding:12px;position:relative;min-height:80px;box-shadow:0 1px 4px rgba(0,0,0,0.06);cursor:pointer" onclick="navigateTo('notes')">
+            <div class="note-card" style="background:${note.color || '#fef9c3'};border-radius:10px;padding:12px;position:relative;min-height:80px;box-shadow:0 1px 4px rgba(0,0,0,0.06);cursor:pointer" data-onclick="navigateTo('notes')">
                 ${note.pinned ? '<i data-lucide="pin" style="position:absolute;top:6px;right:6px;font-size:0.75rem;opacity:0.5"></i>' : ''}
                 ${note.title ? `<div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;color:#1e293b">${escapeHtml(note.title)}</div>` : ''}
                 <div style="font-size:0.8rem;color:#374151;line-height:1.4;word-break:break-word">${escapeHtml(note.content || '').substring(0, 80)}${(note.content || '').length > 80 ? '…' : ''}</div>
@@ -579,7 +579,7 @@ async function loadPaymentHistory(docId, doc) {
                 p => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:0.85rem">
                 <div><strong>${formatAmount(p.amount)} TND</strong> — ${escapeHtml(p.method || 'N/A')} <span style="color:#9ca3af">${formatDate(p.date)}</span> ${p.reference ? `<span style="color:#6b7280">(${escapeHtml(p.reference)})</span>` : ''}</div>
-                <button class="btn-icon btn-delete" onclick="deletePayment('${p.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="deletePayment('${p.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </div>`
             )
             .join('')}`;
@@ -638,7 +638,7 @@ function addCustomField(key, value) {
     div.innerHTML = `
         <input type="text" class="cf-key" placeholder="Nom du champ" value="${escapeHtml(key || '')}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem">
         <input type="text" class="cf-value" placeholder="Valeur" value="${escapeHtml(value || '')}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.85rem">
-        <button type="button" class="btn-icon btn-delete" onclick="this.parentElement.remove()" title="Supprimer"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+        <button type="button" class="btn-icon btn-delete" data-onclick="this.parentElement.remove()" title="Supprimer"><i data-lucide="x" style="width:14px;height:14px"></i></button>
     `;
     container.appendChild(div);
     if (window.lucide) lucide.createIcons();
@@ -815,14 +815,14 @@ function addItem(data) {
     tr.innerHTML = `
         <td style="text-align:center;color:var(--gray-500);font-size:0.82rem"><span class="drag-handle" style="cursor:grab;display:inline-block;padding:2px 4px">⠿</span> <span class="item-num">${itemCount}</span></td>
         <td><input type="text"   class="item-input" id="desc${itemCount}"  value="${escapeHtml(desc)}" placeholder="Description..."></td>
-        <td><input type="number" class="item-input" id="qty${itemCount}"   value="${qty}" min="0.001" step="0.001" onchange="calculateTotals()"></td>
-        <td><input type="number" class="item-input" id="price${itemCount}" value="${price}" min="0" step="0.001" onchange="calculateTotals()"></td>
-        <td><select class="tva-select" id="tva${itemCount}" onchange="calculateTotals()">
+        <td><input type="number" class="item-input" id="qty${itemCount}"   value="${qty}" min="0.001" step="0.001" data-onchange="calculateTotals()"></td>
+        <td><input type="number" class="item-input" id="price${itemCount}" value="${price}" min="0" step="0.001" data-onchange="calculateTotals()"></td>
+        <td><select class="tva-select" id="tva${itemCount}" data-onchange="calculateTotals()">
             <option value="19" ${tva === 19 ? 'selected' : ''}>19%</option><option value="13" ${tva === 13 ? 'selected' : ''}>13%</option>
             <option value="7" ${tva === 7 ? 'selected' : ''}>7%</option><option value="0" ${tva === 0 ? 'selected' : ''}>0%</option>
         </select></td>
         <td style="text-align:right;font-weight:500" id="total${itemCount}">0.${'0'.repeat(currentDecimalPlaces)}</td>
-        <td><button type="button" class="btn-icon btn-delete" onclick="removeItem(this)"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>`;
+        <td><button type="button" class="btn-icon btn-delete" data-onclick="removeItem(this)"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>`;
     document.getElementById('itemsBody').appendChild(tr);
     initItemDrag(tr);
     document.getElementById(`desc${itemCount}`).focus();
@@ -1188,7 +1188,7 @@ function renderServicesTable(services = allServices) {
                         ? `<span style="padding:2px 6px;border-radius:4px;font-size:0.8rem;background:${isLowStock ? '#fee2e2' : '#f0fdf4'};color:${isLowStock ? '#ef4444' : '#22c55e'}">${s.stock} (Min: ${s.minStock})</span>`
                         : `<span style="color:var(--text-light)">—</span>`;
                     return `<tr>
-            <td><input type="checkbox" class="service-checkbox" data-service-id="${s.id}" onchange="updateSelectedServices()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
+            <td><input type="checkbox" class="service-checkbox" data-service-id="${s.id}" data-onchange="updateSelectedServices()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td style="font-weight:600">${escapeHtml(s.name)}</td>
             <td>${escapeHtml(s.description) || '—'}</td>
             <td>${escapeHtml(s.category) || '—'}</td>
@@ -1196,8 +1196,8 @@ function renderServicesTable(services = allServices) {
             <td>${s.tva}%</td>
             <td>${stockBadge}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-edit"   onclick="editService('${s.id}')"         title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteService('${s.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   data-onclick="editService('${s.id}')"         title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="confirmDeleteService('${s.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`;
                 }
             )
@@ -2056,11 +2056,11 @@ function renderDocPagination(current, total) {
         return;
     }
     let html = '<div class="pagination" style="display:flex;justify-content:center;gap:6px;padding:16px 0">';
-    html += `<button class="btn btn-sm ${current <= 1 ? 'disabled' : ''}" onclick="${current > 1 ? `goDocPage(${current - 1})` : ''}" ${current <= 1 ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:14px;height:14px"></i></button>`;
+    html += `<button class="btn btn-sm ${current <= 1 ? 'disabled' : ''}" data-onclick="${current > 1 ? `goDocPage(${current - 1})` : ''}" ${current <= 1 ? 'disabled' : ''}><i data-lucide="chevron-left" style="width:14px;height:14px"></i></button>`;
     for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
-        html += `<button class="btn btn-sm ${i === current ? 'btn-primary' : 'btn-secondary'}" onclick="goDocPage(${i})">${i}</button>`;
+        html += `<button class="btn btn-sm ${i === current ? 'btn-primary' : 'btn-secondary'}" data-onclick="goDocPage(${i})">${i}</button>`;
     }
-    html += `<button class="btn btn-sm ${current >= total ? 'disabled' : ''}" onclick="${current < total ? `goDocPage(${current + 1})` : ''}" ${current >= total ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:14px;height:14px"></i></button>`;
+    html += `<button class="btn btn-sm ${current >= total ? 'disabled' : ''}" data-onclick="${current < total ? `goDocPage(${current + 1})` : ''}" ${current >= total ? 'disabled' : ''}><i data-lucide="chevron-right" style="width:14px;height:14px"></i></button>`;
     html += '</div>';
     container.innerHTML = html;
     if (window.lucide) lucide.createIcons();
@@ -2106,11 +2106,11 @@ function renderDocumentsTable(docs) {
         updateBatchButtons();
         return;
     }
-    container.innerHTML = `<table><thead><tr><th style="width:36px"><input type="checkbox" id="selectAllDocs" onchange="toggleSelectAllDocs(this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></th><th>Type</th><th onclick="sortDocs('number')" style="cursor:pointer">N° ${docSortBy === 'number' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th onclick="sortDocs('clientName')" style="cursor:pointer">Client ${docSortBy === 'clientName' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th onclick="sortDocs('date')" style="cursor:pointer">Date ${docSortBy === 'date' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th onclick="sortDocs('totalTTC')" style="cursor:pointer">Total TTC ${docSortBy === 'totalTTC' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th>Statut</th><th>Pipeline</th><th>Actions</th></tr></thead><tbody>
+    container.innerHTML = `<table><thead><tr><th style="width:36px"><input type="checkbox" id="selectAllDocs" data-onchange="toggleSelectAllDocs(this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></th><th>Type</th><th data-onclick="sortDocs('number')" style="cursor:pointer">N° ${docSortBy === 'number' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th data-onclick="sortDocs('clientName')" style="cursor:pointer">Client ${docSortBy === 'clientName' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th data-onclick="sortDocs('date')" style="cursor:pointer">Date ${docSortBy === 'date' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th data-onclick="sortDocs('totalTTC')" style="cursor:pointer">Total TTC ${docSortBy === 'totalTTC' ? (docSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th><th>Statut</th><th>Pipeline</th><th>Actions</th></tr></thead><tbody>
         ${docs
             .map(
                 doc => `<tr>
-            <td><input type="checkbox" class="doc-select" value="${doc.id}" onchange="updateBatchButtons()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
+            <td><input type="checkbox" class="doc-select" value="${doc.id}" data-onchange="updateBatchButtons()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td><span class="badge badge-${doc.type}">${doc.type.toUpperCase()}</span></td>
             <td style="font-family:monospace;font-size:0.82rem">${doc.number}</td>
             <td>${escapeHtml(doc.clientName)}</td>
@@ -2119,19 +2119,19 @@ function renderDocumentsTable(docs) {
             <td>${renderPaymentBadge(doc)}</td>
             <td>${renderPipelineBadge(doc)}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"    onclick="viewDocument('${doc.id}')"           title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
-                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
-                ${doc.type !== 'ticket' ? `<button class="btn-icon btn-edit"    onclick="editExistingDoc('${doc.id}')"         title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>` : ''}
-                <button class="btn-icon"             onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6"><i data-lucide="clipboard-list" class="lucide-sm"></i></button>
-                <button class="btn-icon" style="color:#3b82f6"  onclick="emailSingleDoc('${doc.id}')"        title="Email"><i data-lucide="mail" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-pdf"     onclick="downloadDocPDF('${doc.id}')"           title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-whatsapp" onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
+                <button class="btn-icon btn-view"    data-onclick="viewDocument('${doc.id}')"           title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                ${doc.type === 'devis' ? `<button class="btn-icon btn-convert" data-onclick="convertToInvoice('${doc.id}')" title="Convertir"><i data-lucide="refresh-cw" class="lucide-sm"></i></button>` : ''}
+                ${doc.type !== 'ticket' ? `<button class="btn-icon btn-edit"    data-onclick="editExistingDoc('${doc.id}')"         title="Modifier"><i data-lucide="edit" class="lucide-sm"></i></button>` : ''}
+                <button class="btn-icon"             data-onclick="duplicateDocument('${doc.id}')"        title="Dupliquer" style="color:#8b5cf6"><i data-lucide="clipboard-list" class="lucide-sm"></i></button>
+                <button class="btn-icon" style="color:#3b82f6"  data-onclick="emailSingleDoc('${doc.id}')"        title="Email"><i data-lucide="mail" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-pdf"     data-onclick="downloadDocPDF('${doc.id}')"           title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-whatsapp" data-onclick="sendWhatsApp('${doc.id}')" title="WhatsApp">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 </button>
-                ${doc.type === 'facture' ? `<button class="btn-icon btn-payment" onclick="openPaymentModal('${doc.id}')" title="Paiement" style="color:#10b981"><i data-lucide="coins" class="lucide-sm"></i></button>` : ''}
-                ${doc.type === 'facture' ? `<button class="btn-icon" onclick="convertToAvoir('${doc.id}')" title="Convertir en Avoir" style="color:#f59e0b"><i data-lucide="undo-2" class="lucide-sm"></i></button>` : ''}
-                ${doc.type === 'ba' ? `<button class="btn-icon" onclick="convertBAToExpense('${doc.id}')" title="Convertir en dépense" style="color:#8b5cf6"><i data-lucide="shopping-cart" class="lucide-sm"></i></button>` : ''}
-                <button class="btn-icon btn-delete"  onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                ${doc.type === 'facture' ? `<button class="btn-icon btn-payment" data-onclick="openPaymentModal('${doc.id}')" title="Paiement" style="color:#10b981"><i data-lucide="coins" class="lucide-sm"></i></button>` : ''}
+                ${doc.type === 'facture' ? `<button class="btn-icon" data-onclick="convertToAvoir('${doc.id}')" title="Convertir en Avoir" style="color:#f59e0b"><i data-lucide="undo-2" class="lucide-sm"></i></button>` : ''}
+                ${doc.type === 'ba' ? `<button class="btn-icon" data-onclick="convertBAToExpense('${doc.id}')" title="Convertir en dépense" style="color:#8b5cf6"><i data-lucide="shopping-cart" class="lucide-sm"></i></button>` : ''}
+                <button class="btn-icon btn-delete"  data-onclick="confirmDeleteDoc('${doc.id}')"         title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
@@ -2386,8 +2386,8 @@ function openEmailTemplateManager() {
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6">
                 <div><strong>${escapeHtml(t.name)}</strong><div style="font-size:0.8rem;color:#6b7280">${escapeHtml(t.subject)}</div></div>
                 <div style="display:flex;gap:6px">
-                    <button class="btn-icon" onclick="applyEmailTemplate(${i})" title="Appliquer"><i data-lucide="upload" style="width:14px;height:14px"></i></button>
-                    <button class="btn-icon btn-delete" onclick="deleteEmailTemplate(${i})" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+                    <button class="btn-icon" data-onclick="applyEmailTemplate(${i})" title="Appliquer"><i data-lucide="upload" style="width:14px;height:14px"></i></button>
+                    <button class="btn-icon btn-delete" data-onclick="deleteEmailTemplate(${i})" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
                 </div>
             </div>`
             )
@@ -2870,15 +2870,15 @@ function renderClientsTable(clients = allClients) {
         ${clients
             .map(
                 c => `<tr>
-            <td><input type="checkbox" class="client-checkbox" data-client-id="${c.id}" onchange="updateSelectedClients()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
+            <td><input type="checkbox" class="client-checkbox" data-client-id="${c.id}" data-onchange="updateSelectedClients()" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer"></td>
             <td style="font-weight:600">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.mf) || '—'}</td>
             <td>${escapeHtml(c.phone) || '—'}</td>
             <td>${escapeHtml(c.email) || '—'}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="viewClientPreview('${c.id}')"   title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-edit"   onclick="openClientModal('${c.id}')"     title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteClient('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-view"   data-onclick="viewClientPreview('${c.id}')"   title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   data-onclick="openClientModal('${c.id}')"     title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="confirmDeleteClient('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
@@ -2925,8 +2925,8 @@ function viewClientPreview(clientId) {
             </div>
             ${lastDoc ? `<div style="margin-top:12px;font-size:0.8rem;color:#6b7280;text-align:center">Dernier document: <strong>${escapeHtml(lastDoc.number)}</strong> le ${formatDate(lastDoc.date)}</div>` : ''}
             <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
-                <button class="btn btn-secondary btn-sm" onclick="openRelevéClient('${escapeHtml(client.name).replace(/'/g, "\\'")}')">📄 Relevé de compte</button>
-                <button class="btn btn-primary btn-sm" onclick="closeModal('confirmModal');navigateTo('new-document');setTimeout(()=>{const el=document.getElementById('docClientName');if(el)el.value='${escapeHtml(client.name).replace(/'/g, "\\'")}'}, 300)">➕ Nouvelle facture</button>
+                <button class="btn btn-secondary btn-sm" data-onclick="openRelevéClient('${escapeHtml(client.name).replace(/'/g, "\\'")}')">📄 Relevé de compte</button>
+                <button class="btn btn-primary btn-sm" data-onclick="closeModal('confirmModal');navigateTo('new-document');setTimeout(()=>{const el=document.getElementById('docClientName');if(el)el.value='${escapeHtml(client.name).replace(/'/g, "\\'")}'}, 300)">➕ Nouvelle facture</button>
             </div>
         </div>
     `;
@@ -3220,8 +3220,8 @@ function renderFournisseursTable(fournisseurs = allFournisseurs) {
             <td>${escapeHtml(f.phone) || '—'}</td>
             <td>${escapeHtml(f.email) || '—'}</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-edit"   onclick="openFournisseurModal('${f.id}')"     title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteFournisseur('${f.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   data-onclick="openFournisseurModal('${f.id}')"     title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="confirmDeleteFournisseur('${f.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
@@ -3438,7 +3438,7 @@ async function loadBackupList() {
                     <div class="backup-date">${new Date(b.created).toLocaleString('fr-FR')}</div>
                     <div class="backup-size">${(b.size / 1024 / 1024).toFixed(3)} MB</div>
                 </div>
-                <button class="btn btn-small btn-secondary" onclick="restoreBackup('${b.path}')">Restaurer</button>
+                <button class="btn btn-small btn-secondary" data-onclick="restoreBackup('${b.path}')">Restaurer</button>
             </div>`
             )
             .join('');
@@ -3994,10 +3994,10 @@ function renderContractsTable(contracts) {
             <td>${formatDate(c.startDate)}</td>
             <td><span class="badge badge-${c.status === 'signé' ? 'active' : 'pending'}">${c.status || 'brouillon'}</span></td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="previewContract('${c.id}')"      title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-edit"   onclick="editContract('${c.id}')"         title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-pdf"    onclick="downloadContractPDF('${c.id}')"  title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteContract('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-view"   data-onclick="previewContract('${c.id}')"      title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   data-onclick="editContract('${c.id}')"         title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-pdf"    data-onclick="downloadContractPDF('${c.id}')"  title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="confirmDeleteContract('${c.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td></tr>`
             )
             .join('')}
@@ -4251,7 +4251,7 @@ function showUpdateBanner(version, state) {
                     <div style="font-weight:700">Mise à jour ${version}</div>
                     <div style="color:#94a3b8;font-size:0.8rem">Téléchargement en cours…</div>
                 </div>
-                <button onclick="this.parentElement.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem">×</button>
+                <button data-onclick="this.parentElement.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem">×</button>
             </div>
             <div style="background:#334155;border-radius:4px;height:6px;overflow:hidden">
                 <div id="updateProgressBar" style="background:#3b82f6;height:6px;width:0%;transition:width 0.3s"></div>
@@ -4267,8 +4267,8 @@ function showUpdateBanner(version, state) {
                 </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:10px">
-                <button onclick="window.electronAPI.installUpdate()" style="flex:1;background:#3b82f6;color:white;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:0.8rem;font-weight:600">🔄 Redémarrer</button>
-                <button onclick="this.parentElement.parentElement.remove()" style="background:#334155;color:#94a3b8;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:0.8rem">Plus tard</button>
+                <button data-onclick="window.electronAPI.installUpdate()" style="flex:1;background:#3b82f6;color:white;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:0.8rem;font-weight:600">🔄 Redémarrer</button>
+                <button data-onclick="this.parentElement.parentElement.remove()" style="background:#334155;color:#94a3b8;border:none;border-radius:6px;padding:7px 12px;cursor:pointer;font-size:0.8rem">Plus tard</button>
             </div>`;
     }
 }
@@ -4330,7 +4330,7 @@ function renderGlobalSearchResults(results, query) {
     box.innerHTML = results
         .map(
             doc => `
-        <div onclick="openDocFromSearch('${doc.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+        <div data-onclick="openDocFromSearch('${doc.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
             <span class="badge badge-${doc.type}" style="min-width:56px;text-align:center">${doc.type.toUpperCase()}</span>
             <div style="flex:1">
                 <div style="font-weight:600;font-size:0.875rem">${escapeHtml(doc.number)}</div>
@@ -4392,8 +4392,8 @@ function renderNotes() {
             note => `
         <div class="note-card" style="background:${note.color || '#fef9c3'};border-radius:12px;padding:16px;position:relative;min-height:120px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
             ${note.pinned ? `<div style="position:absolute;top:10px;right:36px;font-size:0.9rem"><i data-lucide="pin" style="width:14px;height:14px"></i></div>` : ''}
-            <button onclick="deleteNote('${note.id}')" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:#6b7280;font-size:1rem;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
-            <div onclick="openNoteModal('${note.id}')" style="cursor:pointer">
+            <button data-onclick="deleteNote('${note.id}')" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:#6b7280;font-size:1rem;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+            <div data-onclick="openNoteModal('${note.id}')" style="cursor:pointer">
                 ${note.title ? `<div style="font-weight:700;font-size:0.95rem;margin-bottom:6px;color:#1e293b">${escapeHtml(note.title)}</div>` : ''}
                 <div style="font-size:0.875rem;color:#374151;white-space:pre-wrap;line-height:1.5">${escapeHtml(note.content || '').substring(0, 200)}${(note.content || '').length > 200 ? '…' : ''}</div>
                 <div style="margin-top:8px;font-size:0.75rem;color:#9ca3af">${formatDate(note.updated_at?.split('T')[0] || note.updated_at)}</div>
@@ -4415,7 +4415,7 @@ function openNoteModal(noteId) {
     if (colorPicker) {
         colorPicker.innerHTML = NOTE_COLORS.map(
             c =>
-                `<div onclick="selectNoteColor('${c}')" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:${(note?.color || '#fef9c3') === c ? '3px solid #1e293b' : '2px solid transparent'}" data-color="${c}"></div>`
+                `<div data-onclick="selectNoteColor('${c}')" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:${(note?.color || '#fef9c3') === c ? '3px solid #1e293b' : '2px solid transparent'}" data-color="${c}"></div>`
         ).join('');
     }
     document.getElementById('selectedNoteColor').value = note?.color || '#fef9c3';
@@ -4499,13 +4499,13 @@ function renderReminders() {
             .map(r => {
                 const overdue = !r.done && new Date(`${r.dueDate}T${r.dueTime || '09:00'}`) < new Date();
                 return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:6px;background:${r.done ? '#f8fafc' : overdue ? '#fff1f2' : 'white'};border:1px solid ${r.done ? '#e5e7eb' : overdue ? '#fecaca' : '#e5e7eb'}">
-                <input type="checkbox" ${r.done ? 'checked' : ''} onchange="toggleReminder('${r.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer">
+                <input type="checkbox" ${r.done ? 'checked' : ''} data-onchange="toggleReminder('${r.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer">
                 <div style="flex:1">
                     <div style="font-weight:600;font-size:0.875rem;color:${r.done ? '#9ca3af' : '#1e293b'};text-decoration:${r.done ? 'line-through' : 'none'}">${escapeHtml(r.title)}</div>
                     ${r.description ? `<div style="font-size:0.8rem;color:#6b7280">${escapeHtml(r.description)}</div>` : ''}
                     <div style="font-size:0.75rem;color:${overdue && !r.done ? '#ef4444' : '#9ca3af'}">${overdue && !r.done ? '<i data-lucide="alert-triangle" style="width:12px;height:12px;color:#ef4444"></i> En retard — ' : ''}${formatDate(r.dueDate)} à ${r.dueTime || '09:00'}</div>
                 </div>
-                <button onclick="deleteReminder('${r.id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+                <button data-onclick="deleteReminder('${r.id}')" style="background:none;border:none;cursor:pointer;color:#9ca3af"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
             </div>`;
             })
             .join('')}`
@@ -4817,8 +4817,8 @@ function loadRecurringInvoices() {
                 <td>${r.day_of_month || '-'}</td>
                 <td>${r.next_run ? formatDate(r.next_run) : '-'}</td>
                 <td>
-                    <button class="btn-icon" onclick="editRecurringInvoice('${r.id}')"><i data-lucide="edit-3" style="width:14px;height:14px"></i></button>
-                    <button class="btn-icon btn-delete" onclick="deleteRecurringInvoice('${r.id}')"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+                    <button class="btn-icon" data-onclick="editRecurringInvoice('${r.id}')"><i data-lucide="edit-3" style="width:14px;height:14px"></i></button>
+                    <button class="btn-icon btn-delete" data-onclick="deleteRecurringInvoice('${r.id}')"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
                 </td>
             </tr>`;
             });
@@ -4944,10 +4944,10 @@ function renderRetenuesTable(retenues) {
             <td style="font-weight:700;color:#b45309">${formatAmount(r.montantRetenue)} TND</td>
             <td><span class="badge" style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:6px;font-size:0.75rem">${r.status || 'emis'}</span></td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view"   onclick="previewRetenue('${r.id}')"        title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-edit"   onclick="editRetenue('${r.id}')"           title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-pdf"    onclick="downloadRetenuePDF('${r.id}')"    title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteRetenue('${r.id}')"  title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-view"   data-onclick="previewRetenue('${r.id}')"        title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit"   data-onclick="editRetenue('${r.id}')"           title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-pdf"    data-onclick="downloadRetenuePDF('${r.id}')"    title="PDF"><i data-lucide="file-text" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="confirmDeleteRetenue('${r.id}')"  title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
         </tr>`
             )
@@ -5600,10 +5600,10 @@ function renderExpensesTable(expenses) {
         <td style="font-weight:600;color:#0f172a">${formatAmount(e.amountTTC)} TND</td>
         <td style="color:#ef4444">${e.retenueSource > 0 ? formatAmount(e.retenueSource) + ' TND' : '—'}</td>
         <td style="font-family:monospace;font-size:0.8rem">${escapeHtml(e.reference || '—')}</td>
-        <td>${e.attachmentPath ? `<button class="btn-icon" onclick="viewAttachment('${e.attachmentPath.replace(/\\/g, '\\\\')}')" title="Aperçu"><i data-lucide="paperclip" class="lucide-sm"></i></button>` : '—'}</td>
+        <td>${e.attachmentPath ? `<button class="btn-icon" data-onclick="viewAttachment('${e.attachmentPath.replace(/\\/g, '\\\\')}')" title="Aperçu"><i data-lucide="paperclip" class="lucide-sm"></i></button>` : '—'}</td>
         <td class="actions-cell">
-            <button class="btn-icon btn-edit" onclick="openExpenseModal('${e.id}')" title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
-            <button class="btn-icon btn-delete" onclick="confirmDeleteExpense('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+            <button class="btn-icon btn-edit" data-onclick="openExpenseModal('${e.id}')" title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+            <button class="btn-icon btn-delete" data-onclick="confirmDeleteExpense('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
         </td>
     </tr>`
         )
@@ -6027,8 +6027,8 @@ function renderEmployeesTable() {
             <td>${escapeHtml(e.cnss || '—')}</td>
             <td><span class="badge ${e.active ? 'badge-paid' : 'badge-unpaid'}">${e.active ? 'Actif' : 'Inactif'}</span></td>
             <td class="actions-cell">
-                <button class="btn-icon btn-edit" onclick="openEmployeeModal('${e.id}')" title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-delete" onclick="confirmDeleteEmployee('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit" data-onclick="openEmployeeModal('${e.id}')" title="Modifier"><i data-lucide="edit-3" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="confirmDeleteEmployee('${e.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
         </tr>`
             )
@@ -6067,10 +6067,10 @@ function renderPayslipsTable() {
             <td>${formatAmount(p.gross_salary)} TND</td>
             <td style="font-weight:700;color:#166534">${formatAmount(p.net_salary)} TND</td>
             <td class="actions-cell">
-                <button class="btn-icon btn-view" onclick="previewPayslip('${p.id}')" title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-download" onclick="savePayslipPDF('${p.id}')" title="Enregistrer PDF"><i data-lucide="save" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-edit" onclick="printPayslip('${p.id}')" title="Imprimer"><i data-lucide="printer" class="lucide-sm"></i></button>
-                <button class="btn-icon btn-delete" onclick="confirmDeletePayslip('${p.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-view" data-onclick="previewPayslip('${p.id}')" title="Aperçu"><i data-lucide="eye" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-download" data-onclick="savePayslipPDF('${p.id}')" title="Enregistrer PDF"><i data-lucide="save" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-edit" data-onclick="printPayslip('${p.id}')" title="Imprimer"><i data-lucide="printer" class="lucide-sm"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="confirmDeletePayslip('${p.id}')" title="Supprimer"><i data-lucide="trash-2" class="lucide-sm"></i></button>
             </td>
         </tr>`
             )
@@ -6923,8 +6923,8 @@ function renderTemplateList() {
             <td>${escapeHtml(t.name)}</td>
             <td>${escapeHtml(t.type || '—')}</td>
             <td>
-                <button class="btn-icon" onclick="loadTemplate('${t.id}')" title="Appliquer"><i data-lucide="upload" style="width:14px;height:14px"></i></button>
-                <button class="btn-icon btn-delete" onclick="deleteTemplate('${t.id}')" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+                <button class="btn-icon" data-onclick="loadTemplate('${t.id}')" title="Appliquer"><i data-lucide="upload" style="width:14px;height:14px"></i></button>
+                <button class="btn-icon btn-delete" data-onclick="deleteTemplate('${t.id}')" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
             </td>
         </tr>`;
     });
@@ -7842,7 +7842,7 @@ async function posLoadTodaySales() {
                             return `<div style="display:flex;justify-content:space-between;font-size:0.7rem;padding:1px 4px;color:var(--text-muted)">
                     <span>${escHtml(name)} x${qty}</span>
                     <span>${lineTotal.toFixed(3)} TND</span>
-                    ${!isNegative && posActiveSession ? `<button class="btn btn-danger" style="font-size:0.55rem;padding:1px 4px;margin-left:4px" onclick="posRefundLineItem('${s.id}', ${idx});event.stopPropagation()">×</button>` : ''}
+                    ${!isNegative && posActiveSession ? `<button class="btn btn-danger" style="font-size:0.55rem;padding:1px 4px;margin-left:4px" data-onclick="posRefundLineItem('${s.id}', ${idx});event.stopPropagation()">×</button>` : ''}
                 </div>`;
                         })
                         .join('');
@@ -7856,7 +7856,7 @@ async function posLoadTodaySales() {
                     <div style="text-align:right">
                         <strong>${(s.totalTTC || 0).toFixed(3)} TND</strong>
                         <br><span style="font-size:0.7rem;color:var(--text-muted)">${payLabel}</span>
-                        ${!isNegative && posActiveSession ? `<br><button class="btn btn-danger" style="font-size:0.65rem;padding:2px 6px;margin-top:4px" onclick="posRefundSale('${s.id}');event.stopPropagation()">Remb. tout</button>` : ''}
+                        ${!isNegative && posActiveSession ? `<br><button class="btn btn-danger" style="font-size:0.65rem;padding:2px 6px;margin-top:4px" data-onclick="posRefundSale('${s.id}');event.stopPropagation()">Remb. tout</button>` : ''}
                     </div>
                 </div>
                 ${itemsHtml ? `<div style="margin-top:4px;padding-top:4px;border-top:1px dashed var(--border-light)">${itemsHtml}</div>` : ''}
@@ -8515,7 +8515,7 @@ function renderPOSCategories() {
         .map(c => {
             const label = c === '__fav__' ? '⭐ Favoris' : c === 'all' ? 'Tout' : c;
             const cls = c === 'all' ? 'active' : '';
-            return `<button class="pos-cat-btn ${cls}" data-cat="${c}" onclick="posFilterCategory(this, '${c}')">${escHtml(label)}</button>`;
+            return `<button class="pos-cat-btn ${cls}" data-cat="${c}" data-onclick="posFilterCategory(this, '${c}')">${escHtml(label)}</button>`;
         })
         .join('');
 }
@@ -8569,8 +8569,8 @@ function posRenderProductChunk(grid) {
             const priceLabel = displayPrice.toFixed(3) + (posTTCMode ? ' TTC' : ' TND');
             const isFav = posFavorites.includes(p.id);
             const img = p.image || '';
-            return `<div class="pos-product-card ${outOfStock ? 'pos-out-of-stock' : ''}" onclick="${outOfStock ? '' : `posAddToCart('${p.id}')`}" title="${escHtml(p.description || p.name)}">
-            <button class="pos-fav-star ${isFav ? 'active' : ''}" onclick="event.stopPropagation();posToggleFavorite('${p.id}')" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '★' : '☆'}</button>
+            return `<div class="pos-product-card ${outOfStock ? 'pos-out-of-stock' : ''}" data-onclick="${outOfStock ? '' : `posAddToCart('${p.id}')`}" title="${escHtml(p.description || p.name)}">
+            <button class="pos-fav-star ${isFav ? 'active' : ''}" data-onclick="event.stopPropagation();posToggleFavorite('${p.id}')" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '★' : '☆'}</button>
             ${posTTCMode ? `<div class="pos-prod-tag-ttc">TTC</div>` : ''}
             ${img ? `<img class="pos-prod-img" src="${escHtml(img)}" alt="${escHtml(p.name)}" loading="lazy">` : ''}
             <div class="pos-prod-name">${escHtml(p.name)}</div>
@@ -8691,25 +8691,25 @@ function renderPOSCart() {
             const total = lineHT - discountAmt;
             const tvaAmt = item.tva > 0 ? (total * item.tva) / 100 : 0;
             const selected = posSelectedItem === i ? 'selected' : '';
-            return `<div class="pos-cart-item ${selected}" onclick="posSelectCartItem(${i})">
+            return `<div class="pos-cart-item ${selected}" data-onclick="posSelectCartItem(${i})">
             <div style="flex:1;min-width:0">
                 <div class="pos-ci-name">${escHtml(item.name)}</div>
                 <div class="pos-ci-discount">
                     <label>−${discountPct}%</label>
-                    <input type="number" min="0" max="100" step="1" value="${discountPct}" onchange="posSetDiscount(${i},this)" onclick="event.stopPropagation()">
+                    <input type="number" min="0" max="100" step="1" value="${discountPct}" data-onchange="posSetDiscount(${i},this)" data-onclick="event.stopPropagation()">
                 </div>
             </div>
             <div class="pos-ci-qty">
-                <button onclick="posDecQty(${i});event.stopPropagation()">−</button>
+                <button data-onclick="posDecQty(${i});event.stopPropagation()">−</button>
                 <span ondblclick="posQuickQty(${i},this)" style="cursor:pointer" title="Double-clic quantité">${item.qty}</span>
-                <button onclick="posIncQty(${i});event.stopPropagation()">+</button>
+                <button data-onclick="posIncQty(${i});event.stopPropagation()">+</button>
             </div>
             <div style="text-align:right">
                 <span class="pos-ci-total ${discountPct > 0 ? 'pos-ci-discounted' : ''}" ondblclick="posOverridePrice(${i},this)" style="cursor:pointer" title="Double-clic prix">${total.toFixed(3)}</span>
                 ${item.priceOverridden ? `<div style="font-size:0.55rem;color:#f59e0b;font-weight:600">PRIX MODIFIÉ</div>` : ''}
                 ${tvaAmt > 0 ? `<div style="font-size:0.6rem;color:var(--text-muted)">TVA ${tvaAmt.toFixed(3)}</div>` : ''}
             </div>
-            <button class="pos-ci-remove" onclick="posRemoveItem(${i});event.stopPropagation()"><i data-lucide="x" style="width:14px"></i></button>
+            <button class="pos-ci-remove" data-onclick="posRemoveItem(${i});event.stopPropagation()"><i data-lucide="x" style="width:14px"></i></button>
         </div>`;
         })
         .join('');
@@ -8903,9 +8903,9 @@ function posRenderSplitPayments() {
             (p, i) => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f0fdf4;border-radius:8px;margin-bottom:4px;font-size:0.85rem">
             <span style="font-weight:600">${payLabels[p.method] || p.method}</span>
-            <input type="number" step="0.001" value="${p.amount.toFixed(3)}" onchange="posUpdateSplitAmount(${i},this)" style="width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-weight:600;text-align:right">
+            <input type="number" step="0.001" value="${p.amount.toFixed(3)}" data-onchange="posUpdateSplitAmount(${i},this)" style="width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-weight:600;text-align:right">
             <span>TND</span>
-            <button onclick="posRemoveSplitPayment(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:4px"><i data-lucide="x" style="width:14px"></i></button>
+            <button data-onclick="posRemoveSplitPayment(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:4px"><i data-lucide="x" style="width:14px"></i></button>
         </div>
     `
         )
@@ -9259,7 +9259,7 @@ async function posLoadQuickGrid() {
             .map(([name]) => {
                 const product = posAllProducts.find(p => p.name === name);
                 if (!product) return '';
-                return `<span class="pos-quick-item" onclick="posAddToCart('${product.id}')">${escHtml(name)}</span>`;
+                return `<span class="pos-quick-item" data-onclick="posAddToCart('${product.id}')">${escHtml(name)}</span>`;
             })
             .filter(Boolean)
             .join('');
@@ -9290,7 +9290,7 @@ function posSearchClient(val) {
     results.innerHTML = matches
         .map(
             c =>
-                `<div class="pos-client-result" onclick="posSelectClient('${escHtml(c.name)}')">
+                `<div class="pos-client-result" data-onclick="posSelectClient('${escHtml(c.name)}')">
             <span class="clr-name">${escHtml(c.name)}</span>
             <span class="clr-info">${c.phone ? escHtml(c.phone) : ''}${c.mf ? ' | MF: ' + escHtml(c.mf) : ''}</span>
         </div>`
@@ -9425,8 +9425,8 @@ function posOpenDrafts() {
                     <div class="pos-draft-meta">${items} article(s) · ${total.toFixed(3)} TND · ${d.date || ''}</div>
                 </div>
                 <div class="pos-draft-actions">
-                    <button class="pos-draft-btn pos-draft-restore" onclick="posRestoreDraft(${i})">Restaurer</button>
-                    <button class="pos-draft-btn pos-draft-delete" onclick="posDeleteDraft(${i})">Suppr.</button>
+                    <button class="pos-draft-btn pos-draft-restore" data-onclick="posRestoreDraft(${i})">Restaurer</button>
+                    <button class="pos-draft-btn pos-draft-delete" data-onclick="posDeleteDraft(${i})">Suppr.</button>
                 </div>
             </div>`;
             })
@@ -9638,7 +9638,7 @@ function openKeyboardShortcutsModal() {
         <div class="modal-content" style="max-width:480px">
             <div class="modal-header">
                 <h3 style="display:flex;align-items:center;gap:8px"><i data-lucide="keyboard" style="width:18px;height:18px"></i> Raccourcis Clavier</h3>
-                <button class="modal-close" onclick="this.closest('.modal').classList.remove('active')">&times;</button>
+                <button class="modal-close" data-onclick="this.closest('.modal').classList.remove('active')">&times;</button>
             </div>
             <div class="modal-body" style="padding:16px">
                 <table style="width:100%;border-collapse:collapse">

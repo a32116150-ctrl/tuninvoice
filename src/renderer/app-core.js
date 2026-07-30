@@ -586,3 +586,130 @@ function getDocTypeLabel(type) {
 function getDocTypeColor(type) {
     return currentTheme.titles[type]?.color || '#1e3a8a';
 }
+
+// === Migrated Inline Scripts from index.html ===
+document.addEventListener('DOMContentLoaded', () => {
+    // Topbar date
+    const opts = { weekday:'short', year:'numeric', month:'short', day:'numeric' };
+    const str = new Date().toLocaleDateString('fr-FR', opts);
+    ['topbarDateText','dashDate'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=str; });
+
+    // Topbar user sync
+    const origShowApp = window.showApp;
+    if (origShowApp) window.showApp = function() {
+        origShowApp.apply(this, arguments);
+        setTimeout(() => {
+            const u = document.getElementById('userName')?.textContent;
+            const av = document.getElementById('userAvatar')?.textContent;
+            if (document.getElementById('topbarName')) document.getElementById('topbarName').textContent = u || '';
+            if (document.getElementById('topbarAvatar')) document.getElementById('topbarAvatar').textContent = av || 'U';
+        }, 100);
+    };
+
+    // Theme color hex labels
+    ['themeColorPrimary','themeColorSecondary','themeColorBg','themeColorSurface','themeColorBorder'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const spanId = id + 'Hex';
+        el.addEventListener('input', () => {
+            const span = document.querySelector(`[id="${spanId}"]`) || el.nextElementSibling;
+            if (span) span.textContent = el.value;
+        });
+    });
+});
+
+window.addEventListener('load', () => {
+    const origNav = window.navigateTo;
+    if (origNav) window.navigateTo = function(page) {
+        origNav.apply(this, arguments);
+        const u = document.getElementById('userName')?.textContent;
+        const av = document.getElementById('userAvatar')?.textContent;
+        if (document.getElementById('topbarName') && u) document.getElementById('topbarName').textContent = u;
+        if (document.getElementById('topbarAvatar') && av) document.getElementById('topbarAvatar').textContent = av;
+    };
+});
+
+window.updateFormatPreview = function() {
+    const dp = parseInt(document.getElementById('settingDecimalPlaces')?.value) || 3;
+    const rm = document.getElementById('settingRoundingMethod')?.value || 'half_up';
+    const testVal = 1234.5678;
+    const factor = Math.pow(10, dp);
+    let rounded;
+    if (rm === 'ceil')  rounded = Math.ceil(testVal  * factor) / factor;
+    else if (rm === 'floor') rounded = Math.floor(testVal * factor) / factor;
+    else rounded = Math.round(testVal * factor) / factor;
+    const el = document.getElementById('formatPreviewValue');
+    if (el) el.textContent = rounded.toFixed(dp) + ' TND';
+};
+
+// === Event Delegation for Strict CSP (M-10) ===
+function parseArguments(argsStr, target) {
+    if (!argsStr || !argsStr.trim()) return [];
+    
+    // Naive comma split, ignoring commas inside quotes
+    const args = [];
+    let current = '';
+    let inQuote = null;
+    
+    for (let i = 0; i < argsStr.length; i++) {
+        const char = argsStr[i];
+        if (char === "'" || char === '"') {
+            if (!inQuote) inQuote = char;
+            else if (inQuote === char) inQuote = null;
+            else current += char; // nested quote
+        } else if (char === ',' && !inQuote) {
+            args.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    if (current) args.push(current.trim());
+    
+    return args.map(s => {
+        if (s === 'this') return target;
+        if (s === 'this.checked') return target.checked;
+        if (s === 'this.value') return target.value;
+        if (s === 'this.parentElement') return target.parentElement;
+        if (s === 'event' || s === 'e') return window.event;
+        return isNaN(Number(s)) ? s : Number(s);
+    });
+}
+
+function handleDelegation(event, attrName) {
+    let target = event.target;
+    while (target && target !== document) {
+        if (target.hasAttribute(attrName)) {
+            const script = target.getAttribute(attrName);
+            // Example script: "viewDocument('doc-123', this)"
+            const match = script.match(/^([a-zA-Z0-9_]+)\((.*)\);?$/);
+            if (match) {
+                const funcName = match[1];
+                const argsStr = match[2];
+                const args = parseArguments(argsStr, target);
+                
+                if (typeof window[funcName] === 'function') {
+                    window[funcName].apply(target, args);
+                } else {
+                    console.error(`CSP Delegation Error: function ${funcName} is not defined on window.`);
+                }
+            } else {
+                // simple function call without parens, or multiple statements (which we don't support easily)
+                if (typeof window[script] === 'function') {
+                    window[script]();
+                } else {
+                     console.error(`CSP Delegation Error: could not parse inline script: ${script}`);
+                }
+            }
+            if (attrName === 'data-onclick' && target.tagName !== 'INPUT' && target.tagName !== 'LABEL') {
+                 event.preventDefault();
+            }
+            break;
+        }
+        target = target.parentElement;
+    }
+}
+
+document.addEventListener('click', e => handleDelegation(e, 'data-onclick'));
+document.addEventListener('change', e => handleDelegation(e, 'data-onchange'));
+document.addEventListener('submit', e => handleDelegation(e, 'data-onsubmit'));

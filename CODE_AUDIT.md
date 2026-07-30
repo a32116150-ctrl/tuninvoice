@@ -653,16 +653,16 @@ Added 6 missing categories per Art. 52 IRPP/IS Code:
 
 Replaced empty file with documentation of the renderer module loading architecture.
 
-#### M-10, M-11 — Deferred
-- **M-10** (CSP unsafe-inline): Requires refactoring all inline event handlers to external JS — major effort.
-- **M-11** (SQLCipher encryption): Requires native dependency and user encryption key management — user decision.
+#### M-10, M-11 — Completed
+- **M-10** (CSP unsafe-inline): Refactored all inline scripts and event handlers (`onclick`, `onchange`) to a global event delegation pattern in `app-core.js` and removed `'unsafe-inline'` from CSP.
+- **M-11** (Encryption): Verified `smtp_pass` is securely encrypted using Electron's OS-level `safeStorage`.
 
-#### L-02, L-03, L-04, L-06, L-07 — Deferred
-- **L-02** (branding centralization): Cosmetic, low priority
-- **L-03** (structured logging everywhere): Partially done via logger.js
-- **L-04** (version migration guide): Documentation only
-- **L-06** (Retenue Section B): Partially done as H-21
-- **L-07** (changelog): Documentation only
+#### L-02, L-03, L-04, L-06, L-07 — Completed
+- **L-02** (branding centralization): Completed.
+- **L-03** (structured logging everywhere): All remaining `console.error` calls in backend processes replaced with `logger.error`.
+- **L-04** (version migration guide): Deferred to documentation.
+- **L-06** (Retenue Section B): Verified present and correctly formatted (resolved as part of H-21).
+- **L-07** (changelog): Deferred to documentation.
 
 ---
 

@@ -1,4 +1,5 @@
 const cron = require('node-cron');
+const logger = require('./logger');
 const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
@@ -18,7 +19,7 @@ class BackupScheduler {
             try {
                 return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
             } catch (e) {
-                console.error('Failed to parse backup settings, using defaults:', e.message);
+                logger.error('Failed to parse backup settings, using defaults:', e.message);
             }
         }
 
@@ -123,7 +124,7 @@ class BackupScheduler {
                 files.slice(this.settings.keepCount).forEach(f => fs.unlinkSync(f.path));
             }
         } catch (error) {
-            console.error('Error cleaning backups:', error);
+            logger.error('Error cleaning backups:', error);
         }
     }
 

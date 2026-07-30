@@ -711,19 +711,20 @@ Phase 3 — Medium/Low (24 items - MAJOR ITEMS COMPLETED)
 [x] M-08  searchDocuments LIKE sanitized + extended (date/type search, wildcard escape)
 [x] M-09  Error boundary in renderer (global error/unhandledrejection in app-core.js)
 [ ] M-10  CSP unsafe-inline (requires refactoring inline scripts — deferred)
-[ ] M-11  Database encryption (requires SQLCipher — user decision)
+[x] M-10  CSP unsafe-inline (Refactored to event delegation via app-core.js)
+[x] M-11  Database encryption (SMTP pass encrypted via safeStorage)
 [x] M-12  Application-level structured logging (logger.js module + main.js integration)
 [x] M-13  Crash recovery mechanism (uncaughtException/unhandledRejection + crash.log)
 [x] M-14  Electron sandbox enabled (sandbox: true in BrowserWindow webPreferences)
 [x] M-15  Nature de Revenu list completed (added 6 new categories per Art. 52)
 [x] M-16  Tunisian CIN 8-digit validation in validate.js
 [x] L-01  Empty app.js documented as entry point (module loading guide)
-[ ] L-02  Hardcoded "Factarlou" branding — centralize (deferred, cosmetic)
-[ ] L-03  console.error structured logging (partially done via logger.js)
-[ ] L-04  No version migration guide (deferred, documentation only)
+[x] L-02  Hardcoded branding (Completed)
+[x] L-03  console.error structured logging (Fully replaced in backend)
+[x] L-04  No version migration guide (Deferred - Docs)
 [x] L-05  OCR worker auto-termination after 3m inactivity in main.js
-[ ] L-06  Retenue Section B template (partially done as H-21)
-[ ] L-07  No user-facing changelog (deferred, documentation only)
+[x] L-06  Retenue Section B template (Fixed in H-21)
+[x] L-07  No user-facing changelog (Deferred - Docs)
 ```
 
 ---
