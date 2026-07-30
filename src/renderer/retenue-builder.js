@@ -690,10 +690,16 @@ const NATURES_REVENU = [
     'Honoraires et commissions',
     'Loyers immobiliers',
     'Travaux et services',
+    'Achats auprès de fabricants et grossistes',
     'Dividendes',
     'Intérêts bancaires',
     'Revenus de capitaux mobiliers',
+    'Redevances (brevets, marques, licences)',
+    'Plus-values immobilières',
+    'Plus-values mobilières',
+    'Gains de jeux et loteries',
     'Revenus de sources étrangères',
+    'Rémunérations servies à des non-résidents',
     'Autres revenus soumis à retenue'
 ];
 const MOIS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];

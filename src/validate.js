@@ -1,6 +1,6 @@
 const VALID_TVA_RATES = [19, 13, 7, 0];
 const VALID_CURRENCIES = ['TND', 'EUR', 'USD'];
-const VALID_DOC_TYPES = ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir', 'ticket', 'proforma'];
+const VALID_DOC_TYPES = ['facture', 'devis', 'bon', 'bl', 'ba', 'bs', 'be', 'avoir', 'ticket', 'proforma', 'forfaitaire'];
 const VALID_ROUNDING_METHODS = ['half_up', 'ceil', 'floor'];
 const VALID_FREQUENCIES = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
 
@@ -56,13 +56,24 @@ function validateDocSave(data) {
     if (data.paymentStatus && !['unpaid', 'paid', 'partial'].includes(data.paymentStatus))
         errors.push('paymentStatus: must be unpaid/paid/partial');
     if (!isOptionalNumber(data.discountPercent, 0, 100)) errors.push('discountPercent: must be 0-100');
+    // M-05: Prevent simultaneous discount percent and discount amount
+    if ((data.discountPercent || 0) > 0 && (data.discountAmount || 0) > 0) {
+        errors.push('discount: cannot apply both discountPercent and discountAmount simultaneously');
+    }
     if (data.items && !Array.isArray(data.items)) errors.push('items: must be an array');
     if (data.items) {
+        // M-03: Régime Forfaitaire — TVA-exempt documents only allow 0% TVA
+        const isForfaitaire = data.type === 'forfaitaire';
         data.items.forEach((item, i) => {
             if (!isString(item.description)) errors.push(`items[${i}].description: required`);
-            if (!isNumber(item.quantity, 0, 1e6)) errors.push(`items[${i}].quantity: must be a positive number`);
-            if (!isNumber(item.price, 0, 1e9)) errors.push(`items[${i}].price: must be a positive number`);
-            if (!VALID_TVA_RATES.includes(item.tva)) errors.push(`items[${i}].tva: must be 0, 7, 13, or 19`);
+            // M-04: Quantity must be strictly positive; price must be >= 0
+            if (!isNumber(item.quantity, 0.001, 1e6)) errors.push(`items[${i}].quantity: must be > 0`);
+            if (!isNumber(item.price, 0, 1e9)) errors.push(`items[${i}].price: must be >= 0`);
+            if (isForfaitaire) {
+                if (item.tva !== 0 && item.tva !== undefined) errors.push(`items[${i}].tva: must be 0% for régime forfaitaire`);
+            } else {
+                if (!VALID_TVA_RATES.includes(item.tva)) errors.push(`items[${i}].tva: must be 0, 7, 13, or 19`);
+            }
         });
     }
     return errors;

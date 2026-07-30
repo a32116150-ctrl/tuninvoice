@@ -1,3 +1,22 @@
+// M-09: Global error boundary — prevents renderer from silently failing
+window.addEventListener('error', (event) => {
+    console.error('[UI ERROR]', event.message, event.filename, event.lineno);
+    try {
+        if (typeof showToast === 'function') {
+            showToast('Erreur inattendue: ' + (event.message || 'Erreur inconnue'), 'error');
+        }
+    } catch {}
+});
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('[UI PROMISE ERROR]', event.reason);
+    try {
+        const msg = event.reason?.message || event.reason || 'Erreur asynchrone';
+        if (typeof showToast === 'function') {
+            showToast('Erreur: ' + msg, 'error');
+        }
+    } catch {}
+});
+
 // ==================== GLOBALS ====================
 let currentUser = null;
 let currentDocType = 'facture';

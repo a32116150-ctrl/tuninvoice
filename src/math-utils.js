@@ -48,11 +48,12 @@ function calculateTotals(items, options = {}) {
     });
 
     // Determine effective discount ratio
+    // M-05: If both discountPercent and discountAmount are provided, percent takes priority
     let discountRatio = 0;
-    if (discountAmount > 0 && totalHTRawPreDiscount > 0) {
-        discountRatio = discountAmount / totalHTRawPreDiscount;
-    } else if (discountPercent > 0) {
+    if (discountPercent > 0) {
         discountRatio = discountPercent / 100;
+    } else if (discountAmount > 0 && totalHTRawPreDiscount > 0) {
+        discountRatio = discountAmount / totalHTRawPreDiscount;
     }
 
     // CRIT-09: Second pass — apply discount per-line BEFORE TVA calculation

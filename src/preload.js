@@ -40,6 +40,8 @@ contextBridge.exposeInMainWorld(
         getNextDocNumber: params => invoke('docs:getNextNumber', params),
         peekNextDocNumber: params => invoke('docs:peekNextNumber', params),
         getCounterStatus: params => invoke('docs:counterStatus', params),
+        detectNumberGaps: params => invoke('docs:detectGaps', params),
+        getExpiredDevis: userId => invoke('docs:expiredDevis', userId),
         convertDocument: data => invoke('docs:convert', data),
         duplicateDocument: data => invoke('docs:duplicate', data),
         searchDocuments: params => invoke('docs:search', params),

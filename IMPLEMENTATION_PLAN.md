@@ -700,12 +700,30 @@ Phase 2 — High (21 items - ALL COMPLETED)
 [x] H-20  Strict TLS certificate check in SMTP (Fixed in main.js)
 [x] H-21  Retenue certificate Section headers (Fixed in retenue-builder.js)
 
-Phase 3 — Medium/Low (24 items - KEY ITEMS COMPLETED)
+Phase 3 — Medium/Low (24 items - MAJOR ITEMS COMPLETED)
+[x] M-01  Invoice number gap detection (Added detectNumberGaps in db.js + IPC + preload)
+[x] M-02  Devis expiry date auto-enforcement (Auto-sets 30-day expiry in saveDocument + getExpiredDevis)
+[x] M-03  Régime Forfaitaire TVA exemption (Added 'forfaitaire' type in validate.js + db.js prefix)
+[x] M-04  Negative/zero price validation tightened (qty > 0, price >= 0 in validate.js)
+[x] M-05  Discount % and amount simultaneous guard (validate.js + math-utils.js priority fix)
 [x] M-06  IPC event listener leak fix in preload.js
 [x] M-07  Backup restore schema migration trigger in db.js
+[x] M-08  searchDocuments LIKE sanitized + extended (date/type search, wildcard escape)
+[x] M-09  Error boundary in renderer (global error/unhandledrejection in app-core.js)
+[ ] M-10  CSP unsafe-inline (requires refactoring inline scripts — deferred)
+[ ] M-11  Database encryption (requires SQLCipher — user decision)
+[x] M-12  Application-level structured logging (logger.js module + main.js integration)
+[x] M-13  Crash recovery mechanism (uncaughtException/unhandledRejection + crash.log)
+[x] M-14  Electron sandbox enabled (sandbox: true in BrowserWindow webPreferences)
+[x] M-15  Nature de Revenu list completed (added 6 new categories per Art. 52)
 [x] M-16  Tunisian CIN 8-digit validation in validate.js
+[x] L-01  Empty app.js documented as entry point (module loading guide)
+[ ] L-02  Hardcoded "Factarlou" branding — centralize (deferred, cosmetic)
+[ ] L-03  console.error structured logging (partially done via logger.js)
+[ ] L-04  No version migration guide (deferred, documentation only)
 [x] L-05  OCR worker auto-termination after 3m inactivity in main.js
-[ ] M-01 through M-15, L-01 through L-07 (remaining items)
+[ ] L-06  Retenue Section B template (partially done as H-21)
+[ ] L-07  No user-facing changelog (deferred, documentation only)
 ```
 
 ---

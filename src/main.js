@@ -14,6 +14,25 @@ const { buildRetenueHTML, buildRelanceHTML, buildFiscalSummaryHTML } = require('
 const { buildInvoiceHTML } = require('./renderer/builders/invoice-builder');
 const { create } = require('xmlbuilder2');
 const XLSX = require('xlsx');
+const logger = require('./logger');
+
+// M-13: Crash recovery — prevent unhandled errors from killing the process silently
+process.on('uncaughtException', (err) => {
+    logger.error('crash', 'Uncaught exception', { message: err.message, stack: err.stack });
+    try {
+        const crashLog = path.join(app.getPath('userData'), 'crash.log');
+        const entry = `[${new Date().toISOString()}] UNCAUGHT: ${err.message}\n${err.stack}\n\n`;
+        fs.appendFileSync(crashLog, entry);
+    } catch {}
+});
+process.on('unhandledRejection', (reason) => {
+    logger.error('crash', 'Unhandled rejection', { reason: String(reason) });
+    try {
+        const crashLog = path.join(app.getPath('userData'), 'crash.log');
+        const entry = `[${new Date().toISOString()}] REJECTION: ${reason}\n\n`;
+        fs.appendFileSync(crashLog, entry);
+    } catch {}
+});
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -69,7 +88,7 @@ function createWindow() {
         minHeight: 700,
         show: false,
         icon: path.join(__dirname, '../assets/iconblack2.png'),
-        webPreferences: { contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js') }
+        webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, 'preload.js') }
     };
     if (savedState.x !== undefined) winOpts.x = savedState.x;
     if (savedState.y !== undefined) winOpts.y = savedState.y;
@@ -597,6 +616,22 @@ ipcMain.handle('docs:delete', async (_, id) => {
 ipcMain.handle('docs:getNextNumber', async (_, { userId, type, year }) => db.getNextDocumentNumber(userId, type, year));
 ipcMain.handle('docs:peekNextNumber', async (_, { userId, type, year }) => db.peekNextDocumentNumber(userId, type, year));
 ipcMain.handle('docs:counterStatus', async (_, { userId, year }) => db.getCounterStatus(userId, year));
+// M-01: Invoice number gap detection
+ipcMain.handle('docs:detectGaps', async (_, { userId, type, year }) => {
+    try {
+        return { success: true, ...db.detectNumberGaps(userId, type, year) };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+// M-02: Get expired devis
+ipcMain.handle('docs:expiredDevis', async (_, userId) => {
+    try {
+        return db.getExpiredDevis(userId);
+    } catch {
+        return [];
+    }
+});
 ipcMain.handle('docs:convert', async (_, { sourceId, targetType, userId, year }) => {
     try {
         const src = db.getDocumentById(sourceId);

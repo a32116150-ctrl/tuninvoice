@@ -487,6 +487,10 @@ class AppDatabase {
                 return s?.prefix_contract || 'CTR';
             case 'ticket':
                 return s?.prefix_ticket || 'TIC';
+            case 'proforma':
+                return s?.prefix_proforma || 'PRO';
+            case 'forfaitaire':
+                return s?.prefix_forfaitaire || 'FRF';
             default:
                 return type.toUpperCase().slice(0, 4);
         }
@@ -514,6 +518,48 @@ class AppDatabase {
         return result;
     }
 
+    // M-01: Detect invoice number gaps (required for Tunisian fiscal compliance)
+    detectNumberGaps(userId, type, year) {
+        const y = year || new Date().getFullYear();
+        const s = this.getUserSettings(userId);
+        const prefix = this._getPrefix(s, type);
+        const pattern = `${prefix}-${y}-%`;
+        const docs = this.db
+            .prepare('SELECT number FROM documents WHERE user_id=? AND type=? AND number LIKE ? ORDER BY number ASC')
+            .all(userId, type, pattern);
+        const numbers = docs
+            .map(d => {
+                const match = d.number.match(/-(\d+)$/);
+                return match ? parseInt(match[1], 10) : null;
+            })
+            .filter(n => n !== null)
+            .sort((a, b) => a - b);
+        const gaps = [];
+        if (numbers.length === 0) return { gaps: [], maxNumber: 0, count: 0 };
+        for (let i = 1; i < numbers.length; i++) {
+            for (let n = numbers[i - 1] + 1; n < numbers[i]; n++) {
+                gaps.push(`${prefix}-${y}-${String(n).padStart(3, '0')}`);
+            }
+        }
+        return {
+            gaps,
+            maxNumber: numbers[numbers.length - 1],
+            count: numbers.length,
+            hasGaps: gaps.length > 0
+        };
+    }
+
+    // M-02: Auto-enforce devis expiry date (30-day default per commercial practice)
+    getExpiredDevis(userId) {
+        const today = new Date().toISOString().split('T')[0];
+        return this.db
+            .prepare(
+                "SELECT * FROM documents WHERE user_id=? AND type='devis' AND payment_status='unpaid' AND expiry_date IS NOT NULL AND expiry_date < ? ORDER BY expiry_date ASC"
+            )
+            .all(userId, today)
+            .map(d => this.formatDocument(d));
+    }
+
     // ==================== DOCUMENTS ====================
     // CRIT-14: Wrapped in transaction so counter increment + save are atomic (no number gaps)
     saveDocument(docData) {
@@ -521,12 +567,18 @@ class AppDatabase {
             const id = docData.id || uuidv4();
             const number = docData.number || this.getNextDocumentNumber(docData.userId, docData.type, new Date().getFullYear());
             const existing = this.db.prepare('SELECT id FROM documents WHERE id=?').get(id);
+            // M-02: Auto-set 30-day expiry for devis if not provided
+            let expiryDate = docData.expiryDate || null;
+            if (!expiryDate && docData.type === 'devis') {
+                const baseDate = docData.date ? new Date(docData.date) : new Date();
+                expiryDate = new Date(baseDate.getTime() + 30 * 86400000).toISOString().split('T')[0];
+            }
             const vals = [
                 docData.type,
                 number,
                 docData.date,
                 docData.dueDate || null,
-                docData.expiryDate || null,
+                expiryDate,
                 docData.currency || 'TND',
                 docData.paymentMode || null,
                 docData.paymentStatus || 'unpaid',
@@ -1708,13 +1760,18 @@ class AppDatabase {
     }
 
     // ==================== DOCUMENT SEARCH ====================
+    // M-08: LIKE on items_json is a known perf tradeoff — acceptable for <10k docs per user.
+    // For larger datasets, consider FTS5 virtual table or denormalized item_descriptions column.
     searchDocuments(userId, query) {
-        const q = `%${query}%`;
+        if (!query || typeof query !== 'string') return [];
+        // Sanitize: escape SQL LIKE wildcards in user input
+        const sanitized = query.replace(/[%_]/g, '\\$&');
+        const q = `%${sanitized}%`;
         return this.db
             .prepare(
-                'SELECT * FROM documents WHERE user_id=? AND (number LIKE ? OR client_name LIKE ? OR company_name LIKE ? OR notes LIKE ? OR items_json LIKE ?) ORDER BY created_at DESC LIMIT 30'
+                "SELECT * FROM documents WHERE user_id=? AND (number LIKE ? ESCAPE '\\' OR client_name LIKE ? ESCAPE '\\' OR company_name LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\' OR items_json LIKE ? ESCAPE '\\' OR date LIKE ? ESCAPE '\\' OR type LIKE ? ESCAPE '\\') ORDER BY created_at DESC LIMIT 50"
             )
-            .all(userId, q, q, q, q, q)
+            .all(userId, q, q, q, q, q, q, q)
             .map(d => this.formatDocument(d));
     }
 

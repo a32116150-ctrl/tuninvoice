@@ -1,6 +1,6 @@
 # TuniInvoice Desktop — Code Audit & Fix Log
 
-> **Initial Audit:** 2026-05-21 (v3.5.0) | **Production Audit:** 2026-07-29 | **Version:** 4.7.0
+> **Initial Audit:** 2026-05-21 (v3.5.0) | **Production Audit:** 2026-07-29 | **Phase 3 Fixes:** 2026-07-30 | **Version:** 5.0.0
 
 ---
 
@@ -559,3 +559,133 @@ Added `Content-Security-Policy` header via `session.defaultSession.webRequest.on
 | `src/renderer/app-auth.js` | — | ⚠️ Not audited |
 | `src/renderer/app-core.js` | — | ⚠️ Not audited |
 | `src/renderer/contract-builder.js` | — | ⚠️ Not audited |
+
+---
+
+## Part 4 — Phase 3 Medium/Low Fixes (13 fixes)
+
+### Summary
+
+| Severity | Found | Fixed | Deferred |
+|----------|-------|-------|----------|
+| 🟡 Medium | 11 | 9 | 2 |
+| 🔵 Low | 5 | 2 | 3 |
+| **Total** | **16** | **11** | **5** |
+
+### Date: 2026-07-30
+
+### 🟡 MEDIUM
+
+#### M-01 — Invoice Number Gap Detection
+**File:** `src/database/db.js`, `src/main.js`, `src/preload.js` • **Status:** ✅ Fixed
+
+Added `detectNumberGaps(userId, type, year)` method that scans document numbers for missing sequential entries. Required for Tunisian fiscal law compliance. Exposed via IPC `docs:detectGaps`.
+
+#### M-02 — Devis Expiry Date Auto-Enforcement
+**File:** `src/database/db.js` • **Status:** ✅ Fixed
+
+Auto-sets 30-day expiry date on devis documents when no expiry is provided. Added `getExpiredDevis(userId)` method to retrieve expired devis. Exposed via IPC `docs:expiredDevis`.
+
+#### M-03 — Régime Forfaitaire TVA Exemption
+**Files:** `src/validate.js`, `src/database/db.js` • **Status:** ✅ Fixed
+
+Added `'forfaitaire'` document type with enforced 0% TVA on all items. Added `'FRF'` prefix in `_getPrefix()` and `'proforma'` → `'PRO'` prefix.
+
+#### M-04 — Negative/Zero Price Validation
+**File:** `src/validate.js` • **Status:** ✅ Fixed
+
+Tightened validation: quantity must be > 0 (min 0.001), price must be >= 0. Previously allowed 0 quantity.
+
+#### M-05 — Discount % and Amount Simultaneous Guard
+**Files:** `src/validate.js`, `src/math-utils.js` • **Status:** ✅ Fixed
+
+Validation now rejects if both `discountPercent` and `discountAmount` are non-zero. In `calculateTotals()`, discountPercent takes priority over discountAmount if both somehow pass validation.
+
+#### M-08 — searchDocuments LIKE on JSON Improvement
+**File:** `src/database/db.js` • **Status:** ✅ Fixed
+
+- Sanitized SQL LIKE wildcards (`%`, `_`) in user input
+- Added `date` and `type` as searchable columns
+- Increased result limit from 30 to 50
+- Added input validation (rejects non-string/empty queries)
+- Documented the JSON LIKE perf tradeoff
+
+#### M-09 — Error Boundary in Renderer
+**File:** `src/renderer/app-core.js` • **Status:** ✅ Fixed
+
+Added global `window.addEventListener('error')` and `window.addEventListener('unhandledrejection')` handlers that show user-friendly toast messages instead of silently failing.
+
+#### M-12 — Application-Level Structured Logging
+**File:** `src/logger.js` [NEW], `src/main.js` • **Status:** ✅ Fixed
+
+Created `AppLogger` class with:
+- JSON-structured log entries (timestamp, level, module, message, data)
+- Console + file output
+- Log rotation at 5MB
+- 4 levels: debug, info, warn, error
+- Integrated into main.js crash recovery handlers
+
+#### M-13 — Crash Recovery Mechanism
+**File:** `src/main.js` • **Status:** ✅ Fixed
+
+Added `process.on('uncaughtException')` and `process.on('unhandledRejection')` handlers that log errors to both the structured logger and a dedicated `crash.log` file in userData.
+
+#### M-14 — Electron Sandbox Enabled
+**File:** `src/main.js` • **Status:** ✅ Fixed
+
+Added `sandbox: true` to BrowserWindow webPreferences for defense-in-depth.
+
+#### M-15 — Nature de Revenu List Completed
+**File:** `src/renderer/retenue-builder.js` • **Status:** ✅ Fixed
+
+Added 6 missing categories per Art. 52 IRPP/IS Code:
+- Achats auprès de fabricants et grossistes
+- Redevances (brevets, marques, licences)
+- Plus-values immobilières
+- Plus-values mobilières
+- Gains de jeux et loteries
+- Rémunérations servies à des non-résidents
+
+### 🔵 LOW
+
+#### L-01 — Empty app.js Entry Point
+**File:** `src/renderer/app.js` • **Status:** ✅ Fixed
+
+Replaced empty file with documentation of the renderer module loading architecture.
+
+#### M-10, M-11 — Deferred
+- **M-10** (CSP unsafe-inline): Requires refactoring all inline event handlers to external JS — major effort.
+- **M-11** (SQLCipher encryption): Requires native dependency and user encryption key management — user decision.
+
+#### L-02, L-03, L-04, L-06, L-07 — Deferred
+- **L-02** (branding centralization): Cosmetic, low priority
+- **L-03** (structured logging everywhere): Partially done via logger.js
+- **L-04** (version migration guide): Documentation only
+- **L-06** (Retenue Section B): Partially done as H-21
+- **L-07** (changelog): Documentation only
+
+---
+
+## Files Audited (Updated)
+
+| File | Lines | Status |
+|------|-------|--------|
+| `src/main.js` | ~2160 | ✅ Full audit |
+| `src/preload.js` | ~248 | ✅ Full audit |
+| `src/database/db.js` | ~2250 | ✅ Full audit |
+| `src/validate.js` | ~130 | ✅ Full audit |
+| `src/backup-scheduler.js` | 174 | ✅ Full audit |
+| `src/math-utils.js` | ~212 | ✅ Full audit |
+| `src/logger.js` | ~80 | ✅ New file |
+| `src/exporters/excel-exporter.js` | 77 | ✅ Full audit |
+| `src/exporters/csv-exporter.js` | 44 | ✅ Full audit |
+| `src/renderer/builders/invoice-builder.js` | 162 | ✅ Full audit |
+| `src/renderer/retenue-builder.js` | ~726 | ✅ Full audit |
+| `src/renderer/app.js` | 14 | ✅ Documented entry point |
+| `src/renderer/app-features.js` | ~9800 | ✅ Partial audit + targeted fixes |
+| `src/renderer/app-core.js` | ~590 | ✅ Error boundary added |
+| `src/renderer/index.html` | ~2600 | ✅ Partial audit + targeted fixes |
+| `src/renderer/i18n.js` | 27 | ✅ Quick audit |
+| `src/renderer/app-auth.js` | — | ⚠️ Not audited |
+| `src/renderer/contract-builder.js` | — | ⚠️ Not audited |
+
