@@ -162,7 +162,7 @@
                 <button class="hamburger-btn" data-onclick="toggleSidebar()" title="Menu"><i data-lucide="menu"></i></button>
                 <div class="topbar-search">
                     <span class="topbar-search-ico"><i data-lucide="search"></i></span>
-                    <input type="text" placeholder="Rechercher..." id="globalSearch" onkeyup="globalSearchHandler()" data-i18n-placeholder>
+                    <input type="text" placeholder="Rechercher..." id="globalSearch" data-onkeyup="globalSearchHandler()" data-i18n-placeholder>
                 </div>
             </div>
             <div class="topbar-right">
@@ -498,7 +498,7 @@
                 <div class="card-header">
                     <h2><i data-lucide="clipboard-list"></i> Liste des Documents</h2>
                     <div class="toolbar">
-                        <div class="search-box"><input type="text" id="searchDocs" placeholder="Rechercher par N°, client..." onkeyup="filterDocuments()"></div>
+                        <div class="search-box"><input type="text" id="searchDocs" placeholder="Rechercher par N°, client..." data-onkeyup="filterDocuments()"></div>
                         <select id="filterType" data-onchange="filterDocuments()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white">
                             <option value="">Tous les types</option>
                             <option value="facture">Factures</option>
@@ -546,7 +546,7 @@
                 <div class="card-header">
                     <h2><i data-lucide="users"></i> Clients</h2>
                     <div class="toolbar" style="display:flex;gap:10px;align-items:center">
-                        <div class="search-box"><input type="text" id="searchClients" placeholder="Rechercher client..." onkeyup="filterClients()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
+                        <div class="search-box"><input type="text" id="searchClients" placeholder="Rechercher client..." data-onkeyup="filterClients()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
                     </div>
                 </div>
                 <div class="batch-actions" style="display:flex;gap:10px;align-items:center;padding:0 20px 12px 20px">
@@ -573,7 +573,7 @@
                 <div class="card-header">
                     <h2><i data-lucide="truck"></i> Fournisseurs</h2>
                     <div class="toolbar" style="display:flex;gap:10px;align-items:center">
-                        <div class="search-box"><input type="text" id="searchFournisseurs" placeholder="Rechercher fournisseur..." onkeyup="filterFournisseurs()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
+                        <div class="search-box"><input type="text" id="searchFournisseurs" placeholder="Rechercher fournisseur..." data-onkeyup="filterFournisseurs()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
                     </div>
                 </div>
                 <div style="padding:0"><div id="fournisseursTable" class="table-container"></div></div>
@@ -595,7 +595,7 @@
                             <option value="">Toutes catégories</option>
                             <option>Service</option><option>Produit</option><option>Abonnement</option><option>Consulting</option><option>Autre</option>
                         </select>
-                        <div class="search-box"><input type="text" id="searchServices" placeholder="Rechercher..." onkeyup="filterServices()"></div>
+                        <div class="search-box"><input type="text" id="searchServices" placeholder="Rechercher..." data-onkeyup="filterServices()"></div>
                     </div>
                 </div>
                 <div class="batch-actions" style="display:flex;gap:10px;align-items:center;padding:0 20px 12px 20px">
@@ -635,7 +635,7 @@
             <div class="pos-toolbar-row" id="posToolbarRow">
                 <div class="pos-scan-box" style="flex:1;min-width:120px;max-width:260px">
                     <i data-lucide="search" style="width:16px;flex-shrink:0;color:var(--text-light)"></i>
-                    <input type="text" id="posBarcodeInput" placeholder="Rechercher ou scanner..." autofocus oninput="posBarcodeSearch(this.value)">
+                    <input type="text" id="posBarcodeInput" placeholder="Rechercher ou scanner..." autofocus data-oninput="posBarcodeSearch(this.value)">
                     <kbd title="F2: focus recherche">F2</kbd>
                 </div>
                 <div class="pos-toolbar-actions">
@@ -740,7 +740,7 @@
                     </div>
                     <div class="form-section" id="posCashSection">
                         <label class="section-title">Montant reçu (pour ce moyen)</label>
-                        <input type="number" id="posAmountReceived" class="form-input" step="0.001" placeholder="Montant reçu..." oninput="posCalcChange()" style="font-size:1.2rem;font-weight:600">
+                        <input type="number" id="posAmountReceived" class="form-input" step="0.001" placeholder="Montant reçu..." data-oninput="posCalcChange()" style="font-size:1.2rem;font-weight:600">
                         <div class="pos-quick-cash" id="posQuickCash">
                             <button class="pos-qc-btn" data-onclick="posSetReceived(10)">10 TND</button>
                             <button class="pos-qc-btn" data-onclick="posSetReceived(20)">20 TND</button>
@@ -752,7 +752,7 @@
                     <div class="form-section">
                         <label class="section-title">Client (optionnel)</label>
                         <div style="position:relative">
-                            <input type="text" id="posPayClient" class="form-input" placeholder="Nom du client..." autocomplete="off" oninput="posSearchClient(this.value)">
+                            <input type="text" id="posPayClient" class="form-input" placeholder="Nom du client..." autocomplete="off" data-oninput="posSearchClient(this.value)">
                             <div id="posClientResults" class="pos-client-results" style="display:none"></div>
                         </div>
                         <div id="posFidelityDisplay" style="display:none;margin-top:4px;font-size:0.75rem;color:#d97706;font-weight:600"></div>
@@ -886,7 +886,7 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Client</label>
-                        <input type="text" id="posFidClient" class="form-input" placeholder="Nom du client..." oninput="posRefreshFidelity()">
+                        <input type="text" id="posFidClient" class="form-input" placeholder="Nom du client..." data-oninput="posRefreshFidelity()">
                     </div>
                     <div id="posFidelityContent" style="text-align:center;padding:20px;color:var(--text-muted)">Entrez un nom de client pour voir ses points</div>
                 </div>
@@ -1062,7 +1062,7 @@
                 <div class="card-header">
                     <h2><i data-lucide="file-signature"></i> Mes Contrats</h2>
                     <div class="toolbar">
-                        <div class="search-box"><input type="text" id="searchContracts" placeholder="Rechercher..." onkeyup="filterContracts()"></div>
+                        <div class="search-box"><input type="text" id="searchContracts" placeholder="Rechercher..." data-onkeyup="filterContracts()"></div>
                         <select id="filterContractType" data-onchange="filterContracts()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white">
                             <option value="">Tous types</option>
                             <option value="cdi">CDI</option><option value="cdd">CDD</option>
@@ -1090,7 +1090,7 @@
                 <div class="card-header">
                     <h2><i data-lucide="clipboard-list"></i> Mes Certificats</h2>
                     <div class="toolbar">
-                        <div class="search-box"><input type="text" id="searchRetenues" placeholder="Rechercher..." onkeyup="filterRetenues()"></div>
+                        <div class="search-box"><input type="text" id="searchRetenues" placeholder="Rechercher..." data-onkeyup="filterRetenues()"></div>
                         <select id="filterRetenueYear" data-onchange="filterRetenues()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white">
                             <option value="">Toutes années</option>
                             <option value="2026">2026</option>
@@ -1199,7 +1199,7 @@
                     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin-bottom:16px">
                         <div style="font-weight:700;font-size:0.9rem;margin-bottom:12px;color:#92400e"><i data-lucide="coins"></i> Montants</div>
                         <div class="grid-3">
-                            <div class="form-group"><label>Montant Brut (TND) *</label><input type="number" id="rMontantBrut" step="0.001" oninput="calculateRetenueAmount()"></div>
+                            <div class="form-group"><label>Montant Brut (TND) *</label><input type="number" id="rMontantBrut" step="0.001" data-oninput="calculateRetenueAmount()"></div>
                             <div class="form-group"><label>Taux de Retenue</label><select id="rTaux" data-onchange="calculateRetenueAmount()">
                                 <option value="1.5">1.5% — Honoraires & commissions (pers. morales)</option>
                                 <option value="2.5">2.5% — Honoraires (pers. physiques)</option>
@@ -1345,9 +1345,9 @@
                     <div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:16px">
                         <div style="font-weight:700;font-size:0.9rem;margin-bottom:12px;color:#1e3a8a"><i data-lucide="coins"></i> Rémunérations</div>
                         <div class="grid-3">
-                            <div class="form-group"><label>Salaire de base</label><input type="number" id="psBaseSalary" step="0.001" oninput="calculatePayslipTotals()"></div>
-                            <div class="form-group"><label>Ind. Transport</label><input type="number" id="psTransport" step="0.001" oninput="calculatePayslipTotals()"></div>
-                            <div class="form-group"><label>Autres Ind.</label><input type="number" id="psOther" step="0.001" oninput="calculatePayslipTotals()"></div>
+                            <div class="form-group"><label>Salaire de base</label><input type="number" id="psBaseSalary" step="0.001" data-oninput="calculatePayslipTotals()"></div>
+                            <div class="form-group"><label>Ind. Transport</label><input type="number" id="psTransport" step="0.001" data-oninput="calculatePayslipTotals()"></div>
+                            <div class="form-group"><label>Autres Ind.</label><input type="number" id="psOther" step="0.001" data-oninput="calculatePayslipTotals()"></div>
                         </div>
                         <div class="form-group" style="margin-top:10px">
                             <label>Salaire Brut Calculé (TND)</label>
@@ -1361,14 +1361,14 @@
                             <div class="form-group">
                                 <label>Retenue CNSS (9.18%)</label>
                                 <div style="display:flex;gap:8px">
-                                    <input type="number" id="psCnss" step="0.001" oninput="updatePayslipNet()">
+                                    <input type="number" id="psCnss" step="0.001" data-oninput="updatePayslipNet()">
                                     <button class="btn btn-secondary btn-small" data-onclick="autoCalculateCNSS()">Calculer</button>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label>Retenue IRPP</label>
                                 <div style="display:flex;gap:8px">
-                                    <input type="number" id="psIrpp" step="0.001" oninput="updatePayslipNet()">
+                                    <input type="number" id="psIrpp" step="0.001" data-oninput="updatePayslipNet()">
                                 </div>
                             </div>
                         </div>
@@ -1584,7 +1584,7 @@
                     <div class="form-group">
                         <label>Matricule Fiscal</label>
                         <div style="display:flex;gap:8px">
-                            <input type="text" id="mfToVerify" placeholder="1234567/A/M/000" oninput="validateMFInput(this.value)" style="flex:1">
+                            <input type="text" id="mfToVerify" placeholder="1234567/A/M/000" data-oninput="validateMFInput(this.value)" style="flex:1">
                             <button class="btn btn-primary" id="btnSearchRNE" data-onclick="searchRNELive()" title="Rechercher sur le RNE">
                                 <span id="searchRNEIcon"><i data-lucide="search"></i></span>
                                 <span id="searchRNESpinner" class="spinner" style="width:14px;height:14px;border-width:2px;margin:0;display:none"></span>
@@ -1615,7 +1615,7 @@
                 <div class="modal-body">
                     <div class="form-group" style="margin-bottom:16px">
                         <label>Revenu Annuel Net Imposable (TND)</label>
-                        <input type="number" id="irppRevenu" placeholder="24000.000" oninput="calculateIRPPSimulation()">
+                        <input type="number" id="irppRevenu" placeholder="24000.000" data-oninput="calculateIRPPSimulation()">
                     </div>
                     <div id="irppResult" style="padding:16px;background:var(--gray-50);border-radius:8px;border:1px solid var(--border)">
                         <div class="total-row"><span>Impôt Annuel estimé :</span><span id="irppTaxAmount" style="font-weight:800;color:var(--danger)">0.000 TND</span></div>
@@ -1779,16 +1779,16 @@
                                     <span>Les préfixes sont combinés avec l'année et un compteur automatique. Exemple : <strong>FAC-2026-001</strong></span>
                                 </div>
                                 <div class="grid-4">
-                                    <div class="form-group"><label><i data-lucide="file-text" style="width:14px;height:14px"></i> Factures</label><input type="text" id="prefixFacture" value="FAC" maxlength="10" oninput="updateSerialPreview()"></div>
-                                    <div class="form-group"><label><i data-lucide="clipboard-list" style="width:14px;height:14px"></i> Devis</label><input type="text" id="prefixDevis" value="DEV" maxlength="10" oninput="updateSerialPreview()"></div>
-                                    <div class="form-group"><label><i data-lucide="shopping-cart" style="width:14px;height:14px"></i> Bons Commande</label><input type="text" id="prefixBon" value="BC" maxlength="10" oninput="updateSerialPreview()"></div>
-                                    <div class="form-group"><label><i data-lucide="undo-2" style="width:14px;height:14px"></i> Avoir</label><input type="text" id="prefixAvoir" value="AV" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="file-text" style="width:14px;height:14px"></i> Factures</label><input type="text" id="prefixFacture" value="FAC" maxlength="10" data-oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="clipboard-list" style="width:14px;height:14px"></i> Devis</label><input type="text" id="prefixDevis" value="DEV" maxlength="10" data-oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="shopping-cart" style="width:14px;height:14px"></i> Bons Commande</label><input type="text" id="prefixBon" value="BC" maxlength="10" data-oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="undo-2" style="width:14px;height:14px"></i> Avoir</label><input type="text" id="prefixAvoir" value="AV" maxlength="10" data-oninput="updateSerialPreview()"></div>
                                 </div>
                                 <div class="grid-4" style="margin-top:14px">
-                                    <div class="form-group"><label><i data-lucide="truck" style="width:14px;height:14px"></i> Livraison (BL)</label><input type="text" id="prefixBL" value="BL" maxlength="10" oninput="updateSerialPreview()"></div>
-                                    <div class="form-group"><label><i data-lucide="inbox" style="width:14px;height:14px"></i> Achat (BA)</label><input type="text" id="prefixBA" value="BA" maxlength="10" oninput="updateSerialPreview()"></div>
-                                    <div class="form-group"><label><i data-lucide="upload" style="width:14px;height:14px"></i> Sortie (BS)</label><input type="text" id="prefixBS" value="BS" maxlength="10" oninput="updateSerialPreview()"></div>
-                                    <div class="form-group"><label><i data-lucide="package" style="width:14px;height:14px"></i> Entrée (BE)</label><input type="text" id="prefixBE" value="BE" maxlength="10" oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="truck" style="width:14px;height:14px"></i> Livraison (BL)</label><input type="text" id="prefixBL" value="BL" maxlength="10" data-oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="inbox" style="width:14px;height:14px"></i> Achat (BA)</label><input type="text" id="prefixBA" value="BA" maxlength="10" data-oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="upload" style="width:14px;height:14px"></i> Sortie (BS)</label><input type="text" id="prefixBS" value="BS" maxlength="10" data-oninput="updateSerialPreview()"></div>
+                                    <div class="form-group"><label><i data-lucide="package" style="width:14px;height:14px"></i> Entrée (BE)</label><input type="text" id="prefixBE" value="BE" maxlength="10" data-oninput="updateSerialPreview()"></div>
                                 </div>
                                 <div class="serial-preview-box"><h4>Aperçu du prochain numéro</h4><div id="serialPreview">FAC-2026-001</div></div>
                             </div>
@@ -1869,9 +1869,9 @@
                                     <div class="form-group"><label>Taille de base</label><select id="docFontSize" data-onchange="updateThemePreview()"><option value="12px">12px</option><option value="14px" selected>14px</option><option value="16px">16px</option></select></div>
                                 </div>
                                 <div class="theme-type-grid" style="margin-top:20px">
-                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#1e3a8a"><span><i data-lucide="file-text"></i></span><span>FACTURE</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleFacture" value="FACTURE" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorFacture" value="#1e3a8a" data-onchange="updateThemePreview()"><span id="colorFactureHex">#1e3a8a</span></div></div></div></div>
-                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#92400e"><span><i data-lucide="clipboard-list"></i></span><span>DEVIS</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleDevis" value="DEVIS" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorDevis" value="#92400e" data-onchange="updateThemePreview()"><span id="colorDevisHex">#92400e</span></div></div></div></div>
-                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#065f46"><span><i data-lucide="shopping-cart"></i></span><span>BON</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleBon" value="BON DE COMMANDE" oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorBon" value="#065f46" data-onchange="updateThemePreview()"><span id="colorBonHex">#065f46</span></div></div></div></div>
+                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#1e3a8a"><span><i data-lucide="file-text"></i></span><span>FACTURE</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleFacture" value="FACTURE" data-oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorFacture" value="#1e3a8a" data-onchange="updateThemePreview()"><span id="colorFactureHex">#1e3a8a</span></div></div></div></div>
+                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#92400e"><span><i data-lucide="clipboard-list"></i></span><span>DEVIS</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleDevis" value="DEVIS" data-oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorDevis" value="#92400e" data-onchange="updateThemePreview()"><span id="colorDevisHex">#92400e</span></div></div></div></div>
+                                    <div class="theme-type-card"><div class="theme-type-header" style="background:#065f46"><span><i data-lucide="shopping-cart"></i></span><span>BON</span></div><div class="theme-type-body"><div class="form-group"><label>Texte</label><input type="text" id="titleBon" value="BON DE COMMANDE" data-oninput="updateThemePreview()"></div><div class="form-group"><label>Couleur</label><div class="color-picker-wrapper"><input type="color" id="colorBon" value="#065f46" data-onchange="updateThemePreview()"><span id="colorBonHex">#065f46</span></div></div></div></div>
                                 </div>
                                 <div id="themePreview" style="margin-top:20px;padding:16px;background:var(--gray-50);border-radius:8px"></div>
                             </div>
@@ -2077,7 +2077,7 @@ Cordialement,
                 <div class="card-header">
                     <h2><i data-lucide="clipboard-list"></i> Liste des Dépenses</h2>
                     <div class="toolbar">
-                        <div class="search-box"><input type="text" id="searchExpenses" placeholder="Rechercher..." onkeyup="filterExpenses()"></div>
+                        <div class="search-box"><input type="text" id="searchExpenses" placeholder="Rechercher..." data-onkeyup="filterExpenses()"></div>
                         <select id="filterExpenseCategory" data-onchange="filterExpenses()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;background:white">
                             <option value="">Toutes catégories</option>
                             <option>Loyer</option><option>Matériel</option><option>Transport</option>
@@ -2113,7 +2113,7 @@ Cordialement,
             <div class="card">
                 <div class="card-header">
                     <h2><i data-lucide="list"></i> Événements récents</h2>
-                    <div class="search-box"><input type="text" id="searchAuditLog" placeholder="Rechercher..." onkeyup="filterAuditLog()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
+                    <div class="search-box"><input type="text" id="searchAuditLog" placeholder="Rechercher..." data-onkeyup="filterAuditLog()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.875rem;width:250px"></div>
                 </div>
                 <div id="auditLogTable" class="table-container"></div>
             </div>
@@ -2136,7 +2136,7 @@ Cordialement,
                     <div class="form-group"><label>Date *</label><input type="date" id="expDate" required></div>
                 </div>
                 <div class="grid-2" style="margin-bottom:14px">
-                    <div class="form-group"><label>Montant TTC *</label><input type="number" id="expAmountTTC" step="0.001" required placeholder="0.000" oninput="updateExpenseHT()"></div>
+                    <div class="form-group"><label>Montant TTC *</label><input type="number" id="expAmountTTC" step="0.001" required placeholder="0.000" data-oninput="updateExpenseHT()"></div>
                     <div class="form-group"><label>Dont Retenue (TND)</label><input type="number" id="expRetenue" step="0.001" placeholder="0.000"></div>
                 </div>
                 <div class="grid-2" style="margin-bottom:14px">
@@ -2344,8 +2344,8 @@ Cordialement,
             <div class="modal" style="max-width:480px">
                 <div class="modal-header"><h2><i data-lucide="scale"></i> Calcul des Pénalités de Retard</h2><button class="modal-close" data-onclick="closeModal('penaltyModal')">✕</button></div>
                 <div class="modal-body">
-                    <div class="form-group" style="margin-bottom:12px"><label>Montant en principal (TND)</label><input type="number" id="penaltyBase" step="0.001" oninput="calculatePenalties()"></div>
-                    <div class="form-group" style="margin-bottom:12px"><label>Nombre de mois de retard</label><input type="number" id="penaltyMonths" min="0" oninput="calculatePenalties()"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Montant en principal (TND)</label><input type="number" id="penaltyBase" step="0.001" data-oninput="calculatePenalties()"></div>
+                    <div class="form-group" style="margin-bottom:12px"><label>Nombre de mois de retard</label><input type="number" id="penaltyMonths" min="0" data-oninput="calculatePenalties()"></div>
                     <div class="form-group" style="margin-bottom:16px">
                         <label>Type de déclaration</label>
                         <select id="penaltyType" data-onchange="calculatePenalties()">
@@ -2456,7 +2456,7 @@ Cordialement,
             <div class="modal" style="max-width:650px">
                 <div class="modal-header"><h2><i data-lucide="landmark"></i> Annuaire des Recettes des Finances</h2><button class="modal-close" data-onclick="closeModal('financeDirectoryModal')">✕</button></div>
                 <div class="modal-body">
-                    <div class="search-box" style="margin-bottom:16px"><input type="text" placeholder="Rechercher une recette (ex: Tunis, Sfax...)" style="width:100%" onkeyup="filterFinanceDirectory(this.value)"></div>
+                    <div class="search-box" style="margin-bottom:16px"><input type="text" placeholder="Rechercher une recette (ex: Tunis, Sfax...)" style="width:100%" data-onkeyup="filterFinanceDirectory(this.value)"></div>
                     <div class="table-container" style="max-height:400px;overflow-y:auto">
                         <table id="financeTable">
                             <thead><tr><th>Ville / Bureau</th><th>Contact</th></tr></thead>
@@ -2722,7 +2722,7 @@ Cordialement,
                     <div style="background:#f0f9ff;border-radius:8px;padding:16px;border:1px solid #bae6fd">
                         <div style="font-weight:600;font-size:0.9rem;margin-bottom:12px;color:var(--primary)">Simulation</div>
                         <div class="form-group"><label>Type</label><select id="simType" data-onchange="recalcSimulation()"><option value="facture">Facture</option><option value="devis">Devis</option><option value="avoir">Avoir</option><option value="bon">Bon de commande</option></select></div>
-                        <div class="form-group"><label>Remise %</label><input type="number" id="simDiscount" step="1" min="0" max="100" value="0" oninput="recalcSimulation()"></div>
+                        <div class="form-group"><label>Remise %</label><input type="number" id="simDiscount" step="1" min="0" max="100" value="0" data-oninput="recalcSimulation()"></div>
                         <div class="form-group"><label>TVA</label><select id="simTvaOverride" data-onchange="recalcSimulation()"><option value="">Taux d'origine</option><option value="19">19%</option><option value="13">13%</option><option value="7">7%</option><option value="0">0%</option></select></div>
                         <div class="form-group"><label>Devise</label><select id="simCurrency" data-onchange="recalcSimulation()"><option>TND</option><option>EUR</option><option>USD</option></select></div>
                         <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:8px"><input type="checkbox" id="simTimbre" data-onchange="recalcSimulation()" checked> Timbre fiscal</label>

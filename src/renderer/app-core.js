@@ -713,3 +713,5 @@ function handleDelegation(event, attrName) {
 document.addEventListener('click', e => handleDelegation(e, 'data-onclick'));
 document.addEventListener('change', e => handleDelegation(e, 'data-onchange'));
 document.addEventListener('submit', e => handleDelegation(e, 'data-onsubmit'));
+document.addEventListener('input', e => handleDelegation(e, 'data-oninput'));
+document.addEventListener('keyup', e => handleDelegation(e, 'data-onkeyup'));
